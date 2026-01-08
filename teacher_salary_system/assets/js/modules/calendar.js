@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { db } from './db.js';
 import { formatDate, getWeekNumber } from './utils.js';
 
-// 判斷學期
+// 判斷學期 (保留供 UI 標題使用)
 export async function determineSemester(date) {
     const dateStr = formatDate(date);
     const semesters = await db.semesters.toArray();
@@ -29,7 +29,7 @@ export function jumpToSpecificDate(dateStr) {
 // 渲染側邊欄
 export function renderSidebar(centerDate) {
     const list = document.getElementById('sidebarList');
-    if (!list) return; // 安全檢查
+    if (!list) return;
     
     list.innerHTML = '';
     let lastMonthLabel = '';
@@ -61,10 +61,10 @@ export function renderSidebar(centerDate) {
     }
 }
 
-// 渲染主行事曆
+// 渲染主行事曆 (修正：每天獨立判斷學期)
 export async function renderCalendar() {
     const grid = document.getElementById('calendar');
-    if (!grid) return; // 安全檢查
+    if (!grid) return;
     
     grid.innerHTML = '<div class="col-12 text-center py-5">載入資料中...</div>';
 
@@ -78,6 +78,7 @@ export async function renderCalendar() {
     
     renderSidebar(state.currentDate);
 
+    // 這裡只為了決定「標題」顯示哪個學期 (以週三為準)
     let checkDate = new Date(startOfWeek); checkDate.setDate(checkDate.getDate()+3);
     state.currentSemester = await determineSemester(checkDate);
 
@@ -90,6 +91,7 @@ export async function renderCalendar() {
             if(alertBox) alertBox.style.display = 'none';
         } else {
             semLabel.innerText = "無學期設定";
+            // 標題顯示無學期，但格子還是會嘗試去找有沒有對應的學期
             if(alertBox) alertBox.style.display = 'block';
         }
     }
@@ -104,6 +106,10 @@ export async function renderCalendar() {
     }
     grid.innerHTML += headerHtml;
 
+    // 1. 預先抓取所有學期資料 (為了在迴圈中快速比對)
+    const allSems = await db.semesters.toArray();
+
+    // 2. 抓取異動紀錄
     const startStr = formatDate(startOfWeek);
     const endStr = formatDate(endOfWeek);
     const records = await db.records.where('date').between(startStr, endStr, true, true).toArray();
@@ -118,11 +124,15 @@ export async function renderCalendar() {
             let dateStr = formatDate(cellDate);
             let dayOfWeek = cellDate.getDay(); 
 
+            // 關鍵修正：針對「這一天」找出它屬於哪個學期
+            const cellSem = allSems.find(s => dateStr >= s.startDate && dateStr <= s.endDate);
+
             let record = recordMap[`${dateStr}-${p}`];
             let baseInfo = null;
 
-            if (state.currentSemester && state.currentSemester.baseSchedule && dayOfWeek >= 1 && dayOfWeek <= 5) {
-                baseInfo = state.currentSemester.baseSchedule[`${dayOfWeek}-${p}`];
+            // 如果這一天有對應的學期，且該學期有設定基本課表，就讀取它
+            if (cellSem && cellSem.baseSchedule && dayOfWeek >= 1 && dayOfWeek <= 5) {
+                baseInfo = cellSem.baseSchedule[`${dayOfWeek}-${p}`];
             }
 
             let displayType = "", displayClass = "", displayNote = "", isPreview = false;
