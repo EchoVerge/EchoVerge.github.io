@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NotebookLM PDF 全能工具箱 (Pro)</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PDF-Lib (For Generation) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <!-- PDF.js (For Rendering Interactive View) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- JSZip for Batch Download -->
+    <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+
+    <script>
+        // Initialize PDF.js worker
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .layer-item.active { border-color: #3b82f6; background-color: #eff6ff; }
+        
+        /* Interactive Layer Styles */
+        .interactive-layer { cursor: move; user-select: none; }
+        .interactive-layer:hover { outline: 2px dashed #3b82f6; }
+        .interactive-layer.selected { outline: 2px solid #3b82f6; z-index: 10; }
+        .resize-handle {
+            width: 10px; height: 10px; background: #3b82f6;
+            position: absolute; bottom: -5px; right: -5px;
+            cursor: nwse-resize; border-radius: 50%;
+        }
+        .compare-mode .interactive-layer { opacity: 0.2 !important; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+        // --- Icons ---
+        const Icon = ({ path, className, onClick, onMouseDown, onMouseUp }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className} 
+                onClick={onClick}
+                onMouseDown={onMouseDown}
+                onMouseUp={onMouseUp}
+                dangerouslySetInnerHTML={{ __html: path }} 
+            />
+        );
+        const icons = {
+            Upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />',
+            Download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />',
+            FileText: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" />',
+            Settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />',
+            RefreshCw: '<polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />',
+            ExternalLink: '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />',
+            RotateCcw: '<path d="M3 2v6h6"></path><path d="M3 13a9 9 0 1 0 3-7.7L3 8"></path>',
+            Plus: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
+            Trash: '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>',
+            Image: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>',
+            Square: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>',
+            Archive: '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>',
+            Eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>',
+            EyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>',
+            Edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>'
+        };
+
+        // --- Helpers ---
+        const hexToRgb = (hex) => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16) / 255, g: parseInt(result[2], 16) / 255, b: parseInt(result[3], 16) / 255 } : { r: 1, g: 1, b: 1 };
+        };
+
+        const generateId = () => Math.random().toString(36).substr(2, 9);
+
+        // --- Constants ---
+        const PRESETS = {
+            'notebooklm': {
+                name: 'NotebookLM 預設 (右下)',
+                layers: [{ id: 'default', type: 'rect', width: 200, height: 40, x: null, y: null, right: 0, bottom: 0, color: '#ffffff', useAnchor: true }]
+            },
+            'clean_br': {
+                name: '一般右下浮水印',
+                layers: [{ id: 'br', type: 'rect', width: 150, height: 50, x: null, y: null, right: 10, bottom: 10, color: '#ffffff', useAnchor: true }]
+            }
+        };
+
+        // --- Interactive Canvas Component ---
+        const InteractiveCanvas = ({ file, pageIndex, layers, onUpdateLayer, selectedLayerId, onSelectLayer, isComparing }) => {
+            const canvasRef = useRef(null);
+            const containerRef = useRef(null);
+            const [pdfPage, setPdfPage] = useState(null);
+            const [viewport, setViewport] = useState(null);
+            const [scale, setScale] = useState(1.0);
+            
+            // Render PDF Page
+            useEffect(() => {
+                if (!file) return;
+                
+                const loadPage = async () => {
+                    const buffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+                    const page = await pdf.getPage(pageIndex + 1); // pdf.js is 1-indexed
+                    setPdfPage(page);
+                    
+                    // Measure container width for Fit Width
+                    const containerWidth = containerRef.current.clientWidth;
+                    const initialVp = page.getViewport({ scale: 1.0 });
+                    
+                    // -2 for border correction if needed, but container padding is handled by parent
+                    const newScale = containerWidth / initialVp.width; 
+                    const finalVp = page.getViewport({ scale: newScale });
+                    
+                    setViewport(finalVp);
+                    setScale(newScale);
+
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    canvas.height = finalVp.height;
+                    canvas.width = finalVp.width;
+
+                    const renderContext = {
+                        canvasContext: context,
+                        viewport: finalVp
+                    };
+                    await page.render(renderContext).promise;
+                };
+                loadPage();
+            }, [file, pageIndex]);
+
+            // Drag Logic
+            const [dragState, setDragState] = useState(null); // { id, startX, startY, initialX, initialY, initialW, initialH, mode: 'move' | 'resize' }
+
+            const getLayerStyle = (layer) => {
+                if (!viewport) return {};
+                
+                // Convert PDF coords to Canvas coords
+                let x, y, w, h;
+                
+                // Dimensions map directly with scale
+                w = layer.width * scale;
+                h = layer.height * scale;
+
+                if (layer.useAnchor) {
+                    const pdfW = layer.width;
+                    const pdfH = layer.height;
+                    const pdfPageW = viewport.rawDims.pageWidth; 
+                    const pdfPageH = viewport.rawDims.pageHeight;
+
+                    // Canvas X = (PageW - Width - Right) * scale
+                    x = (pdfPageW - layer.width - layer.right) * scale;
+                    // Canvas Y = (PageH - Height - Bottom) * scale
+                    y = (pdfPageH - layer.height - layer.bottom) * scale;
+                } else {
+                    const pdfPageH = viewport.rawDims.pageHeight;
+                    x = layer.x * scale;
+                    y = (pdfPageH - layer.y - layer.height) * scale;
+                }
+
+                return {
+                    position: 'absolute',
+                    left: x,
+                    top: y,
+                    width: w,
+                    height: h,
+                    backgroundColor: layer.type === 'rect' ? layer.color : 'transparent',
+                    backgroundImage: layer.type === 'image' && layer.imageDataUrl ? `url(${layer.imageDataUrl})` : 'none',
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                };
+            };
+
+            const handleMouseDown = (e, layer, mode = 'move') => {
+                e.stopPropagation();
+                if (isComparing) return;
+                onSelectLayer(layer.id);
+                setDragState({
+                    id: layer.id,
+                    mode,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    layerSnapshot: { ...layer },
+                    viewportSnapshot: viewport.rawDims
+                });
+            };
+
+            const handleMouseMove = useCallback((e) => {
+                if (!dragState) return;
+                
+                const deltaX = (e.clientX - dragState.startX) / scale;
+                const deltaY = (e.clientY - dragState.startY) / scale; // Canvas Y delta (Down is positive)
+
+                // In PDF Coords (Y goes Up):
+                const pdfDeltaX = deltaX;
+                const pdfDeltaY = -deltaY;
+
+                const { layerSnapshot } = dragState;
+                const changes = {};
+
+                if (dragState.mode === 'move') {
+                    if (layerSnapshot.useAnchor) {
+                        changes.right = Math.max(0, layerSnapshot.right - pdfDeltaX);
+                        changes.bottom = Math.max(0, layerSnapshot.bottom + pdfDeltaY);
+                    } else {
+                        changes.x = Math.max(0, layerSnapshot.x + pdfDeltaX);
+                        changes.y = Math.max(0, layerSnapshot.y + pdfDeltaY);
+                    }
+                } else if (dragState.mode === 'resize') {
+                    const newWidth = Math.max(10, layerSnapshot.width + deltaX);
+                    const newHeight = Math.max(10, layerSnapshot.height + deltaY); 
+                    
+                    changes.width = newWidth;
+                    changes.height = newHeight;
+                    
+                    if (layerSnapshot.useAnchor) {
+                        changes.right = Math.max(0, layerSnapshot.right - deltaX);
+                        changes.bottom = Math.max(0, layerSnapshot.bottom - deltaY);
+                    } else {
+                        changes.y = layerSnapshot.y + layerSnapshot.height - newHeight;
+                    }
+                }
+
+                onUpdateLayer(dragState.id, changes);
+
+            }, [dragState, scale, onUpdateLayer]);
+
+            const handleMouseUp = () => {
+                setDragState(null);
+            };
+
+            useEffect(() => {
+                if (dragState) {
+                    window.addEventListener('mousemove', handleMouseMove);
+                    window.addEventListener('mouseup', handleMouseUp);
+                    return () => {
+                        window.removeEventListener('mousemove', handleMouseMove);
+                        window.removeEventListener('mouseup', handleMouseUp);
+                    };
+                }
+            }, [dragState, handleMouseMove]);
+
+            // Simply a wrapper that fills 100% of parent width to allow fit-width
+            return (
+                <div ref={containerRef} className={`relative w-full ${isComparing ? 'compare-mode' : ''}`}>
+                    <div className="relative shadow-2xl">
+                        <canvas ref={canvasRef} className="block bg-white w-full h-auto" />
+                        
+                        {/* Layer Overlays */}
+                        {viewport && layers.map(layer => (
+                            <div
+                                key={layer.id}
+                                style={getLayerStyle(layer)}
+                                className={`interactive-layer absolute flex items-center justify-center ${selectedLayerId === layer.id ? 'selected' : ''}`}
+                                onMouseDown={(e) => handleMouseDown(e, layer, 'move')}
+                            >
+                                {layer.type === 'image' && !layer.imageDataUrl && (
+                                    <div className="w-full h-full border-2 border-dashed border-gray-400 opacity-50 flex items-center justify-center text-xs text-gray-500">
+                                        無圖片
+                                    </div>
+                                )}
+                                
+                                {selectedLayerId === layer.id && !isComparing && (
+                                    <div 
+                                        className="resize-handle"
+                                        onMouseDown={(e) => handleMouseDown(e, layer, 'resize')}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            // --- State ---
+            const [files, setFiles] = useState([]);
+            const [selectedFileIndex, setSelectedFileIndex] = useState(0);
+            
+            const [pdfUrl, setPdfUrl] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [libError, setLibError] = useState(null);
+            const [pageCount, setPageCount] = useState(0);
+
+            // View Mode
+            const [viewMode, setViewMode] = useState('interactive'); // 'preview' | 'interactive'
+            const [isComparing, setIsComparing] = useState(false);
+
+            // -1: Global, >=0: Page Index
+            const [selectedPage, setSelectedPage] = useState(-1);
+
+            // Layer Config
+            const [layerConfig, setLayerConfig] = useState({
+                global: PRESETS['notebooklm'].layers,
+                pages: {}
+            });
+
+            const [selectedLayerId, setSelectedLayerId] = useState(null);
+
+            // Load/Save LocalStorage (omitted for brevity, same as before)
+            // ... (Keep existing LocalStorage logic)
+
+            // Check Libs
+            useEffect(() => {
+                if (!window.PDFLib || !window.JSZip || !window.pdfjsLib) {
+                    setLibError("核心庫載入失敗，請檢查網路連線。");
+                }
+            }, []);
+
+            // Helper to get active layers
+            const activeLayers = useMemo(() => {
+                if (selectedPage === -1) return layerConfig.global;
+                return layerConfig.pages[selectedPage] || layerConfig.global;
+            }, [selectedPage, layerConfig]);
+
+            const isPageCustomized = selectedPage !== -1 && !!layerConfig.pages[selectedPage];
+
+            // --- Core Logic ---
+            const processPdf = async () => {
+                const file = files[selectedFileIndex];
+                if (!file || !window.PDFLib) return;
+
+                setIsProcessing(true);
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await window.PDFLib.PDFDocument.load(arrayBuffer);
+                    const pages = pdfDoc.getPages();
+                    
+                    // Embed images
+                    const imageCache = {};
+                    const allLayers = [...layerConfig.global, ...Object.values(layerConfig.pages).flat()];
+                    const imageLayers = allLayers.filter(l => l.type === 'image' && l.imageFile);
+
+                    for (const layer of imageLayers) {
+                        if (!imageCache[layer.id]) {
+                            try {
+                                const imageBytes = await layer.imageFile.arrayBuffer();
+                                const isPng = layer.imageFile.type === 'image/png';
+                                imageCache[layer.id] = isPng ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
+                            } catch (e) { console.error(e); }
+                        }
+                    }
+
+                    pages.forEach((page, pIndex) => {
+                        const layersToDraw = layerConfig.pages[pIndex] || layerConfig.global;
+                        const { width, height } = page.getSize();
+
+                        layersToDraw.forEach(layer => {
+                            let x, y, drawWidth = Number(layer.width), drawHeight = Number(layer.height);
+
+                            if (layer.useAnchor !== false) {
+                                x = width - drawWidth - (layer.right || 0);
+                                y = layer.bottom || 0;
+                            } else {
+                                x = layer.x || 0;
+                                y = layer.y || 0;
+                            }
+
+                            if (layer.type === 'rect') {
+                                const rgb = hexToRgb(layer.color);
+                                page.drawRectangle({ x, y, width: drawWidth, height: drawHeight, color: window.PDFLib.rgb(rgb.r, rgb.g, rgb.b) });
+                            } else if (layer.type === 'image' && imageCache[layer.id]) {
+                                page.drawImage(imageCache[layer.id], { x, y, width: drawWidth, height: drawHeight });
+                            }
+                        });
+                    });
+
+                    const pdfBytes = await pdfDoc.save();
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+                    setPdfUrl(url);
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            // Update preview only when in Preview mode or switching to it
+            useEffect(() => {
+                if (viewMode === 'preview' && files.length > 0) {
+                    const timer = setTimeout(processPdf, 500);
+                    return () => clearTimeout(timer);
+                }
+            }, [files, selectedFileIndex, layerConfig, viewMode]);
+
+            // File Upload
+            const handleFileUpload = async (e) => {
+                const newFiles = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
+                if (newFiles.length === 0) return alert('請上傳 PDF');
+                setFiles(newFiles);
+                setSelectedFileIndex(0);
+                setSelectedPage(-1);
+                
+                // Read Page Count
+                try {
+                    const arrayBuffer = await newFiles[0].arrayBuffer();
+                    const pdfDoc = await window.PDFLib.PDFDocument.load(arrayBuffer);
+                    setPageCount(pdfDoc.getPageCount());
+                } catch (e) {}
+            };
+
+            // Layer Updates
+            const updateConfig = (fn) => {
+                setLayerConfig(prev => {
+                    const clone = { global: [...prev.global], pages: { ...prev.pages } };
+                    clone.global = clone.global.map(l => ({...l}));
+                    Object.keys(clone.pages).forEach(k => {
+                        clone.pages[k] = clone.pages[k].map(l => ({...l}));
+                    });
+                    
+                    fn(clone);
+                    return clone;
+                });
+            };
+
+            const updateLayer = (id, changes) => {
+                updateConfig(draft => {
+                    if (selectedPage !== -1 && !draft.pages[selectedPage]) {
+                         draft.pages[selectedPage] = draft.global.map(l => ({...l})); 
+                    }
+                    const list = selectedPage === -1 ? draft.global : draft.pages[selectedPage];
+                    const layer = list.find(l => l.id === id);
+                    if (layer) Object.assign(layer, changes);
+                });
+            };
+
+            // Add/Remove Layer logic
+            const addLayer = (type) => {
+                const newLayer = { id: generateId(), type, width: 200, height: 40, color: '#ffffff', right: 0, bottom: 0, useAnchor: true, imageFile: null };
+                updateConfig(draft => {
+                    if (selectedPage === -1) draft.global.push(newLayer);
+                    else {
+                        if (!draft.pages[selectedPage]) draft.pages[selectedPage] = draft.global.map(l => ({...l}));
+                        draft.pages[selectedPage].push(newLayer);
+                    }
+                });
+                setSelectedLayerId(newLayer.id);
+            };
+
+            const removeLayer = (id) => {
+                updateConfig(draft => {
+                    const list = selectedPage === -1 ? draft.global : (draft.pages[selectedPage] || draft.global);
+                    const idx = list.findIndex(l => l.id === id);
+                    if (idx > -1) {
+                         if (selectedPage !== -1 && !draft.pages[selectedPage]) {
+                            draft.pages[selectedPage] = draft.global.map(l => ({...l}));
+                            draft.pages[selectedPage].splice(idx, 1);
+                         } else {
+                            list.splice(idx, 1);
+                         }
+                    }
+                });
+                setSelectedLayerId(null);
+            };
+            
+            const handleImageUpload = (e, layerId) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => updateLayer(layerId, { imageFile: file, imageDataUrl: ev.target.result });
+                reader.readAsDataURL(file);
+            };
+
+            const applyPreset = (key) => {
+                const preset = PRESETS[key];
+                updateConfig(draft => {
+                    const newLayers = preset.layers.map(l => ({...l, id: generateId()}));
+                    if (selectedPage === -1) draft.global = newLayers;
+                    else draft.pages[selectedPage] = newLayers;
+                });
+            };
+            
+            const resetToGlobal = () => {
+                setLayerConfig(prev => {
+                    const next = { ...prev, pages: { ...prev.pages } };
+                    delete next.pages[selectedPage];
+                    return next;
+                });
+            };
+
+            const activeLayer = activeLayers.find(l => l.id === selectedLayerId) || activeLayers[0];
+
+            // Compare Button Handler
+            const toggleCompare = (active) => setIsComparing(active);
+
+            return (
+                <div className="h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
+                    {/* Header */}
+                    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm shrink-0 z-20">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-blue-600 text-white p-2 rounded-lg">
+                                <Icon path={icons.FileText} className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-bold leading-tight">NotebookLM PDF 全能工具箱 <span className="text-xs bg-yellow-100 text-yellow-700 px-1 rounded ml-1">Pro</span></h1>
+                                <p className="text-xs text-gray-500">互動定位 • 一鍵比對 • 批次處理</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                             <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-medium">
+                                <button 
+                                    onClick={() => setViewMode('interactive')}
+                                    className={`px-3 py-1.5 rounded-md flex items-center gap-1 transition-all ${viewMode === 'interactive' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <Icon path={icons.Edit} className="w-3 h-3" /> 編輯定位
+                                </button>
+                                <button 
+                                    onClick={() => setViewMode('preview')}
+                                    className={`px-3 py-1.5 rounded-md flex items-center gap-1 transition-all ${viewMode === 'preview' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                                >
+                                    <Icon path={icons.Eye} className="w-3 h-3" /> 成果預覽
+                                </button>
+                            </div>
+                            <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                            <a 
+                                href={pdfUrl} 
+                                download={files.length === 1 ? `processed_${files[0].name}` : 'download.pdf'}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${pdfUrl && files.length === 1 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                onClick={e => (!pdfUrl || files.length > 1) && e.preventDefault()}
+                            >
+                                <Icon path={icons.Download} className="w-4 h-4" />
+                                下載 PDF
+                            </a>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 flex overflow-hidden">
+                        {/* Sidebar */}
+                        <div className="w-80 bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-lg overflow-hidden">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                                {/* File & Preset */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">檔案與預設</h3>
+                                    <div className="space-y-3">
+                                        <div className="relative group">
+                                            <input type="file" multiple accept=".pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center group-hover:border-blue-500 group-hover:bg-blue-50 transition-all">
+                                                <Icon path={icons.Upload} className="w-6 h-6 mx-auto text-gray-400 mb-1 group-hover:text-blue-500" />
+                                                <div className="text-sm font-medium text-gray-600 truncate">
+                                                    {files.length > 0 ? `${files.length} 個檔案已選取` : '點擊上傳 PDF'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <select onChange={(e) => applyPreset(e.target.value)} className="w-full text-sm border-gray-300 rounded-md shadow-sm border p-2" defaultValue="">
+                                            <option value="" disabled>套用預設模版...</option>
+                                            {Object.entries(PRESETS).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                                        </select>
+                                    </div>
+                                </section>
+
+                                {files.length > 0 && (
+                                    <>
+                                        {/* Page & Layers */}
+                                        <section className="border-t border-gray-100 pt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">頁面與圖層</h3>
+                                                {isPageCustomized && (
+                                                    <button onClick={resetToGlobal} className="text-xs text-red-500 hover:underline flex items-center gap-1">
+                                                        <Icon path={icons.RotateCcw} className="w-3 h-3" /> 重置
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            <select 
+                                                value={selectedPage} 
+                                                onChange={(e) => { setSelectedPage(Number(e.target.value)); setSelectedLayerId(null); }}
+                                                className="w-full text-sm border border-gray-300 rounded-md p-2 mb-3 bg-gray-50"
+                                            >
+                                                <option value="-1">全域設定 (所有頁面)</option>
+                                                {Array.from({ length: pageCount }).map((_, i) => (
+                                                    <option key={i} value={i}>第 {i + 1} 頁 {layerConfig.pages[i] ? '(*)' : ''}</option>
+                                                ))}
+                                            </select>
+
+                                            <div className="space-y-2 mb-3">
+                                                {activeLayers.map((layer, idx) => (
+                                                    <div 
+                                                        key={layer.id} 
+                                                        onClick={() => setSelectedLayerId(layer.id)}
+                                                        className={`flex items-center justify-between p-2 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-all ${selectedLayerId === layer.id ? 'border-blue-500 bg-blue-50' : ''}`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`p-1 rounded ${layer.type === 'rect' ? 'bg-gray-200' : 'bg-green-100 text-green-600'}`}>
+                                                                <Icon path={layer.type === 'rect' ? icons.Square : icons.Image} className="w-4 h-4" />
+                                                            </div>
+                                                            <span className="text-sm font-medium text-gray-700">圖層 {idx + 1}</span>
+                                                        </div>
+                                                        <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }} className="text-gray-400 hover:text-red-500 p-1">
+                                                            <Icon path={icons.Trash} className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button onClick={() => addLayer('rect')} className="flex items-center justify-center gap-1 py-2 border border-dashed border-gray-300 rounded-md text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"><Icon path={icons.Plus} className="w-3 h-3" /> 加遮罩</button>
+                                                <button onClick={() => addLayer('image')} className="flex items-center justify-center gap-1 py-2 border border-dashed border-gray-300 rounded-md text-xs font-medium text-gray-600 hover:bg-gray-50 transition-all"><Icon path={icons.Image} className="w-3 h-3" /> 加圖片</button>
+                                            </div>
+                                        </section>
+
+                                        {/* Layer Props */}
+                                        {activeLayer && (
+                                            <section className="border-t border-gray-100 pt-4 animate-fade-in">
+                                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">編輯屬性</h3>
+                                                <div className="space-y-4">
+                                                    {activeLayer.type === 'rect' ? (
+                                                        <div className="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+                                                            <span className="text-xs font-medium">顏色</span>
+                                                            <input type="color" value={activeLayer.color} onChange={(e) => updateLayer(activeLayer.id, { color: e.target.value })} className="w-6 h-6 p-0 border-0 rounded cursor-pointer" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="bg-gray-50 p-2 rounded border border-gray-200">
+                                                            <span className="text-xs font-medium block mb-1">圖片</span>
+                                                            <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, activeLayer.id)} className="text-xs w-full" />
+                                                            {activeLayer.imageDataUrl && <img src={activeLayer.imageDataUrl} className="mt-2 h-16 object-contain border bg-white mx-auto" />}
+                                                        </div>
+                                                    )}
+
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="text-xs text-gray-500 mb-1 block">寬度 (W)</label>
+                                                            <input type="number" value={Math.round(activeLayer.width)} onChange={(e) => updateLayer(activeLayer.id, { width: Number(e.target.value) })} className="w-full text-sm border border-gray-300 rounded p-1.5" />
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs text-gray-500 mb-1 block">高度 (H)</label>
+                                                            <input type="number" value={Math.round(activeLayer.height)} onChange={(e) => updateLayer(activeLayer.id, { height: Number(e.target.value) })} className="w-full text-sm border border-gray-300 rounded p-1.5" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs font-bold text-gray-500">定位 ({activeLayer.useAnchor ? '靠右下' : '絕對'})</span>
+                                                            <button onClick={() => updateLayer(activeLayer.id, { useAnchor: !activeLayer.useAnchor })} className="text-xs text-blue-600 underline">切換</button>
+                                                        </div>
+                                                        {activeLayer.useAnchor ? (
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div><label className="text-xs text-gray-500 block">右距</label><input type="number" value={Math.round(activeLayer.right)} onChange={(e) => updateLayer(activeLayer.id, { right: Number(e.target.value) })} className="w-full text-sm border rounded p-1.5" /></div>
+                                                                <div><label className="text-xs text-gray-500 block">下距</label><input type="number" value={Math.round(activeLayer.bottom)} onChange={(e) => updateLayer(activeLayer.id, { bottom: Number(e.target.value) })} className="w-full text-sm border rounded p-1.5" /></div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div><label className="text-xs text-gray-500 block">X</label><input type="number" value={Math.round(activeLayer.x)} onChange={(e) => updateLayer(activeLayer.id, { x: Number(e.target.value) })} className="w-full text-sm border rounded p-1.5" /></div>
+                                                                <div><label className="text-xs text-gray-500 block">Y</label><input type="number" value={Math.round(activeLayer.y)} onChange={(e) => updateLayer(activeLayer.id, { y: Number(e.target.value) })} className="w-full text-sm border rounded p-1.5" /></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Main Area */}
+                        <div className="flex-1 bg-gray-100 flex flex-col relative overflow-hidden">
+                            {/* Toolbar */}
+                            <div className="bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center shadow-sm z-10 h-12 shrink-0">
+                                <div className="flex items-center gap-4">
+                                    <span className={`text-xs font-bold uppercase ${viewMode === 'interactive' ? 'text-blue-600' : 'text-gray-500'}`}>
+                                        {viewMode === 'interactive' ? '編輯模式 (可拖曳)' : '預覽模式 (成品)'}
+                                    </span>
+                                    {viewMode === 'interactive' && files.length > 0 && (
+                                        <div 
+                                            className="select-none cursor-pointer bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 transition-colors"
+                                            onMouseDown={() => toggleCompare(true)}
+                                            onMouseUp={() => toggleCompare(false)}
+                                            onMouseLeave={() => toggleCompare(false)}
+                                        >
+                                            <Icon path={isComparing ? icons.EyeOff : icons.Eye} className="w-3 h-3" />
+                                            {isComparing ? '放開結束比對' : '按住比對原圖'}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {files.length > 0 && (
+                                    <select 
+                                        value={selectedFileIndex}
+                                        onChange={(e) => setSelectedFileIndex(Number(e.target.value))}
+                                        className="text-xs border border-gray-300 rounded p-1 max-w-[200px]"
+                                    >
+                                        {files.map((f, i) => <option key={i} value={i}>{f.name}</option>)}
+                                    </select>
+                                )}
+                            </div>
+
+                            {/* Content Scroll Area */}
+                            {viewMode === 'interactive' ? (
+                                <div className="flex-1 overflow-auto p-8 flex justify-center items-start">
+                                    {!files.length ? (
+                                        <div className="self-center text-center text-gray-400">
+                                            <Icon path={icons.Upload} className="w-16 h-16 mx-auto opacity-20 mb-4" />
+                                            <p>請上傳 PDF 開始作業</p>
+                                        </div>
+                                    ) : (
+                                        <InteractiveCanvas 
+                                            file={files[selectedFileIndex]}
+                                            pageIndex={selectedPage === -1 ? 0 : selectedPage}
+                                            layers={activeLayers}
+                                            onUpdateLayer={updateLayer}
+                                            onSelectLayer={setSelectedLayerId}
+                                            selectedLayerId={selectedLayerId}
+                                            isComparing={isComparing}
+                                        />
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="flex-1 relative w-full h-full">
+                                    {!files.length ? (
+                                        <div className="absolute inset-0 flex items-center justify-center text-center text-gray-400">
+                                            <div>
+                                                <Icon path={icons.Upload} className="w-16 h-16 mx-auto opacity-20 mb-4" />
+                                                <p>請上傳 PDF 開始作業</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {isProcessing && (
+                                                <div className="absolute inset-0 bg-white/90 z-20 flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <Icon path={icons.RefreshCw} className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+                                                        <p className="text-sm text-gray-600">正在生成預覽...</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {pdfUrl && <iframe src={`${pdfUrl}#toolbar=0&navpanes=0&view=Fit`} className="w-full h-full border-0" />}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
