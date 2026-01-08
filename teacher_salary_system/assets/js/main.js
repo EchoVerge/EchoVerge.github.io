@@ -1,7 +1,7 @@
 import { state } from './modules/state.js';
 import { loadSettings } from './modules/db.js';
 import { 
-    renderCalendar, jumpToToday, changeWeek, jumpToSpecificDate, renderSidebar 
+    renderCalendar, jumpToToday as originalJumpToToday, changeWeek, jumpToSpecificDate as originalJumpToSpecificDate, renderSidebar 
 } from './modules/calendar.js';
 
 import { 
@@ -27,24 +27,47 @@ import {
 
 // --- 初始化 ---
 window.onload = async function() {
-    // 1. 載入設定
     state.courseTypes = await loadSettings();
     
-    // 2. 初始化所有 Bootstrap Modals
     initRecordModal();
     initSemesterModal();
     initSettingsModal();
     initStatsModal();
     initBackupModal();
 
-    // 3. 渲染畫面
     jumpToToday();
 };
 
-// --- 將函式掛載到 window，讓 HTML onclick 可以呼叫 ---
-window.jumpToToday = jumpToToday;
+// --- UI 邏輯擴充 (RWD 支援) ---
+
+// 1. 切換側邊欄顯示
+window.toggleSidebar = function() {
+    document.querySelector('.sidebar').classList.toggle('show');
+    document.querySelector('.sidebar-overlay').classList.toggle('show');
+};
+
+// 2. 包裝跳轉日期功能：手機版點選後自動關閉側邊欄
+window.jumpToSpecificDate = function(dateStr) {
+    originalJumpToSpecificDate(dateStr);
+    // 如果是在手機版 (寬度 < 768px)，跳轉後自動關閉側邊欄
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.remove('show');
+        document.querySelector('.sidebar-overlay').classList.remove('show');
+    }
+};
+
+// 3. 包裝「回到本週」：手機版點選後自動關閉
+window.jumpToToday = function() {
+    originalJumpToToday();
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.remove('show');
+        document.querySelector('.sidebar-overlay').classList.remove('show');
+    }
+};
+
+// --- 掛載其他函式 ---
 window.changeWeek = changeWeek;
-window.jumpToSpecificDate = jumpToSpecificDate;
+// jumpToSpecificDate 與 jumpToToday 已在上方覆寫
 
 window.openEditModal = openEditModal;
 window.saveRecord = saveRecord;

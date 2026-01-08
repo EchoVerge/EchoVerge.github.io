@@ -12,8 +12,14 @@
 </head>
 <body>
     <div class="layout-container">
+        <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <aside class="sidebar">
-            <h5 class="mb-3 text-primary"><i class="bi bi-calendar-check"></i> 課務薪資系統</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-primary m-0"><i class="bi bi-calendar-check"></i> 課務薪資系統</h5>
+                <button class="btn btn-sm btn-close d-md-none" onclick="toggleSidebar()"></button>
+            </div>
+            
             <button class="btn btn-outline-primary btn-sm mb-2 w-100" onclick="jumpToToday()">回到本週</button>
             <hr>
             <div class="d-grid gap-2">
@@ -28,14 +34,23 @@
         <main class="main-content">
             <div class="container-fluid p-0 d-flex flex-column h-100">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="m-0 d-inline-block me-3" id="currentSemesterLabel">載入中...</h4>
-                        <span id="currentWeekRange" class="text-secondary"></span>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-secondary btn-sm mobile-toggle" onclick="toggleSidebar()">
+                            <i class="bi bi-list"></i>
+                        </button>
+                        
+                        <div>
+                            <h4 class="m-0 d-inline-block me-3" id="currentSemesterLabel">載入中...</h4>
+                            <span id="currentWeekRange" class="text-secondary"></span>
+                        </div>
                     </div>
+                    
                     <div class="btn-group">
                         <button class="btn btn-outline-secondary" onclick="changeWeek(-7)"><i class="bi bi-chevron-left"></i></button>
                         <button class="btn btn-outline-secondary" onclick="changeWeek(7)"><i class="bi bi-chevron-right"></i></button>
-                        <button class="btn btn-success ms-2" onclick="openStatsModal()"><i class="bi bi-calculator"></i> 統計報表</button>
+                        <button class="btn btn-success ms-2" onclick="openStatsModal()">
+                            <i class="bi bi-calculator"></i> <span>統計報表</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -43,7 +58,9 @@
                     <i class="bi bi-exclamation-triangle"></i> 目前日期不在任何已設定的學期範圍內，請先設定學期。
                 </div>
 
-                <div id="calendar" class="calendar-grid"></div>
+                <div class="calendar-container-wrapper">
+                    <div id="calendar" class="calendar-grid"></div>
+                </div>
             </div>
         </main>
     </div>
