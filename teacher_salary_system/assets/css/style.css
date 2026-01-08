@@ -12,9 +12,9 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     flex-direction: column; 
     padding: 15px; 
     overflow-y: auto; 
-    z-index: 1000; /* 提高層級，確保手機版遮蓋 */
+    z-index: 1000; 
     box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
-    transition: transform 0.3s ease; /* 加入過渡動畫 */
+    transition: transform 0.3s ease; 
 }
 .month-header { font-size: 0.85rem; font-weight: bold; color: #6c757d; margin-top: 15px; margin-bottom: 5px; padding-left: 5px; border-bottom: 1px solid #e9ecef; }
 .week-card { padding: 8px 10px; margin-bottom: 6px; background: white; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
@@ -29,7 +29,7 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     position: relative; 
     display: flex; 
     flex-direction: column; 
-    min-width: 0; /* 防止 Flex 子元素溢出 */
+    min-width: 0; 
 }
 
 /* 行事曆網格 */
@@ -54,82 +54,112 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
 .is-preview { opacity: 0.5; border: 2px dashed rgba(0,0,0,0.1); color: #000 !important; background-color: #e9ecef !important; }
 
 /* 手機版/響應式設定 (小於 768px) */
-/* --- 手機版/響應式設定 (小於 768px) --- */
 @media (max-width: 768px) {
-    /* ... (前面的 sidebar 相關設定保留) ... */
-
-    .main-content {
-        padding: 5px; /* 縮小邊距 */
-        width: 100%;
-        height: 100vh;
-        overflow-x: hidden; /* 禁止主畫面出現捲軸 */
+    .layout-container {
+        flex-direction: column; 
     }
 
-    /* 移除捲動容器 wrapper 的捲軸設定 */
+    /* 側邊欄變為浮動抽屜 */
+    .sidebar {
+        position: fixed; 
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 280px; 
+        transform: translateX(-100%); /* 預設隱藏 */
+        border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar.show {
+        transform: translateX(0); /* 滑出顯示 */
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    }
+
+    /* 遮罩效果 */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+        display: none;
+    }
+    .sidebar-overlay.show { display: block; }
+
+    /* 主內容區緊湊化 */
+    .main-content {
+        padding: 5px; 
+        width: 100%;
+        height: 100vh;
+        overflow-x: hidden; 
+    }
+
+    /* 隱藏多餘的捲軸容器樣式 */
     .calendar-container-wrapper {
         overflow: hidden; 
         border: none;
         background: transparent;
     }
 
-    /* 強制縮小表格以適應螢幕 */
+    /* 強制縮小表格以適應螢幕 (不需左右滑動) */
     .calendar-grid {
-        min-width: 0 !important; /* 移除最小寬度限制 */
-        width: 100%;             /* 強制佔滿螢幕寬度 */
+        min-width: 0 !important; 
+        width: 100%;             
         grid-template-columns: 25px repeat(7, 1fr); /* 縮小節次欄寬度 */
-        gap: 1px;                /* 縮小格線間距 */
-        font-size: 10px;         /* 全局字體縮小 */
+        gap: 1px;                
+        font-size: 10px;         
     }
 
-    /* 表頭文字 */
     .header-cell {
         padding: 2px 0;
         font-size: 0.75rem;
-        word-break: break-all; /* 防止文字撐開 */
+        word-break: break-all;
     }
     
-    /* 日期顯示簡化 */
     .header-cell small {
         display: block;
         font-size: 0.6rem;
         transform: scale(0.9);
     }
 
-    /* 內容格子 */
     .period-cell {
         min-height: 50px; /* 縮小格子高度 */
         height: auto;
     }
 
-    /* 課程區塊內容 */
     .class-block {
         min-height: 50px;
         padding: 1px;
-        justify-content: flex-start; /* 內容置頂，避免被切掉 */
+        justify-content: flex-start; 
         line-height: 1.1;
     }
 
-    /* 課程名稱與班級：強制換行與縮小 */
     .class-block span {
-        font-size: 0.7rem; /* 課程名稱字體 */
+        font-size: 0.7rem; 
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap; /* 太長則省略 */
+        white-space: nowrap; 
         max-width: 100%;
     }
 
-    /* 班級標籤 */
     .class-name-tag {
         font-size: 0.6rem;
         padding: 0 2px;
         margin-top: 1px;
     }
     
-    /* 隱藏備註 (手機版空間太小，建議點擊才看備註) */
+    /* 手機版隱藏詳細備註，保持版面整潔 */
     .class-block small {
         display: none;
     }
+
+    /* 調整標題大小 */
+    h4#currentSemesterLabel { font-size: 1.1rem; }
+    #currentWeekRange { font-size: 0.85rem; display: block; margin-top: 2px; }
+    
+    /* 隱藏按鈕文字，只留圖示 */
+    .btn span { display: none; }
+    .btn i { display: inline-block; margin: 0 !important; }
 }
 
 /* 桌面版隱藏漢堡按鈕 */
