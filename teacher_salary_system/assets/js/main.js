@@ -1,7 +1,8 @@
 import { state } from './modules/state.js';
 import { loadSettings } from './modules/db.js';
+// 引入核心功能
 import { 
-    renderCalendar, jumpToToday as originalJumpToToday, changeWeek, jumpToSpecificDate as originalJumpToSpecificDate, renderSidebar 
+    renderCalendar, jumpToToday as originalJumpToToday, changeWeek, jumpToSpecificDate as originalJumpToSpecificDate 
 } from './modules/calendar.js';
 
 import { 
@@ -9,7 +10,7 @@ import {
 } from './modules/record.js';
 
 import { 
-    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, loadSemesterList, 
+    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, updateBaseCell, loadSemesterList,
     openBaseSlotModal, saveBaseSlot, deleteBaseSlot
 } from './modules/semester.js';
 
@@ -25,81 +26,87 @@ import {
     initBackupModal, openBackupModal, exportBackup, importBackup 
 } from './modules/backup.js';
 
-import { 
-    initCloudAuth, loginGoogle, logoutGoogle, syncData 
-} from './modules/cloud.js';
+// 引入雲端功能
+import { initCloudAuth, loginGoogle, logoutGoogle, syncData } from './modules/cloud.js';
+
+// 引入新的 UI 模組
+import { toggleSidebar, closeSidebar, isMobileView } from './modules/ui.js';
 
 // --- 初始化 ---
 window.onload = async function() {
+    // 1. 載入設定
     state.courseTypes = await loadSettings();
     
+    // 2. 初始化所有 Bootstrap Modals
     initRecordModal();
     initSemesterModal();
     initSettingsModal();
     initStatsModal();
     initBackupModal();
 
-    jumpToToday();
-
+    // 3. 初始化雲端功能
     initCloudAuth();
+
+    // 4. 渲染畫面
+    jumpToToday();
 };
 
-// --- UI 邏輯擴充 (RWD 支援) ---
+// --- 邏輯包裝與掛載 (Wrapper Functions) ---
 
-// 1. 切換側邊欄顯示
-window.toggleSidebar = function() {
-    document.querySelector('.sidebar').classList.toggle('show');
-    document.querySelector('.sidebar-overlay').classList.toggle('show');
-};
-
-// 2. 包裝跳轉日期功能：手機版點選後自動關閉側邊欄
-window.jumpToSpecificDate = function(dateStr) {
+// 包裝：跳轉到指定日期 (手機版自動收合側邊欄)
+const jumpToSpecificDate = function(dateStr) {
     originalJumpToSpecificDate(dateStr);
-    // 如果是在手機版 (寬度 < 768px)，跳轉後自動關閉側邊欄
-    if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.remove('show');
-        document.querySelector('.sidebar-overlay').classList.remove('show');
+    if (isMobileView()) {
+        closeSidebar();
     }
 };
 
-// 3. 包裝「回到本週」：手機版點選後自動關閉
-window.jumpToToday = function() {
+// 包裝：回到本週 (手機版自動收合側邊欄)
+const jumpToToday = function() {
     originalJumpToToday();
-    if (window.innerWidth <= 768) {
-        document.querySelector('.sidebar').classList.remove('show');
-        document.querySelector('.sidebar-overlay').classList.remove('show');
+    if (isMobileView()) {
+        closeSidebar();
     }
 };
 
-// --- 掛載其他函式 ---
-window.changeWeek = changeWeek;
-// jumpToSpecificDate 與 jumpToToday 已在上方覆寫
+// 將函式掛載到 window，讓 HTML onclick 可以呼叫
+// 1. UI 相關
+window.toggleSidebar = toggleSidebar;
 
+// 2. 行事曆導覽 (使用包裝後的版本)
+window.jumpToSpecificDate = jumpToSpecificDate;
+window.jumpToToday = jumpToToday;
+window.changeWeek = changeWeek;
+
+// 3. 課程紀錄相關
 window.openEditModal = openEditModal;
 window.saveRecord = saveRecord;
 window.deleteRecord = deleteRecord;
 
+// 4. 學期設定相關
 window.openSemesterModal = openSemesterModal;
 window.saveSemester = saveSemester;
 window.editBaseSchedule = editBaseSchedule;
-
+window.updateBaseCell = updateBaseCell; // 保留兼容性
 window.openBaseSlotModal = openBaseSlotModal;
 window.saveBaseSlot = saveBaseSlot;
 window.deleteBaseSlot = deleteBaseSlot;
 
+// 5. 類別設定相關
 window.openSettingsModal = openSettingsModal;
 window.addCourseType = addCourseType;
 window.updateType = updateType;
 window.removeType = removeType;
 
+// 6. 統計報表相關
 window.openStatsModal = openStatsModal;
 window.calculateStats = calculateStats;
 window.exportStatsExcel = exportStatsExcel;
 
+// 7. 備份與雲端相關
 window.openBackupModal = openBackupModal;
 window.exportBackup = exportBackup;
 window.importBackup = importBackup;
-
 window.loginGoogle = loginGoogle;
 window.logoutGoogle = logoutGoogle;
 window.syncData = syncData;
