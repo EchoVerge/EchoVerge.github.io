@@ -37,20 +37,34 @@ export function openEditModal(date, period, currentType, currentClass, currentNo
 }
 
 export async function saveRecord() {
-    const date = document.getElementById('modalDate').value;
+    const date = document.getElementById('modalDate').value; // yyyy-mm-dd
     const period = parseInt(document.getElementById('modalPeriod').value);
     const type = document.getElementById('modalType').value;
     const className = document.getElementById('modalClass').value;
     const note = document.getElementById('modalNote').value;
 
+    // 關鍵修正：不依賴 state.currentSemester，而是直接根據日期找出對應的學期 ID
+    const allSems = await db.semesters.toArray();
+    const targetSem = allSems.find(s => date >= s.startDate && date <= s.endDate);
+    const semesterId = targetSem ? targetSem.id : null;
+
+    // 檢查是否已存在 (update or add)
     const existing = await db.records.where('[date+period]').equals([date, period]).first();
+    
     const data = {
-        date: date, period: period, type: type, className: className, note: note,
-        semesterId: state.currentSemester ? state.currentSemester.id : null
+        date: date,
+        period: period,
+        type: type,
+        className: className,
+        note: note,
+        semesterId: semesterId // 使用正確判斷出的學期 ID
     };
 
-    if (existing) await db.records.update(existing.id, data);
-    else await db.records.add(data);
+    if (existing) {
+        await db.records.update(existing.id, data);
+    } else {
+        await db.records.add(data);
+    }
 
     editModal.hide();
     renderCalendar();
@@ -59,6 +73,7 @@ export async function saveRecord() {
 export async function deleteRecord() {
     const date = document.getElementById('modalDate').value;
     const period = parseInt(document.getElementById('modalPeriod').value);
+    // 刪除紀錄
     await db.records.where('[date+period]').equals([date, period]).delete();
     editModal.hide();
     renderCalendar();
