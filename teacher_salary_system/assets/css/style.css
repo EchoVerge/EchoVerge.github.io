@@ -1,0 +1,32 @@
+body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; background-color: #f8f9fa; }
+.layout-container { display: flex; height: 100vh; }
+
+/* Sidebar */
+.sidebar { width: 240px; min-width: 240px; background-color: #ffffff; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+.month-header { font-size: 0.85rem; font-weight: bold; color: #6c757d; margin-top: 15px; margin-bottom: 5px; padding-left: 5px; border-bottom: 1px solid #e9ecef; }
+.week-card { padding: 8px 10px; margin-bottom: 6px; background: white; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+.week-card:hover { border-color: #0d6efd; background-color: #e7f1ff; }
+.week-card.active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
+
+/* Main Content */
+.main-content { flex-grow: 1; padding: 20px; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+
+.calendar-grid { 
+    display: grid; 
+    grid-template-columns: 50px repeat(7, 1fr);
+    gap: 2px; 
+    background-color: #dee2e6; 
+    border: 1px solid #dee2e6; 
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0; 
+}
+
+.header-cell { font-weight: bold; text-align: center; background: #f8f9fa; padding: 10px; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid #ddd; }
+.header-cell.weekend { background-color: #e9ecef; color: #d63384; }
+
+.period-cell { min-height: 80px; background-color: white; cursor: pointer; padding: 0; position: relative; transition: bg 0.2s;}
+.period-cell:hover { background-color: #f1f3f5; }
+.class-block { width: 100%; height: 100%; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 0.9rem; color: white; padding: 2px; }
+.class-name-tag { font-size: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 0 4px; margin-top: 2px; }
+.is-preview { opacity: 0.5; border: 2px dashed rgba(0,0,0,0.1); color: #000 !important; background-color: #e9ecef !important; }
