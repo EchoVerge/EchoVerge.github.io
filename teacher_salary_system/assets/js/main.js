@@ -25,6 +25,10 @@ import {
     initBackupModal, openBackupModal, exportBackup, importBackup 
 } from './modules/backup.js';
 
+import { 
+    initCloudAuth, loginGoogle, logoutGoogle, syncData 
+} from './modules/cloud.js';
+
 // --- 初始化 ---
 window.onload = async function() {
     state.courseTypes = await loadSettings();
@@ -36,6 +40,8 @@ window.onload = async function() {
     initBackupModal();
 
     jumpToToday();
+
+    initCloudAuth();
 };
 
 // --- UI 邏輯擴充 (RWD 支援) ---
@@ -93,3 +99,7 @@ window.exportStatsExcel = exportStatsExcel;
 window.openBackupModal = openBackupModal;
 window.exportBackup = exportBackup;
 window.importBackup = importBackup;
+
+window.loginGoogle = loginGoogle;
+window.logoutGoogle = logoutGoogle;
+window.syncData = syncData;

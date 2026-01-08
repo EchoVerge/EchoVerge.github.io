@@ -22,6 +22,19 @@
             
             <button class="btn btn-outline-primary btn-sm mb-2 w-100" onclick="jumpToToday()">回到本週</button>
             <hr>
+            <div id="userSection" class="mb-3 p-2 bg-light rounded border text-center">
+                <button id="btnLogin" class="btn btn-primary btn-sm w-100" onclick="loginGoogle()">
+                    <i class="bi bi-google"></i> 登入同步資料
+                </button>
+                <div id="userInfo" style="display:none;">
+                    <small class="d-block text-muted mb-1" id="userEmail"></small>
+                    <button class="btn btn-outline-success btn-sm w-100 mb-1" onclick="syncData()">
+                        <i class="bi bi-cloud-arrow-up"></i> 立即同步
+                    </button>
+                    <button class="btn btn-link btn-sm text-danger" onclick="logoutGoogle()">登出</button>
+                </div>
+            </div>
+            <hr>
             <div class="d-grid gap-2">
                 <button class="btn btn-light btn-sm text-start" onclick="openSemesterModal()"><i class="bi bi-calendar-range"></i> 學期設定</button>
                 <button class="btn btn-light btn-sm text-start" onclick="openSettingsModal()"><i class="bi bi-gear"></i> 課程類別設定</button>
@@ -228,6 +241,9 @@
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <script type="module" src="assets/js/main.js"></script>
 </body>
