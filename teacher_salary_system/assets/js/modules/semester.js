@@ -3,9 +3,11 @@ import { db } from './db.js';
 import { renderCalendar } from './calendar.js';
 
 let semModal;
+let baseSlotModal; // 新增：單格編輯視窗實例
 
 export function initSemesterModal() {
     semModal = new bootstrap.Modal(document.getElementById('semesterModal'));
+    baseSlotModal = new bootstrap.Modal(document.getElementById('baseSlotModal'));
 }
 
 export function openSemesterModal() {
@@ -16,6 +18,7 @@ export function openSemesterModal() {
 
 export async function loadSemesterList() {
     const list = document.getElementById('semesterList');
+    if (!list) return;
     const sems = await db.semesters.toArray();
     list.innerHTML = '';
     sems.forEach(s => {
@@ -42,6 +45,7 @@ export async function saveSemester() {
     renderCalendar();
 }
 
+// --- 改寫：視覺化課表編輯器 ---
 export async function editBaseSchedule(semId) {
     state.currentEditingSemId = semId;
     const sem = await db.semesters.get(semId);
@@ -50,18 +54,35 @@ export async function editBaseSchedule(semId) {
     
     const tbody = document.getElementById('baseScheduleBody');
     tbody.innerHTML = '';
+    
+    // 產生 1-9 節 (可視需求增加到 12)
     for(let p=1; p<=9; p++) {
-        let tr = `<tr><td>${p}</td>`;
+        let tr = `<tr><td class="align-middle fw-bold bg-light">${p}</td>`;
         for(let d=1; d<=5; d++) {
             const key = `${d}-${p}`;
-            const cellData = sem.baseSchedule[key] || {};
-            const type = cellData.type || "";
-            const cls = cellData.className || "";
-            tr += `<td class="p-1">
-                <input type="text" class="form-control form-control-sm mb-1" placeholder="科目" 
-                    value="${type}" onchange="updateBaseCell(${semId}, ${d}, ${p}, 'type', this.value)">
-                <input type="text" class="form-control form-control-sm" placeholder="班級" style="font-size:0.7rem;"
-                    value="${cls}" onchange="updateBaseCell(${semId}, ${d}, ${p}, 'className', this.value)">
+            const cellData = sem.baseSchedule ? sem.baseSchedule[key] : null;
+            
+            let content = `<span class="text-muted small" style="opacity:0.3">+</span>`;
+            let style = "background-color: white;"; // 預設白底
+            
+            if (cellData && cellData.type) {
+                // 根據課程類別找顏色
+                const typeConfig = state.courseTypes.find(t => t.name === cellData.type);
+                const color = typeConfig ? typeConfig.color : '#6c757d';
+                
+                // 設定樣式
+                style = `background-color: ${color}; color: white; border: 1px solid rgba(0,0,0,0.1);`;
+                content = `
+                    <div class="fw-bold small">${cellData.type}</div>
+                    ${cellData.className ? `<div style="font-size:0.7em; opacity:0.9;">${cellData.className}</div>` : ''}
+                `;
+            }
+
+            // 產生格子，綁定 onclick 事件
+            tr += `<td class="p-1" style="height: 60px; vertical-align: middle; cursor: pointer;" onclick="openBaseSlotModal(${d}, ${p})">
+                <div class="h-100 w-100 d-flex flex-column justify-content-center align-items-center rounded shadow-sm transition-hover" style="${style}">
+                    ${content}
+                </div>
             </td>`;
         }
         tr += `</tr>`;
@@ -69,12 +90,79 @@ export async function editBaseSchedule(semId) {
     }
 }
 
-export async function updateBaseCell(semId, day, period, field, value) {
+// --- 新增：開啟單格編輯視窗 ---
+export function openBaseSlotModal(day, period) {
+    document.getElementById('baseSlotDay').value = day;
+    document.getElementById('baseSlotPeriod').value = period;
+    
+    const dayNames = ['一', '二', '三', '四', '五'];
+    document.getElementById('baseSlotTitle').innerText = `週${dayNames[day-1]} 第 ${period} 節`;
+    
+    // 1. 填入課程類別選項
+    const select = document.getElementById('baseSlotType');
+    select.innerHTML = '';
+    state.courseTypes.forEach(t => {
+        select.innerHTML += `<option value="${t.name}">${t.name}</option>`;
+    });
+    
+    // 2. 讀取目前設定 (如果有的話)
+    db.semesters.get(state.currentEditingSemId).then(sem => {
+        const key = `${day}-${period}`;
+        const cellData = (sem.baseSchedule) ? sem.baseSchedule[key] : null;
+        
+        if (cellData) {
+            select.value = cellData.type;
+            document.getElementById('baseSlotClass').value = cellData.className || '';
+        } else {
+            // 預設選第一個類別，清空班級
+            select.value = state.courseTypes[0]?.name || '';
+            document.getElementById('baseSlotClass').value = '';
+        }
+        
+        baseSlotModal.show();
+    });
+}
+
+// --- 新增：儲存單格設定 ---
+export async function saveBaseSlot() {
+    const day = document.getElementById('baseSlotDay').value;
+    const period = document.getElementById('baseSlotPeriod').value;
+    const type = document.getElementById('baseSlotType').value;
+    const className = document.getElementById('baseSlotClass').value;
+    
+    const semId = state.currentEditingSemId;
+    const sem = await db.semesters.get(semId);
+    
+    const key = `${day}-${period}`;
+    if (!sem.baseSchedule) sem.baseSchedule = {};
+    
+    // 寫入資料
+    sem.baseSchedule[key] = { type, className };
+    
+    await db.semesters.update(semId, { baseSchedule: sem.baseSchedule });
+    
+    baseSlotModal.hide();
+    editBaseSchedule(semId); // 重新繪製表格
+    
+    // 如果當前正在檢視此學期，同步更新主畫面行事曆
+    if(state.currentSemester && state.currentSemester.id === semId) renderCalendar();
+}
+
+// --- 新增：刪除單格設定 ---
+export async function deleteBaseSlot() {
+    const day = document.getElementById('baseSlotDay').value;
+    const period = document.getElementById('baseSlotPeriod').value;
+    const semId = state.currentEditingSemId;
+    
     const sem = await db.semesters.get(semId);
     const key = `${day}-${period}`;
-    if (!sem.baseSchedule[key]) sem.baseSchedule[key] = {};
-    sem.baseSchedule[key][field] = value;
-    if (field === 'type' && value === '') delete sem.baseSchedule[key];
-    await db.semesters.update(semId, { baseSchedule: sem.baseSchedule });
+    
+    if (sem.baseSchedule && sem.baseSchedule[key]) {
+        delete sem.baseSchedule[key];
+        await db.semesters.update(semId, { baseSchedule: sem.baseSchedule });
+    }
+    
+    baseSlotModal.hide();
+    editBaseSchedule(semId); // 重新繪製表格
     if(state.currentSemester && state.currentSemester.id === semId) renderCalendar();
 }

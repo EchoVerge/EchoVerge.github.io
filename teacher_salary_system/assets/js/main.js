@@ -8,9 +8,9 @@ import {
     initRecordModal, openEditModal, saveRecord, deleteRecord 
 } from './modules/record.js';
 
-// 修改這行，加入新的函式
 import { 
-    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, loadSemesterList, openBaseSlotModal, saveBaseSlot, deleteBaseSlot
+    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, loadSemesterList, 
+    openBaseSlotModal, saveBaseSlot, deleteBaseSlot
 } from './modules/semester.js';
 
 import { 
@@ -53,7 +53,7 @@ window.deleteRecord = deleteRecord;
 window.openSemesterModal = openSemesterModal;
 window.saveSemester = saveSemester;
 window.editBaseSchedule = editBaseSchedule;
-window.updateBaseCell = updateBaseCell;
+
 window.openBaseSlotModal = openBaseSlotModal;
 window.saveBaseSlot = saveBaseSlot;
 window.deleteBaseSlot = deleteBaseSlot;
