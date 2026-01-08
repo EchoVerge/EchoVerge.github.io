@@ -54,63 +54,82 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
 .is-preview { opacity: 0.5; border: 2px dashed rgba(0,0,0,0.1); color: #000 !important; background-color: #e9ecef !important; }
 
 /* 手機版/響應式設定 (小於 768px) */
+/* --- 手機版/響應式設定 (小於 768px) --- */
 @media (max-width: 768px) {
-    .layout-container {
-        flex-direction: column; /* 改為垂直排列 */
-    }
-
-    .sidebar {
-        position: fixed; /* 改為浮動視窗 */
-        top: 0;
-        left: 0;
-        height: 100vh;
-        width: 280px; /* 側邊欄寬度 */
-        transform: translateX(-100%); /* 預設隱藏在左側 */
-        border-right: 1px solid #dee2e6;
-    }
-
-    .sidebar.show {
-        transform: translateX(0); /* 滑出顯示 */
-        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
-    }
-
-    /* 加入遮罩效果 */
-    .sidebar-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-        display: none;
-    }
-    .sidebar-overlay.show { display: block; }
+    /* ... (前面的 sidebar 相關設定保留) ... */
 
     .main-content {
-        padding: 10px; /* 縮小邊距 */
+        padding: 5px; /* 縮小邊距 */
         width: 100%;
         height: 100vh;
+        overflow-x: hidden; /* 禁止主畫面出現捲軸 */
     }
 
-    /* 強制行事曆容器可水平滑動 */
+    /* 移除捲動容器 wrapper 的捲軸設定 */
     .calendar-container-wrapper {
-        flex-grow: 1;
-        overflow: auto; /* 允許雙向捲動 */
-        border: 1px solid #dee2e6;
-        background: #dee2e6;
-    }
-
-    .calendar-grid {
-        min-width: 800px; /* 強制最小寬度，觸發水平捲動 */
+        overflow: hidden; 
         border: none;
-        height: auto; /* 讓內容決定高度 */
+        background: transparent;
     }
 
-    /* 手機版標題字體調整 */
-    h4#currentSemesterLabel { font-size: 1.1rem; }
-    #currentWeekRange { font-size: 0.85rem; display: block; margin-top: 2px; }
+    /* 強制縮小表格以適應螢幕 */
+    .calendar-grid {
+        min-width: 0 !important; /* 移除最小寬度限制 */
+        width: 100%;             /* 強制佔滿螢幕寬度 */
+        grid-template-columns: 25px repeat(7, 1fr); /* 縮小節次欄寬度 */
+        gap: 1px;                /* 縮小格線間距 */
+        font-size: 10px;         /* 全局字體縮小 */
+    }
+
+    /* 表頭文字 */
+    .header-cell {
+        padding: 2px 0;
+        font-size: 0.75rem;
+        word-break: break-all; /* 防止文字撐開 */
+    }
     
-    /* 隱藏不重要的按鈕文字 */
-    .btn span { display: none; }
-    .btn i { display: inline-block; margin: 0 !important; }
+    /* 日期顯示簡化 */
+    .header-cell small {
+        display: block;
+        font-size: 0.6rem;
+        transform: scale(0.9);
+    }
+
+    /* 內容格子 */
+    .period-cell {
+        min-height: 50px; /* 縮小格子高度 */
+        height: auto;
+    }
+
+    /* 課程區塊內容 */
+    .class-block {
+        min-height: 50px;
+        padding: 1px;
+        justify-content: flex-start; /* 內容置頂，避免被切掉 */
+        line-height: 1.1;
+    }
+
+    /* 課程名稱與班級：強制換行與縮小 */
+    .class-block span {
+        font-size: 0.7rem; /* 課程名稱字體 */
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap; /* 太長則省略 */
+        max-width: 100%;
+    }
+
+    /* 班級標籤 */
+    .class-name-tag {
+        font-size: 0.6rem;
+        padding: 0 2px;
+        margin-top: 1px;
+    }
+    
+    /* 隱藏備註 (手機版空間太小，建議點擊才看備註) */
+    .class-block small {
+        display: none;
+    }
 }
 
 /* 桌面版隱藏漢堡按鈕 */
