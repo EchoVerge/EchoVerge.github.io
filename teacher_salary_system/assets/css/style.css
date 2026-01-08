@@ -1,16 +1,38 @@
+/* 共用基礎設定 */
 body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; background-color: #f8f9fa; }
-.layout-container { display: flex; height: 100vh; }
+.layout-container { display: flex; height: 100vh; width: 100vw; }
 
-/* Sidebar */
-.sidebar { width: 240px; min-width: 240px; background-color: #ffffff; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+/* 側邊欄 (Desktop) */
+.sidebar { 
+    width: 240px; 
+    min-width: 240px; 
+    background-color: #ffffff; 
+    border-right: 1px solid #dee2e6; 
+    display: flex; 
+    flex-direction: column; 
+    padding: 15px; 
+    overflow-y: auto; 
+    z-index: 1000; /* 提高層級，確保手機版遮蓋 */
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05); 
+    transition: transform 0.3s ease; /* 加入過渡動畫 */
+}
 .month-header { font-size: 0.85rem; font-weight: bold; color: #6c757d; margin-top: 15px; margin-bottom: 5px; padding-left: 5px; border-bottom: 1px solid #e9ecef; }
 .week-card { padding: 8px 10px; margin-bottom: 6px; background: white; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
 .week-card:hover { border-color: #0d6efd; background-color: #e7f1ff; }
 .week-card.active { background-color: #0d6efd; color: white; border-color: #0d6efd; }
 
-/* Main Content */
-.main-content { flex-grow: 1; padding: 20px; overflow-y: auto; position: relative; display: flex; flex-direction: column; }
+/* 主內容區 */
+.main-content { 
+    flex-grow: 1; 
+    padding: 20px; 
+    overflow-y: auto; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+    min-width: 0; /* 防止 Flex 子元素溢出 */
+}
 
+/* 行事曆網格 */
 .calendar-grid { 
     display: grid; 
     grid-template-columns: 50px repeat(7, 1fr);
@@ -22,11 +44,78 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     min-height: 0; 
 }
 
+/* 格子樣式 */
 .header-cell { font-weight: bold; text-align: center; background: #f8f9fa; padding: 10px; position: sticky; top: 0; z-index: 5; border-bottom: 1px solid #ddd; }
 .header-cell.weekend { background-color: #e9ecef; color: #d63384; }
-
 .period-cell { min-height: 80px; background-color: white; cursor: pointer; padding: 0; position: relative; transition: bg 0.2s;}
 .period-cell:hover { background-color: #f1f3f5; }
 .class-block { width: 100%; height: 100%; min-height: 80px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 0.9rem; color: white; padding: 2px; }
 .class-name-tag { font-size: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 0 4px; margin-top: 2px; }
 .is-preview { opacity: 0.5; border: 2px dashed rgba(0,0,0,0.1); color: #000 !important; background-color: #e9ecef !important; }
+
+/* 手機版/響應式設定 (小於 768px) */
+@media (max-width: 768px) {
+    .layout-container {
+        flex-direction: column; /* 改為垂直排列 */
+    }
+
+    .sidebar {
+        position: fixed; /* 改為浮動視窗 */
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 280px; /* 側邊欄寬度 */
+        transform: translateX(-100%); /* 預設隱藏在左側 */
+        border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar.show {
+        transform: translateX(0); /* 滑出顯示 */
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    }
+
+    /* 加入遮罩效果 */
+    .sidebar-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+        display: none;
+    }
+    .sidebar-overlay.show { display: block; }
+
+    .main-content {
+        padding: 10px; /* 縮小邊距 */
+        width: 100%;
+        height: 100vh;
+    }
+
+    /* 強制行事曆容器可水平滑動 */
+    .calendar-container-wrapper {
+        flex-grow: 1;
+        overflow: auto; /* 允許雙向捲動 */
+        border: 1px solid #dee2e6;
+        background: #dee2e6;
+    }
+
+    .calendar-grid {
+        min-width: 800px; /* 強制最小寬度，觸發水平捲動 */
+        border: none;
+        height: auto; /* 讓內容決定高度 */
+    }
+
+    /* 手機版標題字體調整 */
+    h4#currentSemesterLabel { font-size: 1.1rem; }
+    #currentWeekRange { font-size: 0.85rem; display: block; margin-top: 2px; }
+    
+    /* 隱藏不重要的按鈕文字 */
+    .btn span { display: none; }
+    .btn i { display: inline-block; margin: 0 !important; }
+}
+
+/* 桌面版隱藏漢堡按鈕 */
+.mobile-toggle { display: none; }
+
+@media (max-width: 768px) {
+    .mobile-toggle { display: inline-block; margin-right: 10px; }
+}
