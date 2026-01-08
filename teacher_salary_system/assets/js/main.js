@@ -29,6 +29,9 @@ import {
 // 引入雲端功能
 import { initCloudAuth, loginGoogle, logoutGoogle, syncData } from './modules/cloud.js';
 
+import { initSearch } from './modules/search.js';
+import { initBatchModal, openBatchModal, batchAddRecords } from './modules/batch.js';
+
 // 引入新的 UI 模組
 import { toggleSidebar, closeSidebar, isMobileView } from './modules/ui.js';
 
@@ -43,6 +46,8 @@ window.onload = async function() {
     initSettingsModal();
     initStatsModal();
     initBackupModal();
+    initSearch();
+    initBatchModal();
 
     // 3. 初始化雲端功能
     initCloudAuth();
@@ -109,3 +114,7 @@ window.importBackup = importBackup;
 window.loginGoogle = loginGoogle;
 window.logoutGoogle = logoutGoogle;
 window.syncData = syncData;
+
+// 8. 批次模式
+window.openBatchModal = openBatchModal;
+window.batchAddRecords = batchAddRecords;
