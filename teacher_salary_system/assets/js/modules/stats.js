@@ -49,7 +49,12 @@ export async function calculateStats() {
             if (type) {
                 if(!totalCounts[type]) totalCounts[type] = 0;
                 totalCounts[type]++;
-                if (!type.includes('代課') && !type.includes('晚自習') && !type.includes('請假')) {
+                
+                // 修正邏輯：排除特殊課程，且排除已經手動標記為「超鐘點」的課程，避免重複計算
+                if (!type.includes('代課') && 
+                    !type.includes('晚自習') && 
+                    !type.includes('請假') && 
+                    !type.includes('超鐘點')) {
                     weeklyCounts[weekKey]++;
                 }
             }
@@ -66,6 +71,7 @@ export async function calculateStats() {
     tbody.innerHTML = '';
     let moneyTotal = 0;
 
+    // 1. 顯示各類別統計
     state.courseTypes.forEach(t => {
         let count = totalCounts[t.name] || 0;
         if (count > 0) {
@@ -75,10 +81,21 @@ export async function calculateStats() {
         }
     });
 
+    // 2. 顯示系統自動試算的超鐘點
     if (overtimeTotal > 0) {
         let overRate = 420; 
-        tbody.innerHTML += `<tr class="table-warning fw-bold"><td>[系統試算] 超出基本節數</td><td>${overtimeTotal}</td><td>${overRate}</td><td>(僅供參考)</td></tr>`;
+        let overSub = overtimeTotal * overRate;
+        moneyTotal += overSub; // 將金額加入總計
+
+        tbody.innerHTML += `
+            <tr class="table-warning fw-bold" style="border-top: 2px solid #ffc107;">
+                <td>[系統試算] 超出基本節數</td>
+                <td>${overtimeTotal}</td>
+                <td>${overRate}</td>
+                <td>${overSub}</td>
+            </tr>`;
     }
+    
     document.getElementById('statsTotal').innerText = `$${moneyTotal}`;
 }
 
