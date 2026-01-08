@@ -787,11 +787,56 @@
         function renderSidebar(centerDate) {
             const list = document.getElementById('sidebarList');
             list.innerHTML = '';
-            // 顯示前後幾週 (略，與原版類似邏輯)
-            // 這裡簡化顯示本月
-            let d = new Date(centerDate); d.setDate(1);
-            list.innerHTML += `<div class="month-header">${d.getMonth()+1}月</div>`;
-            // 可自行擴充 Sidebar 日曆導覽
+            let lastMonthLabel = '';
+
+            // 1. 先鎖定基準日為該週的「週日」，確保計算基準一致
+            let baseDate = new Date(centerDate);
+            baseDate.setDate(baseDate.getDate() - baseDate.getDay());
+
+            // 2. 迴圈產生前後 4 週 (共 9 週)
+            for (let i = -4; i <= 4; i++) {
+                let tempDate = new Date(baseDate);
+                tempDate.setDate(tempDate.getDate() + (i * 7));
+
+                // --- 處理月份標題 ---
+                // 取得該週週日的月份名稱
+                let monthLabel = tempDate.toLocaleString('zh-TW', { year: 'numeric', month: 'long' });
+                
+                // 如果月份改變了，插入一個標題 (如果是列表的第一個也插入)
+                if (monthLabel !== lastMonthLabel) {
+                    list.innerHTML += `<div class="month-header">${monthLabel}</div>`;
+                    lastMonthLabel = monthLabel;
+                }
+
+                // --- 準備卡片內容 ---
+                let endDate = new Date(tempDate);
+                endDate.setDate(endDate.getDate() + 6); // 週六
+
+                let displayStr = `${tempDate.getMonth()+1}/${tempDate.getDate()} - ${endDate.getMonth()+1}/${endDate.getDate()}`;
+                let dateValue = formatDate(tempDate); // 用於 onclick 傳值
+
+                // 判斷是否為當前選中的週 (i===0 代表就是 baseDate 那週)
+                let isActive = (i === 0) ? 'active' : '';
+
+                // --- 產生 HTML ---
+                // 注意：這裡使用了 getWeekNumber 函式
+                list.innerHTML += `
+                    <div class="week-card ${isActive}" onclick="jumpToSpecificDate('${dateValue}')">
+                        <span class="week-card-date">W${getWeekNumber(tempDate)}: ${displayStr}</span>
+                    </div>`;
+            }
+        }
+        function jumpToSpecificDate(dateStr) {
+            currentDate = new Date(dateStr);
+            renderCalendar();
+        }
+        function getWeekNumber(d) {
+            var date = new Date(d.getTime());
+            date.setHours(0, 0, 0, 0);
+            // Thursday in current week decides the year.
+            date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+            var week1 = new Date(date.getFullYear(), 0, 4);
+            return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
         }
     </script>
 </body>
