@@ -76,7 +76,92 @@
             </div>
         </div>
     </div>
-    
+
+    <div class="modal fade" id="semesterModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">學期管理</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3 align-items-end">
+                        <div class="col-md-3"><label>學期名稱</label><input type="text" id="semName" class="form-control" placeholder="112-1"></div>
+                        <div class="col-md-3"><label>開始日期</label><input type="date" id="semStart" class="form-control"></div>
+                        <div class="col-md-3"><label>結束日期</label><input type="date" id="semEnd" class="form-control"></div>
+                        <div class="col-md-3"><button class="btn btn-primary w-100" onclick="saveSemester()">新增/更新學期</button></div>
+                    </div>
+                    <hr>
+                    <h6>已儲存學期列表 (點擊編輯基本課表)</h6>
+                    <div class="list-group" id="semesterList"></div>
+                    
+                    <div id="baseScheduleEditor" class="mt-4" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="text-primary fw-bold" id="editorTitle">編輯基本課表</h6>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('baseScheduleEditor').style.display='none'">關閉</button>
+                        </div>
+                        <p class="small text-muted">請在下方設定此學期的固定課表 (週一至週五)。變更將即時儲存。</p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm text-center align-middle">
+                                <thead class="table-light"><tr><th>節</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th></tr></thead>
+                                <tbody id="baseScheduleBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">課程類別設定</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <table class="table table-striped">
+                        <thead><tr><th>名稱</th><th>單價</th><th>顏色</th><th>操作</th></tr></thead>
+                        <tbody id="courseTypesBody"></tbody>
+                        <tfoot>
+                            <tr>
+                                <td><input type="text" class="form-control form-control-sm" id="newTypeName" placeholder="名稱"></td>
+                                <td><input type="number" class="form-control form-control-sm" id="newTypeRate" placeholder="420"></td>
+                                <td><input type="color" class="form-control form-control-sm form-control-color" id="newTypeColor" value="#0d6efd"></td>
+                                <td><button class="btn btn-sm btn-success" onclick="addCourseType()"><i class="bi bi-plus"></i></button></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div class="alert alert-info small mt-2">
+                        <i class="bi bi-info-circle"></i> 這裡設定的單價將用於薪資試算。
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="statsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">薪資試算與匯出</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-5"><label>開始</label><input type="date" id="statsStart" class="form-control"></div>
+                        <div class="col-md-5"><label>結束</label><input type="date" id="statsEnd" class="form-control"></div>
+                        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="calculateStats()">計算</button></div>
+                    </div>
+                    <div class="mb-3">
+                        <label>每週基本節數 (超過計為超鐘點)</label>
+                        <input type="number" id="weeklyQuota" class="form-control" value="16">
+                    </div>
+                    <table class="table table-bordered">
+                        <thead class="table-light"><tr><th>項目</th><th>節數</th><th>單價</th><th>小計</th></tr></thead>
+                        <tbody id="statsBody"></tbody>
+                        <tfoot class="table-light"><tr><td colspan="3" class="text-end fw-bold">總計：</td><td class="fw-bold text-danger" id="statsTotal">$0</td></tr></tfoot>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" onclick="exportStatsExcel()">匯出 Excel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="backupModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -92,6 +177,7 @@
             </div>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
