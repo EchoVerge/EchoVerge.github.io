@@ -10,7 +10,7 @@ import {
 } from './modules/record.js';
 
 import { 
-    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, updateBaseCell, loadSemesterList,
+    initSemesterModal, openSemesterModal, saveSemester, editBaseSchedule, loadSemesterList,
     openBaseSlotModal, saveBaseSlot, deleteBaseSlot
 } from './modules/semester.js';
 
@@ -87,7 +87,6 @@ window.deleteRecord = deleteRecord;
 window.openSemesterModal = openSemesterModal;
 window.saveSemester = saveSemester;
 window.editBaseSchedule = editBaseSchedule;
-window.updateBaseCell = updateBaseCell; // 保留兼容性
 window.openBaseSlotModal = openBaseSlotModal;
 window.saveBaseSlot = saveBaseSlot;
 window.deleteBaseSlot = deleteBaseSlot;
