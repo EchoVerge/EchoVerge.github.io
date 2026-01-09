@@ -16,7 +16,8 @@ import {
 } from './modules/semester.js';
 
 import { 
-    initSettingsModal, openSettingsModal, savePeriodTimes, renderSettingsTable, addCourseType, updateType, removeType
+    initSettingsModal, openSettingsModal, savePeriodTimes, renderSettingsTable, addCourseType, updateType, removeType,
+    checkProStatus, activatePro
 } from './modules/settings.js';
 
 import { 
@@ -71,7 +72,10 @@ window.onload = async function() {
     // 5. 初始化拖曳功能
     initDragAndDrop();
 
-    // 6. 啟動時間檢查定時器 (每 60 秒檢查一次)
+    // 6. 權限檢查
+    checkProStatus();
+
+    // 7. 啟動時間檢查定時器 (每 60 秒檢查一次)
     checkActivePeriod(); // 載入時先檢查一次
     setInterval(() => {
         checkActivePeriod();
@@ -144,3 +148,6 @@ window.batchAddRecords = batchAddRecords;
 // 9. 當前課次醒目標註
 window.savePeriodTimes = savePeriodTimes;
 window.checkActivePeriod = checkActivePeriod;
+
+// 10. 權限檢查
+window.activatePro = activatePro;
