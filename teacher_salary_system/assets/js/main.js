@@ -38,6 +38,16 @@ import { toggleSidebar, closeSidebar, isMobileView } from './modules/ui.js';
 import { initDragAndDrop } from './modules/drag_drop.js';
 
 
+// 註冊 PWA Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then((reg) => console.log('Service Worker 註冊成功:', reg.scope))
+            .catch((err) => console.log('Service Worker 註冊失敗:', err));
+    });
+}
+
+
 // --- 初始化 ---
 window.onload = async function() {
     // 1. 載入設定
