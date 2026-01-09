@@ -1,5 +1,7 @@
 import { db } from './db.js';
-import { state } from './state.js'; // 必須引入 state 以儲存權限狀態
+import { state } from './state.js';
+// 引入新的 redeemCode
+import { redeemCode } from './cloud.js'; 
 
 let settingsModal;
 
@@ -21,13 +23,12 @@ const defaultPeriodTimes = {
 
 export function initSettingsModal() {
     settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
-    checkProStatus(); // 初始化時檢查權限
 }
 
 export function openSettingsModal() {
     renderSettingsTable();
     renderPeriodTimesTable();
-    renderAboutTab(); // [新增] 渲染贊助頁面
+    renderAboutTab();
     settingsModal.show();
 }
 
@@ -85,8 +86,6 @@ export async function removeType(index) {
     }
 }
 
-// --- 節次時間設定相關函式 ---
-
 export async function renderPeriodTimesTable() {
     const tbody = document.getElementById('periodTimesBody');
     let setting = await db.settings.where('key').equals('periodTimes').first();
@@ -130,66 +129,78 @@ export async function getPeriodTimes() {
     return setting ? setting.value : defaultPeriodTimes;
 }
 
-// --- [新增] 贊助與權限相關 ---
+// --- 贊助與權限相關 ---
 
+// [修改] 檢查狀態 (直接回傳 state.isPro)
 export function checkProStatus() {
-    // 這裡只是前端 UI 判斷，真正的驗證在 Firebase Rules
-    const proKey = localStorage.getItem('site_pro_key');
-    state.isPro = !!proKey; // 只要有 Key 就先視為啟用，讓使用者嘗試連線驗證
     return state.isPro;
 }
 
-export function activatePro() {
+// [修改] 按下啟用按鈕的動作
+export async function activatePro() {
     const inputKey = document.getElementById('activationKeyInput').value.trim();
     if (inputKey) {
-        localStorage.setItem('site_pro_key', inputKey);
-        state.isPro = true;
-        alert("啟用碼已儲存！\n接下來請進行「雲端同步」，系統將連接伺服器驗證您的代碼。");
-        renderAboutTab();
+        // 呼叫 cloud.js 的啟用函式
+        const success = await redeemCode(inputKey);
+        if (success) {
+            renderAboutTab(); // 成功後重繪 UI
+        }
+    } else {
+        alert("請輸入序號");
     }
 }
 
+// [修改] 渲染關於頁面
 function renderAboutTab() {
     const container = document.getElementById('about-content');
     if (!container) return;
 
-    const isPro = checkProStatus();
-    // 請替換成您的贊助連結
+    // 讀取本地快取的期限，用來顯示
+    const expiryStr = localStorage.getItem('site_pro_expiry');
+    const expiryDisplay = expiryStr ? new Date(expiryStr).toLocaleDateString() : '未知';
+    const isPro = state.isPro;
+
     const sponsorLink = "https://www.buymeacoffee.com/您的帳號"; 
 
     container.innerHTML = `
         <div class="text-center py-3">
             <img src="./assets/img/icon-192.png" style="width: 80px; border-radius: 20px;" class="mb-3 shadow-sm">
-            <h5>教師課務薪資系統 <small class="text-muted">v1.1</small></h5>
+            <h5>教師課務薪資系統 <small class="text-muted">v2.0 PRO</small></h5>
             
             <hr>
 
             <div class="card mb-3 ${isPro ? 'border-success' : 'border-warning'}">
                 <div class="card-body">
                     <h6 class="card-title fw-bold">
-                        ${isPro ? '<i class="bi bi-check-circle-fill text-success"></i> 已輸入啟用碼' : '<i class="bi bi-lock-fill text-warning"></i> 免費版模式'}
+                        ${isPro ? '<i class="bi bi-check-circle-fill text-success"></i> 專業版已啟用' : '<i class="bi bi-lock-fill text-warning"></i> 免費版模式'}
                     </h6>
-                    <p class="card-text small text-start mt-2">
-                        ${isPro 
-                            ? '您已設定啟用碼。請執行「雲端同步」以驗證權限並備份資料。' 
-                            : '雲端同步與備份為贊助功能。啟用後可防止資料遺失並支援跨裝置使用。'}
-                    </p>
+                    
+                    ${isPro ? `
+                        <p class="text-success small mt-2">
+                            狀態：授權有效<br>
+                            效期至：${expiryDisplay}<br>
+                            已綁定序號：${localStorage.getItem('site_pro_key')}
+                        </p>
+                    ` : `
+                        <p class="card-text small text-start mt-2">
+                            雲端同步與備份為贊助功能。請輸入序號進行綁定。
+                        </p>
+                         <a href="${sponsorLink}" target="_blank" class="btn btn-warning w-100 fw-bold mb-2">
+                            <i class="bi bi-heart-fill"></i> 贊助並獲取序號
+                        </a>
+                    `}
                     
                     ${!isPro ? `
-                        <a href="${sponsorLink}" target="_blank" class="btn btn-warning w-100 fw-bold mb-2">
-                            <i class="bi bi-heart-fill"></i> 贊助並獲取啟用碼
-                        </a>
-                    ` : ''}
-                    
                     <div class="input-group mt-3">
-                        <input type="text" class="form-control" id="activationKeyInput" placeholder="輸入啟用碼" value="${localStorage.getItem('site_pro_key') || ''}">
-                        <button class="btn btn-outline-secondary" onclick="activatePro()">儲存</button>
+                        <input type="text" class="form-control" id="activationKeyInput" placeholder="輸入序號 (例如: VIP-2025-001)">
+                        <button class="btn btn-outline-secondary" onclick="activatePro()">綁定</button>
                     </div>
+                    ` : ''}
                 </div>
             </div>
             <div class="text-start small text-muted">
-                <strong>資安聲明：</strong><br>
-                啟用碼將經由加密連線與伺服器驗證。唯有驗證通過的用戶可使用雲端空間。
+                <strong>說明：</strong><br>
+                序號一經綁定即與 Google 帳號連結。更換裝置時，只需登入同一 Google 帳號即可自動恢復權限，無需重新輸入。
             </div>
         </div>
     `;
