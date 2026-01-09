@@ -32,8 +32,9 @@ import { initCloudAuth, loginGoogle, logoutGoogle, syncData } from './modules/cl
 import { initSearch } from './modules/search.js';
 import { initBatchModal, openBatchModal, batchAddRecords } from './modules/batch.js';
 
-// 引入新的 UI 模組
+// 引入UI響應功能以及拖曳排序功能
 import { toggleSidebar, closeSidebar, isMobileView } from './modules/ui.js';
+import { initDragAndDrop } from './modules/drag_drop.js';
 
 // --- 初始化 ---
 window.onload = async function() {
@@ -53,7 +54,9 @@ window.onload = async function() {
     initCloudAuth();
 
     // 4. 渲染畫面
-    jumpToToday();
+    await jumpToToday();
+
+    initDragAndDrop();
 };
 
 // --- 邏輯包裝與掛載 (Wrapper Functions) ---

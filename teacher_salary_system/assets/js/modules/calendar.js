@@ -2,7 +2,7 @@ import { state } from './state.js';
 import { db } from './db.js';
 import { formatDate, getWeekNumber } from './utils.js';
 
-// 判斷學期 (保留供 UI 標題使用)
+// 判斷學期
 export async function determineSemester(date) {
     const dateStr = formatDate(date);
     const semesters = await db.semesters.toArray();
@@ -61,7 +61,7 @@ export function renderSidebar(centerDate) {
     }
 }
 
-// 渲染主行事曆 (修正：每天獨立判斷學期)
+// 渲染主行事曆
 export async function renderCalendar() {
     const grid = document.getElementById('calendar');
     if (!grid) return;
@@ -78,7 +78,6 @@ export async function renderCalendar() {
     
     renderSidebar(state.currentDate);
 
-    // 這裡只為了決定「標題」顯示哪個學期 (以週三為準)
     let checkDate = new Date(startOfWeek); checkDate.setDate(checkDate.getDate()+3);
     state.currentSemester = await determineSemester(checkDate);
 
@@ -91,7 +90,6 @@ export async function renderCalendar() {
             if(alertBox) alertBox.style.display = 'none';
         } else {
             semLabel.innerText = "無學期設定";
-            // 標題顯示無學期，但格子還是會嘗試去找有沒有對應的學期
             if(alertBox) alertBox.style.display = 'block';
         }
     }
@@ -106,10 +104,6 @@ export async function renderCalendar() {
     }
     grid.innerHTML += headerHtml;
 
-    // 1. 預先抓取所有學期資料 (為了在迴圈中快速比對)
-    const allSems = await db.semesters.toArray();
-
-    // 2. 抓取異動紀錄
     const startStr = formatDate(startOfWeek);
     const endStr = formatDate(endOfWeek);
     const records = await db.records.where('date').between(startStr, endStr, true, true).toArray();
@@ -124,15 +118,11 @@ export async function renderCalendar() {
             let dateStr = formatDate(cellDate);
             let dayOfWeek = cellDate.getDay(); 
 
-            // 關鍵修正：針對「這一天」找出它屬於哪個學期
-            const cellSem = allSems.find(s => dateStr >= s.startDate && dateStr <= s.endDate);
-
             let record = recordMap[`${dateStr}-${p}`];
             let baseInfo = null;
 
-            // 如果這一天有對應的學期，且該學期有設定基本課表，就讀取它
-            if (cellSem && cellSem.baseSchedule && dayOfWeek >= 1 && dayOfWeek <= 5) {
-                baseInfo = cellSem.baseSchedule[`${dayOfWeek}-${p}`];
+            if (state.currentSemester && state.currentSemester.baseSchedule && dayOfWeek >= 1 && dayOfWeek <= 5) {
+                baseInfo = state.currentSemester.baseSchedule[`${dayOfWeek}-${p}`];
             }
 
             let displayType = "", displayClass = "", displayNote = "", isPreview = false;
@@ -153,7 +143,11 @@ export async function renderCalendar() {
             }
 
             let cellContent = "";
+            let isDraggable = false; // [新增] 是否可拖曳旗標
+
             if (displayType) {
+                isDraggable = true; // [新增] 有內容才可拖曳
+                
                 let style = isPreview 
                     ? `background-color: #e9ecef; color: black; border: 2px dashed ${colorCode};` 
                     : `background-color: ${colorCode}; color: white;`;
@@ -169,8 +163,11 @@ export async function renderCalendar() {
             const safe = (s) => s ? s.replace(/'/g, "&apos;") : "";
             const baseTypeSafe = baseInfo ? safe(baseInfo.type) : "";
             
+            // [修改] 加入 draggable 屬性
             grid.innerHTML += `
-                <div class="period-cell" onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
+                <div class="period-cell" 
+                     draggable="${isDraggable}"
+                     onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
                     ${cellContent}
                 </div>`;
         }

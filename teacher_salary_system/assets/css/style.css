@@ -53,6 +53,37 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
 .class-name-tag { font-size: 0.75rem; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 0 4px; margin-top: 2px; }
 .is-preview { opacity: 0.5; border: 2px dashed rgba(0,0,0,0.1); color: #000 !important; background-color: #e9ecef !important; }
 
+/* --- 拖曳排課相關樣式 --- */
+
+/* 可拖曳的格子 */
+.period-cell[draggable="true"] {
+    cursor: grab;
+}
+
+.period-cell[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+/* 正在被拖曳的來源格子 (變半透明) */
+.period-cell.dragging .class-block {
+    opacity: 0.4;
+    transform: scale(0.95);
+    transition: all 0.2s;
+}
+
+/* 拖曳經過的目標格子 (高亮顯示) */
+.period-cell.drag-over {
+    background-color: #e9ecef !important; /* 淺灰背景 */
+    box-shadow: inset 0 0 0 2px #0d6efd;   /* 藍色內框 */
+}
+
+/* 禁止在手機上觸發拖曳樣式 (手機主要靠點擊編輯) */
+@media (max-width: 768px) {
+    .period-cell[draggable="true"] {
+        cursor: pointer; /* 手機上維持點擊手勢 */
+    }
+}
+
 /* 手機版/響應式設定 (小於 768px) */
 @media (max-width: 768px) {
     .layout-container {

@@ -10,12 +10,10 @@ export function initBatchModal() {
 }
 
 export function openBatchModal() {
-    // 預設填入本週日期
     const today = new Date();
     document.getElementById('batchStartDate').value = formatDate(today);
     document.getElementById('batchEndDate').value = formatDate(today);
     
-    // 填入類別選單
     const select = document.getElementById('batchType');
     select.innerHTML = '';
     state.courseTypes.forEach(t => {
@@ -25,7 +23,6 @@ export function openBatchModal() {
     batchModal.show();
 }
 
-// 執行區間新增
 export async function batchAddRecords() {
     const startStr = document.getElementById('batchStartDate').value;
     const endStr = document.getElementById('batchEndDate').value;
@@ -43,13 +40,32 @@ export async function batchAddRecords() {
     const startDate = new Date(startStr);
     const endDate = new Date(endStr);
     const recordsToAdd = [];
+    const conflictInfo = []; // 存衝突訊息
 
-    // 迴圈遍歷日期
+    // 預先抓出區間內所有紀錄
+    const existingRecords = await db.records.where('date').between(startStr, endStr, true, true).toArray();
+    const existingSet = new Set(existingRecords.map(r => `${r.date}-${r.period}`));
+
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        // 檢查星期幾 (0=週日, 1=週一...)
         if (weekDays.includes(d.getDay())) {
+            const dStr = formatDate(d);
+            const dayOfWeek = d.getDay();
+            
+            // 1. 檢查是否有「紀錄」衝突
+            if (existingSet.has(`${dStr}-${period}`)) {
+                conflictInfo.push(`${dStr} (已有紀錄)`);
+            }
+            // 2. 檢查是否有「基本課表」衝突
+            else if (state.currentSemester && state.currentSemester.baseSchedule) {
+                const baseKey = `${dayOfWeek}-${period}`;
+                const baseClass = state.currentSemester.baseSchedule[baseKey];
+                if (baseClass && baseClass.type) {
+                    conflictInfo.push(`${dStr} (基本課表: ${baseClass.type})`);
+                }
+            }
+
             recordsToAdd.push({
-                date: formatDate(d),
+                date: dStr,
                 period: period,
                 type: type,
                 className: className,
@@ -64,10 +80,14 @@ export async function batchAddRecords() {
         return;
     }
 
-    if (!confirm(`即將新增 ${recordsToAdd.length} 筆紀錄，確定嗎？`)) return;
+    // 顯示衝突警告
+    if (conflictInfo.length > 0) {
+        const msg = `⚠️ 偵測到 ${conflictInfo.length} 筆時段已有課程！\n(包含基本課表與現有紀錄)\n\n衝突範例：\n${conflictInfo.slice(0, 3).join('\n')}${conflictInfo.length > 3 ? '\n...' : ''}\n\n若繼續，將會覆蓋這些課程。確定要執行嗎？`;
+        if (!confirm(msg)) return;
+    } else {
+        if (!confirm(`即將新增 ${recordsToAdd.length} 筆紀錄，確定嗎？`)) return;
+    }
 
-    // 使用 bulkPut (若重複則覆蓋)
-    // 需注意 Dexie 鍵值設定，若 records schema 為 [date+period]，put 會覆蓋舊的
     try {
         await db.records.bulkPut(recordsToAdd);
         alert("批次新增成功！");
