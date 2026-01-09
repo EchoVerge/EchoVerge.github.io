@@ -160,12 +160,12 @@ function renderAboutTab() {
     const expiryDisplay = expiryStr ? new Date(expiryStr).toLocaleDateString() : '未知';
     const isPro = state.isPro;
 
-    const sponsorLink = "https://www.buymeacoffee.com/您的帳號"; 
+    const sponsorLink = "https://www.buymeacoffee.com/echovergepe"; 
 
     container.innerHTML = `
         <div class="text-center py-3">
             <img src="./assets/img/icon-192.png" style="width: 80px; border-radius: 20px;" class="mb-3 shadow-sm">
-            <h5>教師課務薪資系統 <small class="text-muted">v2.0 PRO</small></h5>
+            <h5>教師課務薪資系統</h5>
             
             <hr>
 
