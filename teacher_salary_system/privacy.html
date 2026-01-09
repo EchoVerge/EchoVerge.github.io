@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>隱私權政策 | 教師課務薪資系統</title>
+    
+    <link rel="icon" type="image/svg+xml" href="./assets/img/icon.svg">
+    <link rel="alternate icon" href="./assets/img/icon-192.png">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #333;
+            line-height: 1.8;
+        }
+        .header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 40px;
+        }
+        .content-card {
+            background: white;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 40px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        h2:first-child {
+            margin-top: 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .btn-home {
+            background-color: white;
+            color: #0d6efd;
+            font-weight: bold;
+            border-radius: 50px;
+            padding: 10px 25px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .btn-home:hover {
+            background-color: #f1f1f1;
+            color: #0b5ed7;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header text-center">
+        <div class="container">
+            <h1 class="fw-bold mb-3"><i class="bi bi-shield-lock-fill"></i> 隱私權政策</h1>
+            <p class="opacity-75 mb-4">Privacy Policy</p>
+            <a href="index.html" class="btn-home"><i class="bi bi-arrow-left"></i> 返回系統首頁</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="content-card">
+                    <p class="lead"><strong>教師課務薪資系統</strong>（以下簡稱「本系統」）非常重視您的隱私權。本隱私權政策旨在說明我們如何收集、使用、儲存及保護您的個人資料。</p>
+                    <p class="text-muted small">最後更新日期：2026 年 1 月</p>
+
+                    <h2>1. 資料的收集與使用</h2>
+                    <p>本系統主要為「本地端」應用程式，大多數資料（如課表、薪資設定）皆儲存於您個人的裝置瀏覽器中（IndexedDB）。若您啟用「雲端同步」功能，我們將透過 Google Firebase 服務收集以下必要資訊：</p>
+                    <ul>
+                        <li><strong>Google 帳號資訊</strong>：當您使用 Google 登入時，我們僅收集您的 Email 及使用者 ID (UID)，用於識別身分及建立專屬的雲端備份空間。</li>
+                        <li><strong>備份資料</strong>：您上傳的學期設定、課程紀錄與薪資設定，將加密儲存於 Google Cloud Firestore 資料庫中。</li>
+                    </ul>
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle-fill"></i> 我們<strong>不會</strong>收集您的密碼、信用卡號或其他敏感個資。
+                    </div>
+
+                    <h2>2. 第三方服務與連結</h2>
+                    <p>本系統使用以下第三方服務來維持運作：</p>
+                    <ul>
+                        <li><strong>Google Firebase</strong>：用於身分驗證 (Authentication) 與資料庫儲存 (Firestore)。</li>
+                        <li><strong>Ko-fi (PayPal)</strong>：用於處理贊助與專業版授權購買。金流交易全程由 PayPal 處理，本系統不會接觸您的付款資訊。</li>
+                    </ul>
+
+                    <h2>3. 資料的儲存與安全</h2>
+                    <p>我們採用業界標準的安全措施來保護您的資料：</p>
+                    <ul>
+                        <li>所有資料傳輸皆透過 SSL/TLS 加密連線進行。</li>
+                        <li>雲端資料儲存於 Google 的安全伺服器中，並受嚴格的資料庫規則保護（僅限您本人的帳號可讀寫您的資料）。</li>
+                    </ul>
+
+                    <h2>4. Cookie 與本地儲存</h2>
+                    <p>本系統使用瀏覽器的 <strong>LocalStorage</strong> 與 <strong>IndexedDB</strong> 技術來儲存您的應用程式設定與離線資料。這些技術是本系統運作所必需的，並非用於廣告追蹤。</p>
+
+                    <h2>5. 使用者權利</h2>
+                    <p>您對您的個人資料擁有完全的控制權：</p>
+                    <ul>
+                        <li><strong>存取與修正</strong>：您可以隨時在系統中查看或修改您的課務資料。</li>
+                        <li><strong>刪除資料</strong>：若您不再使用本系統，可隨時聯絡我們要求刪除您的雲端帳號及所有備份資料。</li>
+                    </ul>
+
+                    <h2>6. 隱私權政策之修訂</h2>
+                    <p>我們可能會不時更新本隱私權政策。修正後的條款將公佈於本頁面，建議您定期查閱。</p>
+
+                    <h2>7. 聯絡我們</h2>
+                    <p>若您對本隱私權政策有任何疑問，或需行使您的資料權利，請透過以下方式聯絡開發團隊：</p>
+                    <p><a href="mailto:您的Email@gmail.com" class="text-decoration-none"><i class="bi bi-envelope-fill"></i> echovergeprogramming@gmail.com</a></p>
+                </div>
+
+                <div class="text-center text-muted mb-5 small">
+                    &copy; 2025 Teacher Salary System. All rights reserved.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
