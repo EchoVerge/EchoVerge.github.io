@@ -77,6 +77,9 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     box-shadow: inset 0 0 0 2px #0d6efd;   /* 藍色內框 */
 }
 
+/*===================================================================*-
+/* 當前課程與下節課程醒目標註*/
+/*===================================================================*-
 /* 當前課程醒目標註 */
 .period-cell.now-playing {
     position: relative;
@@ -100,6 +103,38 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     animation: pulse 2s infinite;
 }
+
+/* [新增] 即將開始 (Coming Soon) 樣式 */
+.period-cell.coming-soon {
+    position: relative;
+    box-shadow: inset 0 0 0 3px #17a2b8; /* 青色內框 */
+    border-color: #17a2b8 !important;
+    z-index: 9;
+}
+
+/* "即將開始" 標籤 */
+.period-cell.coming-soon::after {
+    content: "即將開始";
+    position: absolute;
+    top: -10px;
+    right: -5px;
+    background-color: #17a2b8;
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: pulse-slow 2s infinite; /* 緩慢閃爍 */
+}
+
+/* 定義緩慢呼吸燈動畫 */
+@keyframes pulse-slow {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 
 @keyframes pulse {
     0% { transform: scale(1); opacity: 1; }

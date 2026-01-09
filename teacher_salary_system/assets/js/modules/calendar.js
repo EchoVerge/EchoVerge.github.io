@@ -3,6 +3,13 @@ import { db } from './db.js';
 import { formatDate, getWeekNumber } from './utils.js';
 import { getPeriodTimes } from './settings.js'; // 修正：確保引用了此函式
 
+// 輔助函式：將 "HH:mm" 轉為分鐘數 (例如 "08:10" -> 490)
+function timeToMinutes(timeStr) {
+    if (!timeStr) return -1;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+}
+
 // 判斷學期
 export async function determineSemester(date) {
     const dateStr = formatDate(date);
@@ -62,28 +69,39 @@ export function renderSidebar(centerDate) {
     }
 }
 
-// 檢查並標註當前課程
+// 檢查並標註當前與即將開始的課程
 export async function checkActivePeriod() {
     const times = await getPeriodTimes();
     const now = new Date();
-    const currentDayStr = formatDate(now); // 需確保 formatDate 可用
+    const currentDayStr = formatDate(now); 
     
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}`;
+    // 取得當前總分鐘數 (例如 08:10 = 490)
+    const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // 移除舊的標註
+    // 1. 移除舊的標註 (包含進行中與即將開始)
     document.querySelectorAll('.period-cell.now-playing').forEach(el => el.classList.remove('now-playing'));
+    document.querySelectorAll('.period-cell.coming-soon').forEach(el => el.classList.remove('coming-soon'));
 
-    // 檢查每一個節次
+    // 2. 檢查每一個節次
     for (let p = 1; p <= 12; p++) {
         const t = times[p];
         if (t && t.start && t.end) {
-            if (currentTime >= t.start && currentTime <= t.end) {
-                const selector = `.period-cell[data-date="${currentDayStr}"][data-period="${p}"]`;
-                const cell = document.querySelector(selector);
-                if (cell) {
+            const startMin = timeToMinutes(t.start);
+            const endMin = timeToMinutes(t.end);
+            
+            // 找到對應的格子
+            const selector = `.period-cell[data-date="${currentDayStr}"][data-period="${p}"]`;
+            const cell = document.querySelector(selector);
+            
+            if (cell) {
+                // A. 判斷是否「正在進行」 (Current)
+                if (currentTotalMinutes >= startMin && currentTotalMinutes <= endMin) {
                     cell.classList.add('now-playing');
+                }
+                // B. 判斷是否「即將開始」 (Preview: 開課前 15 分鐘內)
+                // 條件：(現在時間 >= 開始時間-15) 且 (現在時間 < 開始時間)
+                else if (currentTotalMinutes >= (startMin - 15) && currentTotalMinutes < startMin) {
+                    cell.classList.add('coming-soon');
                 }
             }
         }
