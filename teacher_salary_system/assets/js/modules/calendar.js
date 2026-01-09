@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { db } from './db.js';
 import { formatDate, getWeekNumber } from './utils.js';
+import { getPeriodTimes } from './settings.js'; // 修正：確保引用了此函式
 
 // 判斷學期
 export async function determineSemester(date) {
@@ -58,6 +59,34 @@ export function renderSidebar(centerDate) {
             <div class="week-card ${isActive}" onclick="jumpToSpecificDate('${dateValue}')">
                 <span class="week-card-date">W${getWeekNumber(tempDate)}: ${displayStr}</span>
             </div>`;
+    }
+}
+
+// 檢查並標註當前課程
+export async function checkActivePeriod() {
+    const times = await getPeriodTimes();
+    const now = new Date();
+    const currentDayStr = formatDate(now); // 需確保 formatDate 可用
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}`;
+
+    // 移除舊的標註
+    document.querySelectorAll('.period-cell.now-playing').forEach(el => el.classList.remove('now-playing'));
+
+    // 檢查每一個節次
+    for (let p = 1; p <= 12; p++) {
+        const t = times[p];
+        if (t && t.start && t.end) {
+            if (currentTime >= t.start && currentTime <= t.end) {
+                const selector = `.period-cell[data-date="${currentDayStr}"][data-period="${p}"]`;
+                const cell = document.querySelector(selector);
+                if (cell) {
+                    cell.classList.add('now-playing');
+                }
+            }
+        }
     }
 }
 
@@ -143,11 +172,10 @@ export async function renderCalendar() {
             }
 
             let cellContent = "";
-            let isDraggable = false; // [新增] 是否可拖曳旗標
+            let isDraggable = false;
 
             if (displayType) {
-                isDraggable = true; // [新增] 有內容才可拖曳
-                
+                isDraggable = true;
                 let style = isPreview 
                     ? `background-color: #e9ecef; color: black; border: 2px dashed ${colorCode};` 
                     : `background-color: ${colorCode}; color: white;`;
@@ -163,13 +191,18 @@ export async function renderCalendar() {
             const safe = (s) => s ? s.replace(/'/g, "&apos;") : "";
             const baseTypeSafe = baseInfo ? safe(baseInfo.type) : "";
             
-            // [修改] 加入 draggable 屬性
+            // 加入 data-date 與 data-period 供標註使用
             grid.innerHTML += `
                 <div class="period-cell" 
-                     draggable="${isDraggable}"
+                     draggable="${isDraggable}" 
+                     data-date="${dateStr}"
+                     data-period="${p}"
                      onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
                     ${cellContent}
                 </div>`;
         }
     }
+    
+    // 渲染完畢後，立即檢查一次目前時間
+    checkActivePeriod();
 }

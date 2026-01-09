@@ -2,7 +2,8 @@ import { state } from './modules/state.js';
 import { loadSettings } from './modules/db.js';
 // 引入核心功能
 import { 
-    renderCalendar, jumpToToday as originalJumpToToday, changeWeek, jumpToSpecificDate as originalJumpToSpecificDate 
+    renderCalendar, jumpToToday as originalJumpToToday, changeWeek, jumpToSpecificDate as originalJumpToSpecificDate, 
+    checkActivePeriod
 } from './modules/calendar.js';
 
 import { 
@@ -15,7 +16,7 @@ import {
 } from './modules/semester.js';
 
 import { 
-    initSettingsModal, openSettingsModal, renderSettingsTable, addCourseType, updateType, removeType 
+    initSettingsModal, openSettingsModal, savePeriodTimes, renderSettingsTable, addCourseType, updateType, removeType
 } from './modules/settings.js';
 
 import { 
@@ -35,6 +36,7 @@ import { initBatchModal, openBatchModal, batchAddRecords } from './modules/batch
 // 引入UI響應功能以及拖曳排序功能
 import { toggleSidebar, closeSidebar, isMobileView } from './modules/ui.js';
 import { initDragAndDrop } from './modules/drag_drop.js';
+
 
 // --- 初始化 ---
 window.onload = async function() {
@@ -56,7 +58,14 @@ window.onload = async function() {
     // 4. 渲染畫面
     await jumpToToday();
 
+    // 5. 初始化拖曳功能
     initDragAndDrop();
+
+    // 6. 啟動時間檢查定時器 (每 60 秒檢查一次)
+    checkActivePeriod(); // 載入時先檢查一次
+    setInterval(() => {
+        checkActivePeriod();
+    }, 60000);
 };
 
 // --- 邏輯包裝與掛載 (Wrapper Functions) ---
@@ -121,3 +130,7 @@ window.syncData = syncData;
 // 8. 批次模式
 window.openBatchModal = openBatchModal;
 window.batchAddRecords = batchAddRecords;
+
+// 9. 當前課次醒目標註
+window.savePeriodTimes = savePeriodTimes;
+window.checkActivePeriod = checkActivePeriod;

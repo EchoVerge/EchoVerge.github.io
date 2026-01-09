@@ -161,22 +161,49 @@
     <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">課程類別設定</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h5 class="modal-title">系統設定</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body">
-                    <table class="table table-striped">
-                        <thead><tr><th>名稱</th><th>單價</th><th>顏色</th><th>操作</th></tr></thead>
-                        <tbody id="courseTypesBody"></tbody>
-                        <tfoot>
-                            <tr>
-                                <td><input type="text" class="form-control form-control-sm" id="newTypeName" placeholder="名稱"></td>
-                                <td><input type="number" class="form-control form-control-sm" id="newTypeRate" placeholder="420"></td>
-                                <td><input type="color" class="form-control form-control-sm form-control-color" id="newTypeColor" value="#0d6efd"></td>
-                                <td><button class="btn btn-sm btn-success" onclick="addCourseType()"><i class="bi bi-plus"></i></button></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                    <div class="alert alert-info small mt-2">
-                        <i class="bi bi-info-circle"></i> 這裡設定的單價將用於薪資試算。
+                    <ul class="nav nav-tabs mb-3" id="settingTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="type-tab" data-bs-toggle="tab" data-bs-target="#type-content" type="button">課程類別與薪資</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="time-tab" data-bs-toggle="tab" data-bs-target="#time-content" type="button">節次時間設定</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="settingTabsContent">
+                        <div class="tab-pane fade show active" id="type-content" role="tabpanel">
+                            <table class="table table-striped">
+                                <thead><tr><th>名稱</th><th>單價</th><th>顏色</th><th>操作</th></tr></thead>
+                                <tbody id="courseTypesBody"></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td><input type="text" class="form-control form-control-sm" id="newTypeName" placeholder="名稱"></td>
+                                        <td><input type="number" class="form-control form-control-sm" id="newTypeRate" placeholder="420"></td>
+                                        <td><input type="color" class="form-control form-control-sm form-control-color" id="newTypeColor" value="#0d6efd"></td>
+                                        <td><button class="btn btn-sm btn-success" onclick="addCourseType()"><i class="bi bi-plus"></i></button></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <div class="alert alert-info small mt-2">
+                                <i class="bi bi-info-circle"></i> 設定單價用於薪資試算。
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="time-content" role="tabpanel">
+                            <div class="alert alert-light border small text-muted mb-3">
+                                設定起訖時間後，系統會自動在行事曆上標註「目前正在進行」的課程。
+                            </div>
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm align-middle">
+                                    <thead><tr><th style="width:50px">節</th><th>開始</th><th>結束</th></tr></thead>
+                                    <tbody id="periodTimesBody">
+                                        </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-primary w-100 mt-2" onclick="savePeriodTimes()">儲存時間設定</button>
+                        </div>
                     </div>
                 </div>
             </div>

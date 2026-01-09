@@ -77,6 +77,36 @@ body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 0; hei
     box-shadow: inset 0 0 0 2px #0d6efd;   /* 藍色內框 */
 }
 
+/* 當前課程醒目標註 */
+.period-cell.now-playing {
+    position: relative;
+    box-shadow: inset 0 0 0 3px #ffc107; /* 金色內框 */
+    border-color: #ffc107 !important;
+    z-index: 10;
+}
+
+/* 加上一個 "ON AIR" 的小標籤效果 */
+.period-cell.now-playing::after {
+    content: "進行中";
+    position: absolute;
+    top: -10px;
+    right: -5px;
+    background-color: #dc3545;
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 /* 禁止在手機上觸發拖曳樣式 (手機主要靠點擊編輯) */
 @media (max-width: 768px) {
     .period-cell[draggable="true"] {
