@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/outputController.js
- * V2.1: 輸出時改為「顯示預覽視窗」，並將確認列印的控制權交給 Modal
+ * V2.2: 生成補救卷時，使用 Info Bar 的標題作為預設值
  */
 
 import { state } from './state.js';
@@ -11,14 +11,16 @@ export function initOutputController() {
     const el = {
         btnGenerate: document.getElementById('btn-generate'),
         outputArea: document.getElementById('output-area'),
-        modalPreview: document.getElementById('modal-print-preview'), // [新增]
-        chkTeacherKey: document.getElementById('chk-teacher-key')
+        modalPreview: document.getElementById('modal-print-preview'),
+        infoTitle: document.getElementById('current-exam-title') // [新] 參照資訊列
     };
 
-    // 1. 生成個別化訂正試卷
     el.btnGenerate.addEventListener('click', async () => {
-        const defaultTitle = "訂正學習單";
-        const title = prompt("請輸入訂正卷標題：", defaultTitle);
+        // [修改] 讀取資訊列標題，並加上「(訂正)」字尾
+        const baseTitle = el.infoTitle ? el.infoTitle.value.trim() : "測驗卷";
+        const defaultTitle = `${baseTitle} - 訂正學習單`;
+        
+        const title = prompt("請確認訂正卷標題：", defaultTitle);
         if (title === null) return;
 
         const config = {
@@ -28,31 +30,20 @@ export function initOutputController() {
         };
         
         el.outputArea.innerHTML = '';
-        
         const dataToPrint = prepareData();
         
-        if(!dataToPrint.length) return alert("無資料可生成 (請確認Step 2是否有輸入錯題資料)");
+        if(!dataToPrint.length) return alert("無資料可生成 (請確認是否有輸入錯題資料)");
 
-        // 1. 填入內容
         dataToPrint.forEach(d => {
             el.outputArea.innerHTML += createStudentSection(d.student, d.qList, config);
         });
 
-        if(el.chkTeacherKey && el.chkTeacherKey.checked) {
-            const allQMap = new Map();
-            dataToPrint.forEach(d => {
-                d.qList.forEach(q => allQMap.set(q.id, q));
-            });
-            const allQs = Array.from(allQMap.values());
-            if(allQs.length > 0) {
-                el.outputArea.innerHTML += createTeacherKeySection(allQs);
-            }
-        }
+        // 檢查是否需要同步顯示教師卷 (需從 DOM 獲取，或根據需求移除，這裡保留相容性)
+        // 由於新版分頁設計沒有 chk-teacher-key，通常訂正卷不需要同步印所有題目的詳解
+        // 若需要，可在此擴充
 
-        // 2. 顯示預覽視窗
         el.modalPreview.style.display = 'flex';
         
-        // 3. 處理樣式與公式
         if (window.MathJax && window.MathJax.typesetPromise) {
             try { await window.MathJax.typesetPromise(); } catch(e) { console.error(e); }
         }
@@ -60,25 +51,19 @@ export function initOutputController() {
     });
 }
 
-// 資料準備邏輯
+// ... (以下 Helper Function 保持不變) ...
 function prepareData() {
     const qMap = {};
-    if (state.questions) {
-        state.questions.forEach(q => qMap[String(q.id).trim()] = q);
-    }
+    if (state.questions) state.questions.forEach(q => qMap[String(q.id).trim()] = q);
     
     let result = [];
     if(!state.students || !state.students.length) return [];
 
     state.students.forEach(s => {
         let errIds = [];
-        if (Array.isArray(s.errors)) {
-            errIds = s.errors;
-        } else if (typeof s.errors === 'string') {
-            errIds = s.errors.split(/[,;]/).map(x => x.trim());
-        } else if (s['錯題列表']) { 
-            errIds = String(s['錯題列表']).split(/[,;]/).map(x => x.trim());
-        }
+        if (Array.isArray(s.errors)) errIds = s.errors;
+        else if (typeof s.errors === 'string') errIds = s.errors.split(/[,;]/).map(x => x.trim());
+        else if (s['錯題列表']) errIds = String(s['錯題列表']).split(/[,;]/).map(x => x.trim());
 
         const qList = [];
         errIds.forEach(eid => {
@@ -86,11 +71,8 @@ function prepareData() {
             if(q) qList.push(q);
         });
 
-        if(qList.length > 0) {
-            result.push({ student: s, qList: qList });
-        }
+        if(qList.length > 0) result.push({ student: s, qList: qList });
     });
-    
     return result;
 }
 
