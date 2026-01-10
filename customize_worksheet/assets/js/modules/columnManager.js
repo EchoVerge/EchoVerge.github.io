@@ -1,9 +1,6 @@
-/**
- * assets/js/modules/columnManager.js
- * 欄位管理模組：負責產生設定介面與讀取欄位設定
- */
+// assets/js/modules/columnManager.js
 
-// 預設欄位設定
+const STORAGE_KEY = 'worksheet_generator_config';
 const DEFAULT_COLUMNS = [
     { type: 'id', header: '題號', width: 10 },
     { type: 'text', header: '題目', width: 40 },
@@ -11,7 +8,6 @@ const DEFAULT_COLUMNS = [
     { type: 'blank', header: '訂正/筆記', width: 20 }
 ];
 
-// 定義可選的資料來源
 const DATA_TYPES = {
     'id': '題號',
     'text': '題目內容',
@@ -19,102 +15,134 @@ const DATA_TYPES = {
     'blank': '空白欄 (作答用)'
 };
 
-let currentColumns = [...DEFAULT_COLUMNS];
+let currentColumns = [];
+let modalEl = null;
 
-/**
- * 初始化欄位設定區域
- * @param {HTMLElement} container - 容器 DOM
- */
-export function initColumnManager(container) {
-    renderUI(container);
-}
-
-/**
- * 取得當前的使用者設定
- * @returns {Array} 欄位設定陣列
- */
-export function getColumnConfig() {
-    // 從 DOM 讀取最新數值 (防止使用者改了數值但沒按任何按鈕)
-    const rows = document.querySelectorAll('.col-setting-row');
-    const config = [];
+// 初始化
+export function initColumnManager() {
+    modalEl = document.getElementById('settings-modal');
     
-    rows.forEach(row => {
-        config.push({
-            header: row.querySelector('.col-header').value,
-            type: row.querySelector('.col-type').value,
-            width: Number(row.querySelector('.col-width').value)
-        });
+    // 1. 嘗試讀取舊設定
+    loadFromStorage();
+
+    // 2. 綁定按鈕
+    document.getElementById('btn-open-settings').addEventListener('click', openModal);
+    document.querySelector('.close-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-save-settings').addEventListener('click', () => {
+        saveToStorage(); // 儲存
+        closeModal();
+    });
+    window.addEventListener('click', (e) => { if(e.target === modalEl) closeModal(); });
+
+    document.getElementById('btn-add-col-modal').addEventListener('click', () => {
+        currentColumns.push({ type: 'blank', header: '新欄位', width: 20 });
+        renderSettingsList();
+        updatePreview();
     });
 
-    return config;
+    document.getElementById('btn-reset-col-modal').addEventListener('click', () => {
+        if(confirm("確定要重置回預設值嗎？")) {
+            currentColumns = JSON.parse(JSON.stringify(DEFAULT_COLUMNS));
+            renderSettingsList();
+            updatePreview();
+        }
+    });
 }
 
-/**
- * 內部渲染函式
- */
-function renderUI(container) {
-    container.innerHTML = `
-        <div style="margin-bottom: 10px; font-weight:bold;">欄位設定 (總寬度建議 100%)</div>
-        <div id="column-list"></div>
-        <div style="margin-top: 10px;">
-            <button id="btn-add-col" class="btn-small" style="background:#4CAF50; color:white;">+ 新增欄位</button>
-            <button id="btn-reset-col" class="btn-small" style="background:#f44336; color:white;">重置預設</button>
-        </div>
-    `;
+function loadFromStorage() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            currentColumns = JSON.parse(saved);
+        } catch(e) {
+            console.error("讀取設定失敗，使用預設值");
+            currentColumns = JSON.parse(JSON.stringify(DEFAULT_COLUMNS));
+        }
+    } else {
+        currentColumns = JSON.parse(JSON.stringify(DEFAULT_COLUMNS));
+    }
+}
 
-    const list = container.querySelector('#column-list');
-    const btnAdd = container.querySelector('#btn-add-col');
-    const btnReset = container.querySelector('#btn-reset-col');
+function saveToStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(currentColumns));
+    // 可以在這裡加一個小提示
+    // alert("設定已儲存！");
+}
 
-    // 渲染列表
-    function renderList() {
-        list.innerHTML = '';
-        currentColumns.forEach((col, index) => {
-            const row = document.createElement('div');
-            row.className = 'col-setting-row';
-            row.style.display = 'flex';
-            row.style.gap = '5px';
-            row.style.marginBottom = '5px';
-            row.style.alignItems = 'center';
+export function getColumnConfig() {
+    return currentColumns;
+}
 
-            // 產生下拉選單選項
-            let options = '';
-            for (const [key, label] of Object.entries(DATA_TYPES)) {
-                options += `<option value="${key}" ${col.type === key ? 'selected' : ''}>${label}</option>`;
-            }
+function openModal() {
+    renderSettingsList();
+    updatePreview();
+    modalEl.style.display = 'flex';
+}
 
-            row.innerHTML = `
-                <input type="text" class="col-header" value="${col.header}" placeholder="標題" style="width: 80px;">
-                <select class="col-type">${options}</select>
-                <input type="number" class="col-width" value="${col.width}" placeholder="%" style="width: 50px;">
-                <span>%</span>
-                <button class="btn-del-col" data-index="${index}" style="background:#ddd; border:none; cursor:pointer; padding: 2px 8px;">×</button>
-            `;
-            list.appendChild(row);
-        });
+function closeModal() {
+    modalEl.style.display = 'none';
+}
 
-        // 綁定刪除按鈕
-        list.querySelectorAll('.btn-del-col').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const idx = parseInt(e.target.dataset.index);
-                currentColumns.splice(idx, 1);
-                renderList();
+function renderSettingsList() {
+    const list = document.getElementById('modal-column-list');
+    list.innerHTML = '';
+
+    currentColumns.forEach((col, index) => {
+        const row = document.createElement('div');
+        row.className = 'col-setting-row';
+
+        let options = '';
+        for (const [key, label] of Object.entries(DATA_TYPES)) {
+            options += `<option value="${key}" ${col.type === key ? 'selected' : ''}>${label}</option>`;
+        }
+
+        row.innerHTML = `
+            <span>${index + 1}.</span>
+            <input type="text" class="input-header" value="${col.header}" placeholder="標題" style="width:80px">
+            <select class="input-type">${options}</select>
+            <input type="number" class="input-width" value="${col.width}" placeholder="%"> %
+            <button class="btn-del btn-red" data-index="${index}" style="padding:2px 6px;">×</button>
+        `;
+
+        list.appendChild(row);
+
+        const inputs = row.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('input', (e) => {
+                if (e.target.classList.contains('input-header')) col.header = e.target.value;
+                if (e.target.classList.contains('input-type')) col.type = e.target.value;
+                if (e.target.classList.contains('input-width')) col.width = Number(e.target.value);
+                updatePreview();
             });
         });
-    }
 
-    // 綁定新增按鈕
-    btnAdd.addEventListener('click', () => {
-        currentColumns.push({ type: 'blank', header: '新欄位', width: 20 });
-        renderList();
+        row.querySelector('.btn-del').addEventListener('click', (e) => {
+            currentColumns.splice(index, 1);
+            renderSettingsList();
+            updatePreview();
+        });
     });
+}
 
-    // 綁定重置按鈕
-    btnReset.addEventListener('click', () => {
-        // 深拷貝回預設值
-        currentColumns = JSON.parse(JSON.stringify(DEFAULT_COLUMNS));
-        renderList();
+function updatePreview() {
+    const previewArea = document.getElementById('modal-preview-area');
+    const dummyData = { id: "1", text: "範例題目...", expl: "範例解析...", blank: "" };
+
+    let theadHtml = '<tr>';
+    currentColumns.forEach(col => theadHtml += `<th style="width:${col.width}%;">${col.header}</th>`);
+    theadHtml += '</tr>';
+
+    let tbodyHtml = '';
+    tbodyHtml += '<tr>';
+    currentColumns.forEach(col => {
+        let content = dummyData[col.type] || "";
+        let style = col.type === 'blank' ? 'height:40px;' : '';
+        tbodyHtml += `<td style="width:${col.width}%; ${style}">${content}</td>`;
     });
+    tbodyHtml += '</tr>';
 
-    renderList();
+    previewArea.innerHTML = `
+        <div style="text-align:center; padding:10px;"><h3>預覽</h3></div>
+        <table class="preview-table"><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table>
+    `;
 }

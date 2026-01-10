@@ -1,54 +1,36 @@
-/**
- * assets/js/modules/viewRenderer.js
- * 畫面渲染模組 (支援動態欄位)
- */
+// assets/js/modules/viewRenderer.js
 
 export function createStudentSection(studentData, questions, config) {
-    const seat = studentData['座號'] || studentData['seat'] || studentData['name'] || studentData['姓名'] || '未命名';
+    const seat = studentData['座號'] || studentData['seat'] || studentData['name'] || '未命名';
     const dateStr = new Date().toLocaleDateString();
     
-    // 1. 產生 Table Header (根據使用者設定)
+    // 決定分頁樣式
+    const sectionClass = config.pageBreak ? 'student-section page-break-active' : 'student-section page-break-none';
+
     let theadHtml = '<tr>';
     config.columns.forEach(col => {
-        // 將寬度設定直接寫入 style
         theadHtml += `<th style="width: ${col.width}%;">${col.header}</th>`;
     });
     theadHtml += '</tr>';
 
-    // 2. 產生 Table Body
     let tbodyHtml = '';
     questions.forEach(q => {
         tbodyHtml += '<tr>';
-        
-        // 根據欄位設定，決定每一格要放什麼資料
         config.columns.forEach(col => {
             let content = '';
-            
             switch (col.type) {
-                case 'id':
-                    content = q.id;
-                    break;
-                case 'text':
-                    content = q.text; // 支援 HTML 圖片
-                    break;
-                case 'expl':
-                    content = q.expl; // 支援 HTML 圖片
-                    break;
-                case 'blank':
-                default:
-                    content = ''; // 空白作答區
-                    break;
+                case 'id': content = q.id; break;
+                case 'text': content = q.text; break;
+                case 'expl': content = q.expl; break;
+                default: content = ''; break;
             }
-            
-            // 為了美觀，如果是空白欄，我們可以不填內容，或是填入 &nbsp;
             tbodyHtml += `<td style="width: ${col.width}%;">${content}</td>`;
         });
-        
         tbodyHtml += '</tr>';
     });
 
     return `
-        <div class="student-section">
+        <div class="${sectionClass}">
             <div class="worksheet-header">
                 <h2>${config.title}</h2>
                 <div class="worksheet-info">
@@ -59,6 +41,45 @@ export function createStudentSection(studentData, questions, config) {
             <table>
                 <thead>${theadHtml}</thead>
                 <tbody>${tbodyHtml}</tbody>
+            </table>
+        </div>
+    `;
+}
+
+// 新增：生成教師解答本
+export function createTeacherKeySection(questions) {
+    // 將題目按題號排序 (若是數字則按數值排)
+    const sorted = [...questions].sort((a,b) => {
+        return parseInt(a.id) - parseInt(b.id) || a.id.localeCompare(b.id);
+    });
+
+    let rows = '';
+    sorted.forEach(q => {
+        rows += `
+            <tr>
+                <td style="width:10%; text-align:center;">${q.id}</td>
+                <td style="width:50%;">${q.text}</td>
+                <td style="width:40%;">${q.expl}</td>
+            </tr>
+        `;
+    });
+
+    return `
+        <div class="student-section page-break-active">
+            <div class="worksheet-header">
+                <h2 style="color: darkred;">教師解答總表</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>題號</th>
+                        <th>題目</th>
+                        <th>解析/答案</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
             </table>
         </div>
     `;

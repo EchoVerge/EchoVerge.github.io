@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>客製化作業生成器 V4 (Excel 支援版)</title>
+    <title>客製化作業生成器 V6 (終極版)</title>
     
     <link rel="stylesheet" href="assets/css/style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
@@ -17,24 +16,22 @@
 
     <div class="control-panel">
         <div style="text-align: center; margin-bottom: 15px;">
-            <h1 style="margin: 5px 0;">🛠️ 作業生成控制台</h1>
+            <h1 style="margin: 5px 0;">🛠️ 作業生成控制台 V6</h1>
         </div>
         
-        <p>請上傳 CSV 或 Excel (.xlsx) 檔案。系統支援 LaTeX 數學公式與 HTML 圖片。</p>
-
-        <div class="template-section" style="background: #e3f2fd; padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbdefb;">
-            <span style="font-weight: bold; color: #1565c0; margin-right: 10px;">📥 第一次使用？下載範本：</span>
-            <button id="btn-dl-student-template" class="btn-small">下載「學生選題」範本</button>
-            <button id="btn-dl-question-template" class="btn-small">下載「題庫」範本</button>
+        <div class="template-section">
+            <span style="font-weight: bold; color: #1565c0; margin-right: 10px;">📥 範本下載：</span>
+            <button id="btn-dl-student-template" class="btn-small">學生選題範本</button>
+            <button id="btn-dl-question-template" class="btn-small">題庫範本</button>
         </div>
         
         <div class="panel-row">
-            <div class="input-group">
-                <label>1. 學生/選題資料</label>
+            <div class="input-group drop-zone" id="drop-zone-student">
+                <label>1. 學生/選題資料 (拖曳至此)</label>
                 <input type="file" id="file-students" accept=".csv, .xlsx, .xls">
             </div>
-            <div class="input-group">
-                <label>2. 題庫資料</label>
+            <div class="input-group drop-zone" id="drop-zone-question">
+                <label>2. 題庫資料 (拖曳至此)</label>
                 <input type="file" id="file-questions" accept=".csv, .xlsx, .xls">
             </div>
         </div>
@@ -43,23 +40,71 @@
             <div class="input-group options-group">
                 <label>基本設定</label>
                 <input type="text" id="input-title" value="錯題訂正表" placeholder="輸入標題...">
-                
-                <p style="font-size:0.8em; color:#666; margin-top:5px;">
-                    提示：想要製作無解析考卷？請在右側設定移除「解析」欄位即可。
-                </p>
+                <button id="btn-open-settings" class="btn-secondary" style="margin-top: 10px; width: 100%;">
+                    ⚙️ 設定表格欄位 (自動記憶)
+                </button>
             </div>
-            
-            <div class="input-group options-group" id="column-manager-container">
+
+            <div class="input-group options-group">
+                <label>進階功能</label>
+                <div class="checkbox-list">
+                    <div>
+                        <input type="checkbox" id="chk-page-break" checked>
+                        <label for="chk-page-break">每位學生強制換頁</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="chk-randomize">
+                        <label for="chk-randomize">題目隨機排序 (防作弊)</label>
+                    </div>
+                    <div>
+                        <input type="checkbox" id="chk-teacher-key">
+                        <label for="chk-teacher-key">生成教師解答總表</label>
+                    </div>
                 </div>
+            </div>
         </div>
 
-        <button id="btn-generate" disabled>🚀 生成作業</button>
-        <span id="status-msg"></span>
+        <button id="btn-generate" disabled>🚀 生成作業 & 分析數據</button>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="btn-print" class="btn-print" style="display: none;">🖨️ 列印 / 另存 PDF</button>
+            <span id="status-msg" style="align-self: center;"></span>
+        </div>
+
+        <div id="analysis-dashboard" style="display: none;">
+            <h3>📊 錯題數據分析</h3>
+            <div id="analysis-content"></div>
+        </div>
     </div>
 
     <div id="output-area">
         <div class="placeholder-text">
-            (預覽區域：請先上傳檔案並點擊生成)
+            (預覽區域：請上傳檔案並點擊生成)
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>表格樣式設定</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="settings-pane">
+                    <h3>欄位配置</h3>
+                    <div id="modal-column-list"></div>
+                    <div class="modal-actions">
+                        <button id="btn-add-col-modal" class="btn-small btn-green">+ 新增</button>
+                        <button id="btn-reset-col-modal" class="btn-small btn-red">重置</button>
+                    </div>
+                </div>
+                <div class="preview-pane">
+                    <h3>即時預覽</h3>
+                    <div id="modal-preview-area" class="preview-box"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-save-settings" class="btn-primary">儲存設定</button>
+            </div>
         </div>
     </div>
 
