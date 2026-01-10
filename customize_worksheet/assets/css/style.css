@@ -64,6 +64,65 @@ th, td { border: 1px solid #333; padding: 10px; vertical-align: top; word-wrap: 
 th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
 td img { max-width: 100%; height: auto; display: block; margin: 5px 0; }
 
+/* 新增：步驟式佈局 */
+.step-section {
+    background: white; border: 1px solid #e0e0e0; border-radius: 8px;
+    padding: 20px; margin-bottom: 20px; position: relative;
+}
+.step-header { display: flex; align-items: center; margin-bottom: 15px; }
+.step-number {
+    background: #2196F3; color: white; width: 30px; height: 30px;
+    border-radius: 50%; text-align: center; line-height: 30px;
+    font-weight: bold; margin-right: 10px;
+}
+.step-header h3 { margin: 0; color: #333; }
+
+/* 標籤 */
+.tag-new {
+    background: #ff9800; color: white; font-size: 0.7em; padding: 2px 6px;
+    border-radius: 4px; margin-left: 5px; vertical-align: middle;
+}
+.or-divider {
+    display: flex; align-items: center; justify-content: center;
+    color: #999; font-weight: bold; padding: 0 10px;
+}
+
+/* 按鈕與狀態 */
+.btn-magic {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; border: none; width: 100%; padding: 12px;
+    font-weight: bold; margin-top: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.btn-magic:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.status-text { display: block; margin-top: 5px; font-size: 0.85em; color: #f44336; }
+.status-text.ok { color: #4CAF50; }
+
+/* Mode Tabs */
+.mode-tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
+.mode-tab {
+    padding: 10px 20px; background: none; border: none; cursor: pointer;
+    border-bottom: 3px solid transparent; color: #666; font-size: 15px;
+}
+.mode-tab.active {
+    border-bottom-color: #2196F3; color: #2196F3; font-weight: bold;
+}
+
+/* Modal 內預覽區 */
+.parsed-item {
+    background: white; border: 1px solid #eee; padding: 8px;
+    margin-bottom: 5px; border-radius: 4px; font-size: 0.9em;
+}
+.parsed-id { color: #2196F3; font-weight: bold; margin-right: 5px; }
+.parsed-meta { color: #666; font-size: 0.85em; display: block; margin-top: 2px; }
+
+/* Textarea 優化 */
+textarea {
+    border: 1px solid #ccc; border-radius: 4px; resize: none;
+    line-height: 1.5;
+}
+textarea:focus { outline: 2px solid #2196F3; border-color: transparent; }
+
 /* 列印專用 */
 @media print {
     body { background: white; padding: 0; }
