@@ -150,17 +150,16 @@ function prepareData(rangeStr, isRandom) {
 }
 
 /**
- * [新增] 雙面列印補頁功能
- * 檢查每個學生的區塊高度，若是奇數頁，則補上一個強制分頁的空白頁
+ * [雙面列印補頁功能]
+ * 確保每個 student-section (包含學生卷與教師解答卷) 的頁數都是偶數
  */
 function ensureEvenPages() {
-    // 1. 清除舊的補頁元素
+    // 1. 清除舊的補頁元素 (避免重複生成)
     document.querySelectorAll('.page-filler').forEach(e => e.remove());
 
     // 2. 設定一頁的有效高度閥值 (像素)
     // A4 297mm @ 96dpi 約 1123px。
-    // 扣除瀏覽器列印邊距(上下各~15mm)與誤差，保守估計一頁內容約 1000px。
-    // 若超過 1000px 則視為跨到第二頁。
+    // 保守估計一頁內容約 1000px (扣除邊距)。
     const PAGE_HEIGHT_THRESHOLD = 1000; 
 
     const sections = document.querySelectorAll('.student-section');
@@ -174,20 +173,16 @@ function ensureEvenPages() {
             // 插入一個補白元素
             const filler = document.createElement('div');
             filler.className = 'page-filler';
-            // 設定樣式：強制在自己之前分頁(這樣會變成新的一頁)，並且內容空白
-            // 邏輯：Section(Page1) -> append Filler -> Filler(break-before: always => Page2)
-            // 這樣 Section 總共佔據了 Page1 + Page2，下一位學生就會從 Page3 開始
+            
+            // 設定樣式：強制在自己之前分頁 -> 變成新的一頁 (偶數頁)
+            // 且內容空白
             filler.style.pageBreakBefore = 'always';
             filler.style.height = '1px';
-            filler.style.content = '" "';
-            filler.innerHTML = '&nbsp;'; // 確保佔位
+            filler.innerHTML = '&nbsp;'; 
             
             sec.appendChild(filler);
             
-            // 標記一下方便除錯
-            console.log(`[AutoPad] Section height ${height}px (~${estimatedPages} pages). Padding added.`);
-        } else {
-            console.log(`[AutoPad] Section height ${height}px (~${estimatedPages} pages). Even pages, no action.`);
+            console.log(`[AutoPad] 區塊高度 ${height}px (約 ${estimatedPages} 頁)，已補上空白頁。`);
         }
     });
 }

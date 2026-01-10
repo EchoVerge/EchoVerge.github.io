@@ -98,20 +98,21 @@ export async function rewriteExplanation(expl, qText, style, model, apiKey) {
 
 // 5. [新增] 批次生成類題 (一次處理多題以節省 API 呼叫)
 export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
-    // 精簡資料以減少 Token 消耗 (只傳 ID 和 題目)
+    // 精簡資料以減少 Token
     const simpleList = questions.map(q => ({ id: q.id, text: q.text }));
     
     const prompt = `
-    你是一位專業教師。請為以下題目列表，產生「對應的複習類題」。
+    你是一位專業教師。請為以下題目列表，產生「對應的複習類題 (Similar Question)」。
     
-    規則：
-    1. 每一題都要產生一題類題 (Similar Question)。
-    2. 類題要模仿原題的觀念與難度，但數字或情境需改變。
-    3. 回傳一個 JSON 陣列，順序需對應。
-    
+    【嚴格規則】：
+    1. 類題必須是「全新的題目」：請更改原題的「數字」、「人物名稱」或「應用情境」。
+    2. 禁止複製：類題內容絕對不能與原題完全相同。
+    3. 難度與觀念：保持與原題相同的解題邏輯與難度。
+    4. 格式：回傳一個 JSON 陣列，包含類似題的內容與解析。
+
     格式範例 (JSON Array)：
     [
-        {"id":"1", "similarText":"(類題內容...)", "similarExpl":"(類題簡解...)"},
+        {"id":"1", "similarText":"(這是改編後的新題目...)", "similarExpl":"(新題目的解析...)"},
         {"id":"2", "similarText":"...", "similarExpl":"..."}
     ]
 
@@ -119,8 +120,5 @@ export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     ${JSON.stringify(simpleList)}
     `;
 
-    // 呼叫原本的 callGemini 函式
-    // 注意：這裡假設你原本的 callGemini 已經定義在 aiParser.js 內部
-    // 如果 callGemini 沒有 export，請確保這個函式放在同一個檔案內
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }

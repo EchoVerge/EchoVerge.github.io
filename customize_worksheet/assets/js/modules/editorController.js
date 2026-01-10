@@ -160,11 +160,12 @@ export function initEditorController() {
                 }
 
                 // [重要] 生成完畢後，自動存檔
-                saveHistory(state.questions, `包含類題 - ${total} 題`);
+                const timeStr = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
+                saveHistory(state.questions, `${timeStr} 題庫備份【包含複測類題】`);
 
                 // 更新介面
                 renderPreview(state.questions, 'AI+類題');
-                alert("🎉 類題生成完畢！已自動儲存到歷史紀錄。");
+                alert("🎉 類題生成完畢！\n已自動儲存至歷史紀錄，標題包含【包含複測類題】。\n\n現在匯出學生訂正卷時，系統會自動帶入這些類題。");
 
             } catch (e) {
                 console.error(e);
