@@ -261,6 +261,62 @@ textarea#txt-raw-s {
 }
 .input-field:focus { border-color: #2196F3; outline: none; }
 
+
+/* =========================================
+   [重點修正] 表格樣式設定視窗 (#settings-modal)
+   ========================================= */
+#settings-modal .modal-content { max-width: 850px; } /* 加寬 */
+#settings-modal .modal-body { display: flex; gap: 20px; padding: 20px; height: 450px; }
+#input-api-key { width: 95%;}
+
+/* 左側：設定區 */
+#settings-modal .settings-pane { 
+    flex: 4; border-right: 1px solid #eee; padding-right: 20px; 
+    display: flex; flex-direction: column; 
+}
+#modal-column-list { 
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 5px; 
+}
+
+/* 單行設定卡片 */
+.col-setting-row { 
+    display: flex; align-items: center; gap: 8px; padding: 10px; 
+    background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; transition: all 0.2s; 
+}
+.col-setting-row:hover { background: #fff; border-color: #b0bec5; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.col-setting-row span { font-weight: bold; color: #555; min-width: 20px; }
+.col-setting-row input, .col-setting-row select { 
+    padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; 
+}
+.col-setting-row .input-header { flex: 2; }
+.col-setting-row .input-type { flex: 2; }
+.col-setting-row .input-width { width: 50px; text-align: center; }
+.col-setting-row .btn-del {
+    background: #ffcdd2; color: #c62828; border: none; border-radius: 4px; width: 24px; height: 24px; 
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: background 0.2s; 
+}
+.col-setting-row .btn-del:hover { background: #ef9a9a; }
+
+/* 底部按鈕區 */
+.modal-actions { margin-top: 15px; display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid #eee; }
+.btn-small { padding: 5px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: bold; }
+.btn-green { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+.btn-green:hover { background: #c8e6c9; }
+.btn-red { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.btn-red:hover { background: #ffcdd2; }
+
+/* 右側：預覽區 */
+#settings-modal .preview-pane { 
+    flex: 3; background: #fafafa; border-radius: 8px; border: 1px dashed #ddd; 
+    padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+}
+#modal-preview-area { width: 100%; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 10px; border-radius: 4px; }
+.preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.preview-table th { background: #e3f2fd; color: #1565c0; padding: 8px; border: 1px solid #bbdefb; text-align: center; }
+.preview-table td { padding: 10px; border: 1px solid #eee; color: #666; text-align: center; }
+
+
+
 /* =========================================
    Print Preview & Media Query
    (註：詳細的紙張排版由 worksheetStyle.css 控制，這裡只負責隱藏 UI)
