@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/outputController.js
- * V2.2: 生成補救卷時，使用 Info Bar 的標題作為預設值
+ * V2.6 Fix: Calibrated Page Threshold (1000px)
  */
 
 import { state } from './state.js';
@@ -12,11 +12,10 @@ export function initOutputController() {
         btnGenerate: document.getElementById('btn-generate'),
         outputArea: document.getElementById('output-area'),
         modalPreview: document.getElementById('modal-print-preview'),
-        infoTitle: document.getElementById('current-exam-title') // [新] 參照資訊列
+        infoTitle: document.getElementById('current-exam-title')
     };
 
     el.btnGenerate.addEventListener('click', async () => {
-        // [修改] 讀取資訊列標題，並加上「(訂正)」字尾
         const baseTitle = el.infoTitle ? el.infoTitle.value.trim() : "測驗卷";
         const defaultTitle = `${baseTitle} - 訂正學習單`;
         
@@ -38,20 +37,19 @@ export function initOutputController() {
             el.outputArea.innerHTML += createStudentSection(d.student, d.qList, config);
         });
 
-        // 檢查是否需要同步顯示教師卷 (需從 DOM 獲取，或根據需求移除，這裡保留相容性)
-        // 由於新版分頁設計沒有 chk-teacher-key，通常訂正卷不需要同步印所有題目的詳解
-        // 若需要，可在此擴充
-
+        // 顯示預覽
         el.modalPreview.style.display = 'flex';
         
-        if (window.MathJax && window.MathJax.typesetPromise) {
-            try { await window.MathJax.typesetPromise(); } catch(e) { console.error(e); }
-        }
-        ensureEvenPages(); 
+        // 延遲執行計算
+        setTimeout(async () => {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                try { await window.MathJax.typesetPromise(); } catch(e) { console.error(e); }
+            }
+            ensureEvenPages(); 
+        }, 300); // 稍微加長等待時間，確保渲染穩定
     });
 }
 
-// ... (以下 Helper Function 保持不變) ...
 function prepareData() {
     const qMap = {};
     if (state.questions) state.questions.forEach(q => qMap[String(q.id).trim()] = q);
@@ -77,19 +75,34 @@ function prepareData() {
 }
 
 function ensureEvenPages() {
-    document.querySelectorAll('.page-filler').forEach(e => e.remove());
+    // 1. A4 高度閥值設定
+    // A4 (297mm) @ 96dpi = 1123px
+    // 扣除上下 padding (15mm * 2 = 30mm ≈ 113px)
+    // 理論可用高度 = 1010px
+    // 設定 1000px 為安全閥值。超過 1000px 就視為會佔用第二頁。
     const PAGE_HEIGHT_THRESHOLD = 1000; 
+
     const sections = document.querySelectorAll('.student-section');
+    
     sections.forEach(sec => {
+        // 清除舊的 filler
+        sec.querySelectorAll('.page-filler').forEach(e => e.remove());
+
         const height = sec.scrollHeight;
-        const estimatedPages = Math.ceil(height / PAGE_HEIGHT_THRESHOLD);
+        
+        // 計算頁數 (無條件進位)
+        let estimatedPages = Math.ceil(height / PAGE_HEIGHT_THRESHOLD);
+        if (estimatedPages === 0) estimatedPages = 1;
+
+        console.log(`[AutoPad] 高度: ${height}, 預估頁數: ${estimatedPages}`);
+
+        // 偶數頁檢查：如果是奇數 (1, 3, 5...)，補一頁空白
         if (estimatedPages % 2 !== 0) {
             const filler = document.createElement('div');
             filler.className = 'page-filler';
-            filler.style.pageBreakBefore = 'always';
-            filler.style.height = '1px';
-            filler.innerHTML = '&nbsp;'; 
+            filler.innerHTML = '&nbsp;'; // 必須有內容
             sec.appendChild(filler);
+            console.log(` -> 補上空白頁 (Total: ${estimatedPages + 1})`);
         }
     });
 }

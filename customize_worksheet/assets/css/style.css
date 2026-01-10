@@ -1,240 +1,357 @@
-/* assets/css/style.css */
-body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; padding: 20px; background: #f0f2f5; color: #333; }
-.control-panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 0 auto 30px; max-width: 1000px; position: relative; }
+/* =========================================
+   🎓 考卷數位助教 - Main Stylesheet (Cleaned)
+   架構：V18 Tab Layout + Info Bar
+   ========================================= */
 
-/* Stepper */
-.stepper-container { display: flex; justify-content: center; align-items: center; margin-bottom: 30px; }
-.step-indicator { display: flex; flex-direction: column; align-items: center; opacity: 0.5; transition: 0.3s; position: relative; z-index: 1; }
-.step-indicator.active, .step-indicator.completed { opacity: 1; }
-.circle { width: 32px; height: 32px; background: #e0e0e0; color: #666; border-radius: 50%; text-align: center; line-height: 32px; font-weight: bold; margin-bottom: 5px; }
-.active .circle { background: #2196F3; color: white; transform: scale(1.1); }
-.completed .circle { background: #4CAF50; color: white; }
-.label { font-size: 13px; color: #999; }
-.active .label { color: #2196F3; font-weight: bold; }
-.line { flex: 1; height: 2px; background: #e0e0e0; margin: -20px 10px 0; max-width: 100px; }
+/* 1. 全域設定 (Global & Layout) */
+body {
+    font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f0f2f5;
+    color: #333;
+    height: 100vh; /* 佔滿視窗高度 */
+    display: flex;
+    flex-direction: column; /* 垂直排列：Header -> Nav -> Info -> Content */
+    overflow: hidden; /* 防止整個頁面出現雙重捲軸 */
+}
 
-/* Smart Editor */
-.smart-editor-container { border: 1px solid #ddd; border-radius: 8px; background: white; display: flex; flex-direction: column; height: 550px; }
-.smart-editor-container.compact { height: 250px; }
-.editor-toolbar { background: #f8f9fa; border-bottom: 1px solid #ddd; padding: 8px 15px; display: flex; gap: 8px; align-items: center; }
-.btn-tool { background: white; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+/* 通用按鈕樣式 */
+button { font-family: inherit; }
+.btn-tool { background: white; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.btn-tool:hover { background: #f5f5f5; border-color: #bbb; }
+.btn-tool.text-danger { color: #d32f2f; border-color: #ffcdd2; }
+.btn-tool.text-danger:hover { background: #ffebee; }
+
+.btn-primary { background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+.btn-primary:hover { background: #1976D2; }
+.btn-secondary { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 8px 15px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+.btn-secondary:hover { background: #bbdefb; }
+
 .btn-ai-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; font-weight: bold; }
-.editor-main { display: flex; flex: 1; overflow: hidden; }
-.editor-pane { flex: 1; display: flex; flex-direction: column; }
-.input-pane { border-right: 1px solid #ddd; }
-.pane-label { background: #f1f3f4; padding: 6px 15px; font-size: 12px; font-weight: bold; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-textarea { flex: 1; border: none; padding: 15px; resize: none; outline: none; font-size: 14px; line-height: 1.6; }
-.preview-content { flex: 1; overflow-y: auto; padding: 15px; }
+.btn-ai-gradient:hover { opacity: 0.9; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); }
 
-/* Parsed Items */
-.parsed-item { border: 1px solid #e0e0e0; border-left: 4px solid #ccc; padding: 10px; margin-bottom: 8px; border-radius: 4px; background: white; }
-.parsed-item:hover { border-color: #2196F3; transform: translateX(2px); }
-.parsed-item.has-expl { border-left-color: #4CAF50; }
-.parsed-header { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-.parsed-id { color: #1976D2; font-weight: bold; }
-.item-toolbar { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee; display: flex; gap: 5px; opacity: 0.6; }
-.parsed-item:hover .item-toolbar { opacity: 1; }
-.btn-xs { padding: 2px 8px; font-size: 11px; border-radius: 10px; border: 1px solid #ccc; cursor: pointer; background: white; }
-
-/* Mode Tabs */
-.mode-tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
-.mode-tab { flex: 1; padding: 12px; border: none; background: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 15px; color: #666; }
-.mode-tab.active { border-bottom-color: #2196F3; color: #2196F3; font-weight: bold; }
-
-/* Buttons & Navigation */
-.nav-buttons { display: flex; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
-.nav-buttons.right { justify-content: flex-end; }
-.nav-buttons.split { justify-content: space-between; }
-.btn-primary { background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
-.btn-secondary { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
-.generation-area { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
-.btn-lg-primary { background: #2196F3; color: white; padding: 12px 30px; font-size: 16px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; }
-.btn-lg-secondary { background: #607d8b; color: white; padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; cursor: pointer; }
-
-/* Modal */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
-.modal-content { background: white; width: 90%; max-width: 600px; border-radius: 8px; max-height: 90vh; display: flex; flex-direction: column; }
-.modal-header { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; background: #f9f9f9; }
-.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-.modal-footer { padding: 15px; text-align: right; background: #f9f9f9; border-top: 1px solid #eee; }
-.close-modal { font-size: 24px; cursor: pointer; }
-
-/* Output & Print */
-#output-area { background: white; max-width: 210mm; margin: 0 auto; min-height: 297mm; padding: 20mm; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-@media print {
-    .control-panel, .modal { display: none !important; }
-    #output-area { width: 100%; padding: 0; box-shadow: none; }
-    .answer-sheet-page { page-break-after: always; width: 100%; height: 100vh; }
-    .cut-line { text-align: center; border-top: 1px dashed #ccc; margin: 20px 0; font-size: 10px; color: #999; }
+/* 2. 頂部 Header */
+.app-header {
+    height: 50px;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    z-index: 50;
+    flex-shrink: 0; /* 防止被壓縮 */
 }
-
-/* Answer Sheet Specific */
-.answer-sheet-card { border: 2px solid #333; border-radius: 8px; padding: 15px; background: white; margin-bottom: 20px; }
-.as-header { border-bottom: 2px solid #333; display: flex; justify-content: space-between; padding-bottom: 10px; margin-bottom: 15px; }
-.as-body { display: flex; gap: 20px; }
-.seat-section { width: 120px; border-right: 1px solid #ccc; padding-right: 15px; }
-.seat-grid { display: flex; justify-content: space-around; }
-.bubble-row { display: flex; align-items: center; margin-bottom: 4px; }
-.bubble-circle { width: 16px; height: 12px; border: 1px solid #333; border-radius: 50%; }
-.question-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px; }
-.q-row { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; }
-.q-options { display: flex; gap: 5px; }
-.bubble-opt { width: 18px; height: 18px; border: 1px solid #999; border-radius: 50%; text-align: center; font-size: 10px; line-height: 18px; color: #ccc; }
-
-/* 編輯模式表單樣式 */
-.form-group {margin-bottom: 15px;}
-.form-group label {display: block;font-weight: bold;margin-bottom: 5px;color: #555;}
-.input-field {width: 100%;padding: 8px;border: 1px solid #ddd;border-radius: 4px;font-size: 14px;font-family: inherit;box-sizing: border-box; /* 確保 padding 不會撐破寬度 */}
-.input-field:focus {border-color: #2196F3;outline: none;}
-
-/* 預覽區的編輯按鈕 */
-.parsed-actions {position: absolute; /* 絕對定位在卡片右上角 */top: 10px;right: 10px;display: flex;gap: 5px;}
-.btn-icon-small {background: #fff;border: 1px solid #ddd;cursor: pointer;padding: 4px 8px;border-radius: 4px;font-size: 14px;transition: all 0.2s;}
-.btn-icon-small:hover {background: #f0f0f0;color: #2196F3;border-color: #2196F3;}
-.parsed-item {position: relative; /* 讓 actions 可以定位 */}
-
-/* =========================================
-   V15 新架構樣式 (Dashboard Layout)
-   ========================================= */
-
-/* 1. 全域設定 */
-body {display: flex;flex-direction: column;height: 100vh;overflow: hidden; /* 防止雙重捲軸 */}
-
-/* 2. 頂部導航列 */
-.app-header {height: 60px;background: #fff;border-bottom: 1px solid #ddd;display: flex;align-items: center;justify-content: space-between;padding: 0 20px;box-shadow: 0 2px 5px rgba(0,0,0,0.05);z-index: 50;}
-.app-header h1 { margin: 0; font-size: 1.2rem; }
+.app-header h1 { margin: 0; font-size: 1.1rem; color: #333; }
 .header-actions { display: flex; align-items: center; gap: 10px; }
-.btn-primary-action {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);color: white; border: none; padding: 8px 20px; border-radius: 20px;font-weight: bold; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.15);}
-.btn-primary-action:hover { transform: translateY(-1px); box-shadow: 0 5px 10px rgba(0,0,0,0.2); }
-.divider-v { width: 1px; height: 24px; background: #eee; margin: 0 5px; }
-.btn-icon { background: none; border: 1px solid #ddd; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 1.2rem; }
-.btn-icon:hover { background: #f5f5f5; }
+.btn-icon { background: none; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+.btn-icon:hover { background: #f5f5f5; color: #2196F3; border-color: #2196F3; }
 
-/* 3. 主工作區 */
-.main-workspace {flex: 1; /* 佔滿剩餘空間 */overflow-y: auto; /* 內容過長可捲動 */padding: 20px;padding-bottom: 60px; /* 預留底部面板把手的高度 */background: #f8f9fa;}
-
-/* 4. 底部成績面板 (Drawer) */
-.bottom-panel {position: fixed;bottom: 0;left: 0;width: 100%;background: #fff;box-shadow: 0 -2px 10px rgba(0,0,0,0.1);transition: transform 0.3s ease-in-out;z-index: 100;border-top-left-radius: 15px;border-top-right-radius: 15px;}
-
-/* 收合狀態：只露出把手 (40px高) */
-.bottom-panel.collapsed {transform: translateY(calc(100% - 40px)); }
-
-/* 展開狀態 */
-.bottom-panel.expanded {transform: translateY(0);}
-
-/* 把手區域 */
-.panel-handle {height: 40px;background: #e3f2fd; /* 淺藍色底 */color: #1565c0;display: flex;align-items: center;justify-content: center;cursor: pointer;font-weight: bold;border-top-left-radius: 15px;border-top-right-radius: 15px;user-select: none;}
-.panel-handle:hover { background: #bbdefb; }
-
-.panel-content {height: 300px; /* 展開後的高度 */padding: 15px 20px;display: flex;flex-direction: column;gap: 10px;}
-
-.badge {background: #1565c0; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin-left: 10px;}
-
-.grading-toolbar { display: flex; gap: 10px; margin-bottom: 5px; }
-.grading-input-area { flex: 1; }
-.grading-input-area textarea {width: 100%; height: 100%; resize: none; border: 1px solid #ddd;border-radius: 8px; padding: 10px; font-family: monospace;}
-
-/* 隱藏舊的元素 (以防萬一) */
-.control-panel, .stepper-container { display: none !important; }
-
-/* =========================================
-   V16: 預覽與列印專用樣式
-   ========================================= */
-
-/* 1. 預覽區 (模擬 A4 紙張) */
-.paper-preview {background: white;width: 210mm; /* A4 標準寬度 */min-height: 297mm; /* A4 最小高度 */margin: 0 auto;padding: 20mm; /* 模擬列印邊距 */box-shadow: 0 0 15px rgba(0,0,0,0.5); /* 立體陰影 */box-sizing: border-box;overflow: hidden; /* 內容若溢出則隱藏 (避免破版) */}
-
-/* 2. 列印時的顯示控制 (Magic Print Styles) */
-@media print {/* 隱藏網頁上所有元素 */body * {visibility: hidden;}
-
-    /* 只顯示預覽 Modal 和裡面的 output-area */#modal-print-preview,#output-area,#output-area * {visibility: visible;}
-    
-    /* 強制 Modal 佔滿全螢幕並移除背景/邊框 */
-    #modal-print-preview {position: absolute;left: 0;top: 0;width: 100%;height: auto;background: none !important;display: block !important; /* 確保它是顯示的 */overflow: visible !important;z-index: 9999;}
-
-    /* 移除 Modal 的外框裝飾 */
-    .modal-content {
-        box-shadow: none !important;border: none !important;width: 100% !important;max-width: none !important;height: auto !important;margin: 0 !important;padding: 0 !important;background: none !important;}
-
-    /* 隱藏 Modal 的 Header 和 Footer */
-    .modal-header, .modal-footer {display: none !important;}
-
-    /* 確保 Body 內容可見 */
-    .modal-body {
-        display: block !important;padding: 0 !important;background: none !important;overflow: visible !important;}
-    
-    /* 設定紙張位置 */
-    #output-area {position: absolute;left: 0;top: 0;width: 100%;margin: 0;box-shadow: none !important; /* 列印時不要陰影 */padding: 0; /* 列印時通常由 @page 控制邊距，或保持預設 */}
+/* 3. 分頁導航列 (Tab Navigation) */
+.tab-nav {
+    display: flex;
+    background: #f8f9fa;
+    padding: 10px 20px 0;
+    border-bottom: 1px solid #ddd;
+    gap: 5px;
+    flex-shrink: 0;
+}
+.tab-btn {
+    padding: 10px 25px;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #666;
+    transition: all 0.2s;
+}
+.tab-btn:hover { background: #e9ecef; color: #333; }
+.tab-btn.active {
+    background: #fff;
+    border-color: #ddd;
+    color: #1565c0;
+    font-weight: bold;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.02);
+    position: relative;
+    top: 1px; /* 蓋住底線 */
 }
 
-/* =========================================
-   V17 Tab Layout Styles
-   ========================================= */
+/* 4. 試卷資訊列 (Info Bar) */
+.exam-info-bar {
+    background: #e3f2fd;
+    border-bottom: 1px solid #bbdefb;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 0.9rem;
+    color: #1565c0;
+    flex-shrink: 0;
+}
+.info-group { display: flex; align-items: center; }
+.info-icon { font-size: 1.1rem; margin-right: 5px; }
+.info-label { font-weight: bold; margin-right: 5px; }
+.info-value { font-weight: bold; color: #0d47a1; }
+.info-unit { margin-left: 2px; font-size: 0.9em; }
 
-/* Tab Navigation */
-.tab-nav {display: flex;background: #f0f2f5;padding: 10px 20px 0;border-bottom: 1px solid #ddd;gap: 5px;}
+#current-exam-title {
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: #0d47a1; font-weight: bold; font-size: 0.95rem; padding: 2px 5px; width: 250px;
+    transition: all 0.2s;
+}
+#current-exam-title:hover { border-bottom-color: #90caf9; background: rgba(255,255,255,0.5); }
+#current-exam-title:focus { outline: none; border-bottom-color: #1565c0; background: white; }
 
-.tab-btn {padding: 10px 20px;border: 1px solid transparent;border-bottom: none;border-radius: 8px 8px 0 0;background: transparent;cursor: pointer;font-size: 1rem;color: #666;transition: all 0.2s;}
-
-.tab-btn:hover {background: #e4e6eb;color: #333;}
-
-.tab-btn.active {background: #fff;border-color: #ddd;color: #1565c0;font-weight: bold;box-shadow: 0 -2px 5px rgba(0,0,0,0.02);}
-
-/* Tab Content */
-.tab-container {flex: 1;overflow: hidden;position: relative;background: #fff;}
-
-.tab-content {display: none;height: 100%;overflow-y: auto;padding: 20px;animation: fadeIn 0.3s ease;}
-
-.tab-content.active {display: block;}
+/* 5. 分頁內容容器 */
+.tab-container {
+    flex: 1; /* 佔滿剩餘高度 */
+    overflow: hidden; /* 內部滾動 */
+    position: relative;
+    background: #fff;
+}
+.tab-content {
+    display: none;
+    height: 100%;
+    overflow-y: auto; /* 內容過長時出現卷軸 */
+    padding: 20px;
+    box-sizing: border-box;
+    animation: fadeIn 0.3s ease;
+}
+.tab-content.active { display: block; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Export Dashboard (Tab 2) */
-.export-dashboard {display: flex;justify-content: center;gap: 30px;margin-top: 40px;flex-wrap: wrap;}
+/* =========================================
+   Tab 1: 建立題庫 (Smart Editor)
+   ========================================= */
+.smart-editor-container {
+    border: 1px solid #ddd; border-radius: 8px; background: white;
+    display: flex; flex-direction: column; height: 100%; /* 佔滿 Tab 高度 */
+}
+.editor-toolbar {
+    background: #f8f9fa; border-bottom: 1px solid #ddd; padding: 8px 15px;
+    display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+}
+.toolbar-divider { width: 1px; height: 20px; background: #ddd; margin: 0 5px; }
+.editor-main { display: flex; flex: 1; overflow: hidden; }
+.editor-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; /* 防止 flex item 溢出 */ }
+.input-pane { border-right: 1px solid #ddd; }
+.pane-label {
+    background: #f1f3f4; padding: 8px 15px; font-size: 12px; font-weight: bold;
+    border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;
+    color: #555;
+}
+textarea#txt-raw-q {
+    flex: 1; border: none; padding: 15px; resize: none; outline: none;
+    font-size: 14px; line-height: 1.6; font-family: monospace;
+}
+.preview-content { flex: 1; overflow-y: auto; padding: 15px; background: #fafafa; }
+.empty-state { text-align: center; color: #aaa; margin-top: 50px; font-size: 14px; }
 
-.export-card {background: #fff;border: 1px solid #eee;border-radius: 12px;padding: 30px;width: 250px;text-align: center;box-shadow: 0 4px 15px rgba(0,0,0,0.05);transition: transform 0.2s;}
-
-.export-card:hover {transform: translateY(-5px);box-shadow: 0 8px 20px rgba(0,0,0,0.1);}
-
-.card-icon { font-size: 3rem; margin-bottom: 15px; }
-.export-card h3 { margin: 0 0 10px 0; color: #333; }
-.export-card p { color: #777; font-size: 0.9em; margin-bottom: 20px; height: 40px; }
-
-/* Grading Layout (Tab 3) */
-.grading-layout {max-width: 800px;margin: 0 auto;display: flex;flex-direction: column;gap: 20px;height: 100%;}
-
-.grading-tools-panel, .remedial-action-panel {background: #f8f9fa;border: 1px solid #eee;border-radius: 10px;padding: 20px;}
-
-.grading-tools-panel {flex: 1;display: flex;flex-direction: column;}
-
-.panel-label {font-weight: bold; color: #444; margin-bottom: 10px; border-left: 4px solid #1565c0; padding-left: 10px;}
-
-.grading-input-wrapper { flex: 1; margin-top: 10px; }
-.grading-input-wrapper textarea {width: 100%; height: 100%; resize: none; border: 1px solid #ddd;border-radius: 8px; padding: 10px; font-family: monospace;}
-
-.status-bar {text-align: right; font-size: 0.85em; color: #666; margin-top: 5px;}
+/* Parsed Item (預覽卡片) */
+.parsed-item {
+    border: 1px solid #e0e0e0; border-left: 4px solid #ccc; padding: 10px; margin-bottom: 10px;
+    border-radius: 4px; background: white; position: relative; transition: all 0.2s;
+}
+.parsed-item:hover { border-color: #2196F3; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.parsed-item.has-expl { border-left-color: #4CAF50; }
+.parsed-header {
+    display: flex;
+    justify-content: flex-start; /* 改為靠左對齊 */
+    align-items: center;         /* 垂直置中 */
+    gap: 10px;                   /* 題號與標籤之間的間距 */
+    font-size: 12px;
+    margin-bottom: 5px;
+    color: #888;
+    padding-right: 60px;         /* [關鍵] 右側預留空間給編輯按鈕 */
+}
+.parsed-id { color: #1976D2; font-weight: bold; }
+.parsed-badge { background: #eee; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
+.parsed-text { font-size: 14px; line-height: 1.4; color: #333; padding-right: 50px; /* 避開按鈕 */ }
+.parsed-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0.6; transition: opacity 0.2s; }
+.parsed-item:hover .parsed-actions { opacity: 1; }
+.btn-icon-small {
+    background: white; border: 1px solid #ddd; padding: 2px 6px; border-radius: 4px; font-size: 12px; cursor: pointer;
+}
+.btn-icon-small:hover { border-color: #2196F3; color: #2196F3; }
 
 /* =========================================
-   V18 Info Bar Styles
+   Tab 2: 考前輸出 (Export Dashboard)
+   ========================================= */
+.export-dashboard {
+    display: flex; justify-content: center; gap: 30px; margin-top: 60px; flex-wrap: wrap;
+}
+.export-card {
+    background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 40px 30px;
+    width: 260px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.export-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-color: #2196F3; }
+.card-icon { font-size: 3.5rem; margin-bottom: 20px; display: block; }
+.export-card h3 { margin: 0 0 10px 0; color: #333; font-size: 1.2rem; }
+.export-card p { color: #666; font-size: 0.9rem; margin-bottom: 25px; line-height: 1.5; height: 40px; }
+.btn-primary-action {
+    color: white; border: none; padding: 10px 25px; border-radius: 25px; font-weight: bold;
+    cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.15); font-size: 0.95rem; transition: all 0.2s;
+}
+.btn-primary-action:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,0.2); opacity: 0.9; }
+
+/* =========================================
+   Tab 3: 閱卷與補救 (Grading Layout)
+   ========================================= */
+.grading-layout {
+    max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; height: 100%;
+}
+.grading-tools-panel, .remedial-action-panel {
+    background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px;
+}
+.grading-tools-panel { flex: 1; display: flex; flex-direction: column; min-height: 300px; }
+.panel-label {
+    font-weight: bold; color: #444; margin-bottom: 15px; border-left: 4px solid #1565c0; padding-left: 10px; font-size: 1.1rem;
+}
+.grading-toolbar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.grading-input-wrapper { flex: 1; border: 1px solid #ddd; border-radius: 8px; background: white; padding: 10px; }
+textarea#txt-raw-s {
+    width: 100%; height: 100%; border: none; resize: none; outline: none; font-family: monospace; font-size: 14px;
+}
+.status-bar { text-align: right; font-size: 0.85em; color: #666; margin-top: 8px; font-weight: bold; }
+.btn-lg-primary {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white;
+    width: 100%; padding: 15px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 8px;
+    cursor: pointer; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3); transition: all 0.2s;
+}
+.btn-lg-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(33, 150, 243, 0.4); }
+
+/* =========================================
+   Modals (彈出視窗)
+   ========================================= */
+.modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-content {
+    background: white; width: 90%; max-width: 600px; border-radius: 8px;
+    max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+.modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #fafafa; border-radius: 8px 8px 0 0; }
+.modal-header h2 { margin: 0; font-size: 1.2rem; color: #333; }
+.close-modal { font-size: 24px; cursor: pointer; color: #999; }
+.close-modal:hover { color: #333; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 15px 20px; text-align: right; background: #fafafa; border-top: 1px solid #eee; border-radius: 0 0 8px 8px; display: flex; justify-content: flex-end; gap: 10px; }
+
+/* 編輯模式表單 */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 0.9rem; }
+.input-field {
+    width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px;
+    font-size: 14px; font-family: inherit; box-sizing: border-box;
+}
+.input-field:focus { border-color: #2196F3; outline: none; }
+
+/* =========================================
+   Print Preview & Media Query
+   (註：詳細的紙張排版由 worksheetStyle.css 控制，這裡只負責隱藏 UI)
+   ========================================= */
+@media print {
+    body * { visibility: hidden; } /* 隱藏所有元素 */
+    
+    /* 只顯示預覽視窗內容 */
+    #modal-print-preview, #modal-print-preview * { visibility: visible; }
+    
+    /* 重置 Modal 位置，使其填滿紙張 */
+    #modal-print-preview {
+        position: absolute; left: 0; top: 0; width: 100%; height: auto;
+        background: white !important; display: block !important; z-index: 9999;
+    }
+    .modal-content {
+        box-shadow: none !important; border: none !important; margin: 0 !important;
+        width: 100% !important; max-width: 100% !important; padding: 0 !important;
+    }
+    .modal-header, .modal-footer, .close-modal { display: none !important; }
+    .modal-body { padding: 0 !important; background: white !important; overflow: visible !important; }
+}
+
+/* =========================================
+   V23: 空白答案卡專用樣式 (Answer Sheet)
    ========================================= */
 
-.exam-info-bar {background: #e3f2fd;margin-bottom: 20px;border-bottom: 1px solid #bbdefb;padding: 8px 20px;display: flex;align-items: center;gap: 20px;font-size: 0.95rem;color: #1565c0;}
+/* 答案卡頁面容器 */
+.sheet-page {
+    width: 100%;
+    height: 100%;       /* 撐滿父容器 (A4 紙張) */
+    background: white;  /* [關鍵修正] 強制背景純白 */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+/* 緊湊模式：上下各半 */
+.sheet-half {
+    flex: 1; /* 自動平分上下高度 */
+    overflow: hidden;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+}
+/* 分隔線 */
+.sheet-divider {
+    height: 0;
+    border-bottom: 2px dashed #999;
+    margin: 5px 0;
+    position: relative;
+    flex-shrink: 0;
+}
+.sheet-divider::after {
+    content: '✂️ 請沿虛線剪開';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 0 10px;
+    color: #999;
+    font-size: 12px;
+}
+/* 表格與氣泡樣式 */
+.ans-header { 
+    display: flex; justify-content: space-between; border-bottom: 2px solid #000; 
+    margin-bottom: 15px; padding-bottom: 5px; font-family: sans-serif;
+}
+.ans-header-title { font-size: 1.4em; font-weight: bold; }
+.ans-header-info { text-align: right; }
 
-.info-group {display: flex;align-items: center;}
+.ans-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ans-table td { padding: 4px; text-align: center; }
 
-.info-icon { font-size: 1.2rem; margin-right: 5px; }
+/* 畫記圓圈 */
+.bubble { 
+    width: 24px; height: 24px; border: 1px solid #333; border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; 
+    color: #ccc; font-size: 0.8em; margin: 0 auto;
+}
+.info-box { 
+    border: 1px solid #333; width: 80px; height: 24px; 
+    display: inline-block; vertical-align: bottom; margin-left: 5px; 
+}
 
-.info-label {font-weight: bold;margin-right: 5px;}
+/* 緊湊模式微調 (字體縮小) */
+.sheet-page.compact .ans-table { font-size: 12px; }
+.sheet-page.compact .bubble { width: 20px; height: 20px; font-size: 0.7em; }
+.sheet-page.compact .ans-header { margin-bottom: 10px; }
+.sheet-page.compact .ans-header-title { font-size: 1.2em; }
 
-.info-value {font-weight: bold;color: #0d47a1;}
-
-.info-unit {margin-left: 2px;font-size: 0.9em;}
-
-#current-exam-title {background: transparent;border: none;border-bottom: 2px solid transparent;color: #0d47a1;font-weight: bold;font-size: 1rem;padding: 2px 5px;width: 250px;transition: all 0.2s;}
-
-#current-exam-title:hover {border-bottom-color: #90caf9;background: rgba(255,255,255,0.5);}
-
-#current-exam-title:focus {outline: none;border-bottom-color: #1565c0;background: white;}
+@media print {
+    .sheet-page {
+        height: 100vh; /* 列印時強制佔滿一頁 */
+        page-break-after: always;
+        background: white !important; /* 再次確保列印時也是白的 */
+    }
+}

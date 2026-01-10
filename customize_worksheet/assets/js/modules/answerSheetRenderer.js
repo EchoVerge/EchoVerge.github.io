@@ -1,83 +1,45 @@
 /**
  * assets/js/modules/answerSheetRenderer.js
- * 負責渲染空白答案卡 (供列印用)
- * 升級功能：支援自動判斷是否使用「上下兩張」的省紙模式
+ * V2.3: 實作 3 欄位固定佈局 (左/中/右) 與 15 題分欄
  */
 
 export function createAnswerSheet(title, qCount) {
-    // 判斷是否使用省紙模式 (閾值：30題)
-    const isCompact = qCount <= 30;
+    // [修改] 為了容納 3 欄 (45題)，將省紙模式閾值提高到 45
+    const isCompact = qCount <= 45;
     
-    // 產生單張答案卡的 HTML
+    // 產生單份表格 HTML
     const singleSheetHtml = generateSingleTable(title, qCount, isCompact);
 
     if (isCompact) {
-        // 省紙模式：上下各一張
+        // 省紙模式：上下各一張 (HTML 結構)
+        // 注意：這裡移除了內嵌 <style>，依賴外部 CSS 以保持整潔與列印背景色正常
         return `
-            <style>
-                .sheet-page {
-                    width: 100%;
-                    height: 100vh; /* 佔滿一頁 */
-                    box-sizing: border-box;
-                    padding: 10px;
-                }
-                .sheet-half {
-                    height: 48vh; /* 上下各佔約一半 */
-                    overflow: hidden;
-                    box-sizing: border-box;
-                    padding-bottom: 10px;
-                    display: flex;
-                    flex-direction: column;
-                }
-                .sheet-divider {
-                    height: 0;
-                    border-bottom: 2px dashed #999; /* 剪裁線 */
-                    margin: 1vh 0;
-                    position: relative;
-                }
-                .sheet-divider::after {
-                    content: '✂️ 請沿虛線剪開';
-                    position: absolute;
-                    top: -10px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: white;
-                    padding: 0 10px;
-                    color: #666;
-                    font-size: 12px;
-                }
-                @media print {
-                    @page { margin: 0; size: A4 portrait; }
-                    body { margin: 0; }
-                }
-            </style>
-            <div class="sheet-page">
+            <div class="sheet-page compact">
                 <div class="sheet-half">${singleSheetHtml}</div>
                 <div class="sheet-divider"></div>
                 <div class="sheet-half">${singleSheetHtml}</div>
             </div>
         `;
     } else {
-        // 完整模式：一張一份
+        // 完整模式
         return `
-            <style>
-                .sheet-page { padding: 40px; }
-                @media print { @page { margin: 20mm; } }
-            </style>
             <div class="sheet-page">
-                ${singleSheetHtml}
+                <div style="padding: 20px 0;">
+                    ${singleSheetHtml}
+                </div>
             </div>
         `;
     }
 }
 
 function generateSingleTable(title, qCount, isCompact) {
-    // 根據題數決定欄數 (每欄最多 10 題)
-    const rowsPerCol = 5; 
+    // [修改] 設定每欄 15 題，這樣 1-45 題剛好佔滿 3 欄
+    const rowsPerCol = 15; 
     const colCount = Math.ceil(qCount / rowsPerCol);
     
-    // 建立格子 HTML
-    let gridHtml = '<div style="display: flex; flex-wrap: wrap; gap: 20px;">';
+    // [關鍵修改] 使用 CSS Grid 建立三欄佈局
+    // grid-template-columns: 1fr 1fr 1fr (三等分)
+    let gridHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 10px;">';
     
     for (let c = 0; c < colCount; c++) {
         let tableRows = '';
@@ -97,38 +59,31 @@ function generateSingleTable(title, qCount, isCompact) {
             `;
         }
         
+        // [關鍵修改] 根據欄位索引決定對齊方式
+        let alignStyle = 'justify-self: start;'; // 預設靠左 (第1欄 1-15)
+        
+        if (c % 3 === 1) {
+            alignStyle = 'justify-self: center;'; // 第2欄 (16-30) 置中
+        } else if (c % 3 === 2) {
+            alignStyle = 'justify-self: end;';    // 第3欄 (31-45) 靠右
+        }
+        
+        // 將 alignStyle 應用到 table 上
         gridHtml += `
-            <table class="ans-table">
+            <table class="ans-table" style="width: auto; ${alignStyle}">
                 ${tableRows}
             </table>
         `;
     }
     gridHtml += '</div>';
 
-    // 樣式
-    const fontSize = isCompact ? '12px' : '14px';
-    const bubbleSize = isCompact ? '20px' : '24px';
-    
     return `
-        <style>
-            .ans-header { 
-                display: flex; justify-content: space-between; border-bottom: 2px solid #000; 
-                margin-bottom: 10px; padding-bottom: 5px; font-family: sans-serif;
-            }
-            .ans-table { border-collapse: collapse; font-size: ${fontSize}; }
-            .ans-table td { padding: 4px; text-align: center; }
-            .bubble { 
-                width: ${bubbleSize}; height: ${bubbleSize}; border: 1px solid #333; border-radius: 50%; 
-                display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 0.8em;
-            }
-            .info-box { border: 1px solid #333; width: 60px; height: 25px; display: inline-block; vertical-align: bottom;}
-        </style>
         <div class="ans-header">
-            <div style="font-size: 1.2em; font-weight: bold;">${title} 答案卡</div>
-            <div>
+            <div class="ans-header-title">${title} 答案卡</div>
+            <div class="ans-header-info">
                 班級：<div class="info-box"></div> 
-                座號：<div class="info-box"></div> 
-                姓名：<div class="info-box" style="width:100px;"></div>
+                座號：<div class="info-box" style="width:50px;"></div> 
+                姓名：<div class="info-box"></div>
             </div>
         </div>
         ${gridHtml}
