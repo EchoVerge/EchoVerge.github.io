@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教師自編考卷數位助教 V13</title>
+    <title>教師自編考卷數位助教 V14</title>
     
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/worksheetStyle.css">
@@ -42,7 +42,7 @@
             </div>
             <div class="line"></div>
             <div class="step-indicator" data-step="3">
-                <div class="circle">3</div><div class="label">輸出設定</div>
+                <div class="circle">3</div><div class="label">補救輸出</div>
             </div>
         </div>
         
@@ -60,6 +60,14 @@
                         <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0; margin-left:5px;">🔮 生成類題</button>
                         <button id="btn-history" class="btn-tool" style="margin-left:5px;">📜 紀錄</button>
                     </div>
+                    
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <span style="font-size:12px; color:#666; margin-right:5px;">🖨️ 輸出:</span>
+                        <button id="btn-print-sheet-step1" class="btn-tool" style="background:#607d8b; color:white;">📄 答題卡</button>
+                        <button id="btn-print-key-step1" class="btn-tool" style="background:#795548; color:white;">🗝️ 教師卷</button>
+                    </div>
+
                     <div class="toolbar-group" style="margin-left: auto;">
                         <button id="btn-clear-q" class="btn-tool text-danger">🗑️ 清空</button>
                     </div>
@@ -84,7 +92,6 @@
         </div>
 
         <div class="step-section" data-step="2" style="display: none;">
-            
             <div id="panel-error" class="mode-panel">
                 <div class="smart-editor-container compact">
                     <div class="editor-main">
@@ -113,23 +120,17 @@
 
         <div class="step-section" data-step="3" style="display: none;">
             <div class="panel-row">
-                <div class="input-group options-group">
-                    <label>試卷標題</label>
-                    <input type="text" id="input-title" value="測驗卷">
-                </div>
-                <div class="input-group options-group">
-                    <label>功能開關</label>
+                <div class="input-group options-group" style="width: 100%;">
+                    <label>輸出設定</label>
                     <div class="checkbox-group">
                         <button id="btn-open-settings" class="btn-small">⚙️ 欄位設定</button>
-                        <label class="checkbox-label"><input type="checkbox" id="chk-page-break" checked> 強制分頁</label>
-                        <label class="checkbox-label"><input type="checkbox" id="chk-teacher-key"> 生成解答卷</label>
+                        <label class="checkbox-label"><input type="checkbox" id="chk-teacher-key"> 同步產生教師解答卷</label>
                     </div>
                 </div>
             </div>
             
             <div class="generation-area">
-                <button id="btn-answer-sheet" class="btn-lg-secondary" style="margin-right:10px; background:#607d8b;">📄 答案卡</button>
-                <button id="btn-generate" class="btn-lg-primary">🚀 生成試卷</button>
+                <button id="btn-generate" class="btn-lg-primary">🚀 生成個別化訂正學習單</button>
                 <button id="btn-print" class="btn-lg-secondary" style="display: none;">🖨️ 列印</button>
             </div>
 

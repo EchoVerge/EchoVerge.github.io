@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/editorController.js
- * 負責 Step 1: 題目編輯、檔案匯入、AI 解析預覽、類題生成、歷史紀錄、單題編輯
+ * V2.1: 新增 Step 1 直接輸出功能 (答題卡/教師卷)，標題採 Prompt 詢問
  */
 
 import { state } from './state.js';
@@ -9,6 +9,9 @@ import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
 import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
 import { saveHistory, getHistoryList, loadHistory, deleteHistory } from './historyManager.js';
+// [新增] 引入渲染器
+import { createAnswerSheet } from './answerSheetRenderer.js';
+import { createTeacherKeySection } from './viewRenderer.js';
 
 export function initEditorController() {
     const el = {
@@ -21,24 +24,70 @@ export function initEditorController() {
         btnAiParse: document.getElementById('btn-ai-parse'),
         btnClearQ: document.getElementById('btn-clear-q'),
         
-        // AI 與 歷史
         btnGenSimilar: document.getElementById('btn-gen-similar'),
         btnHistory: document.getElementById('btn-history'),
         modalHistory: document.getElementById('modal-history'),
         historyList: document.getElementById('history-list'),
 
-        // [新增] 編輯相關元素
         modalEditor: document.getElementById('modal-question-editor'),
         btnSaveEdit: document.getElementById('btn-save-edit'),
-        // 編輯輸入框
         inpIndex: document.getElementById('edit-q-index'),
         inpId: document.getElementById('edit-q-id'),
         inpText: document.getElementById('edit-q-text'),
         inpExpl: document.getElementById('edit-q-expl'),
         inpSimText: document.getElementById('edit-q-sim-text'),
-        inpSimExpl: document.getElementById('edit-q-sim-expl')
+        inpSimExpl: document.getElementById('edit-q-sim-expl'),
+
+        // [新增] Step 1 輸出按鈕
+        btnPrintSheet1: document.getElementById('btn-print-sheet-step1'),
+        btnPrintKey1: document.getElementById('btn-print-key-step1'),
+        outputArea: document.getElementById('output-area')
     };
 
+    // --- Step 1 輸出功能 ---
+    if (el.btnPrintSheet1) {
+        el.btnPrintSheet1.addEventListener('click', () => handleExport('sheet'));
+    }
+    if (el.btnPrintKey1) {
+        el.btnPrintKey1.addEventListener('click', () => handleExport('key'));
+    }
+
+    function handleExport(type) {
+        if (!state.questions || state.questions.length === 0) {
+            return alert("請先建立題庫！");
+        }
+
+        // [Prompt] 詢問標題，預設為「測驗卷」
+        const defaultTitle = "測驗卷";
+        const title = prompt("請輸入試卷標題：", defaultTitle);
+        
+        // 若使用者按取消，則終止
+        if (title === null) return;
+
+        let html = "";
+        if (type === 'sheet') {
+            html = createAnswerSheet(title || defaultTitle, state.questions.length);
+        } else if (type === 'key') {
+            html = createTeacherKeySection(state.questions);
+            // 補上標題 (因為 createTeacherKeySection 只有表格)
+            // 其實 viewRenderer 裡面已經有了標題 header，但這裡我們可以再確認一下
+            // 為了完整性，我們通常直接用 viewRenderer 出來的 HTML 即可，因為它有包含 css class
+        }
+
+        // 寫入 Output Area 並列印
+        el.outputArea.innerHTML = html;
+        
+        // 渲染數學公式 (如果有)
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise().then(() => {
+                setTimeout(() => window.print(), 200);
+            });
+        } else {
+            setTimeout(() => window.print(), 200);
+        }
+    }
+
+    // ... (以下為原本的編輯器邏輯，保持不變) ...
     // 1. 編輯器輸入監聽
     let timeout;
     el.txtRawQ.addEventListener('input', () => {
@@ -65,7 +114,8 @@ export function initEditorController() {
                 state.questions = rawData.map((row, index) => ({
                     id: String(row.id || row['題號'] || row['ID'] || index + 1).trim(),
                     text: row.text || row['題目'] || row['question'] || row['Question'] || '',
-                    expl: row.expl || row['解析'] || row['answer'] || row['Answer'] || ''
+                    expl: row.expl || row['解析'] || row['answer'] || row['Answer'] || '',
+                    ans: row.ans || row['答案'] || row['Ans'] || ''
                 }));
                 state.sourceType = 'file';
                 el.txtRawQ.value = `[已匯入檔案] ${file.name}\n${state.questions.length} 題`;
@@ -179,13 +229,12 @@ export function initEditorController() {
         });
     }
 
-    // 6. 歷史紀錄功能
+    // 6. 歷史紀錄
     if (el.btnHistory) {
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
             renderHistoryList();
         });
-
         document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const targetId = btn.dataset.target;
@@ -194,17 +243,12 @@ export function initEditorController() {
         });
     }
 
-    // [新增] 7. 單題編輯功能
-    // (A) 監聽預覽列表的點擊事件 (Event Delegation)
+    // 7. 單題編輯
     el.previewQ.addEventListener('click', (e) => {
-        // 如果點擊的是編輯按鈕 (或是按鈕內的圖示)
         const btn = e.target.closest('.btn-edit-q');
         if (btn) {
-            const index = btn.dataset.index;
-            openEditModal(index);
+            openEditModal(btn.dataset.index);
         }
-        
-        // (選擇性) 如果有刪除按鈕
         const btnDel = e.target.closest('.btn-del-q');
         if (btnDel) {
             const index = btnDel.dataset.index;
@@ -215,18 +259,13 @@ export function initEditorController() {
         }
     });
 
-    // (B) 開啟編輯視窗
     function openEditModal(index) {
         const q = state.questions[index];
         if (!q) return;
-
-        // 填入資料
         el.inpIndex.value = index;
         el.inpId.value = q.id || '';
         el.inpText.value = q.text || '';
         el.inpExpl.value = q.expl || '';
-        
-        // 類題資料 (若無則留空)
         if (q.similar) {
             el.inpSimText.value = q.similar.text || '';
             el.inpSimExpl.value = q.similar.expl || '';
@@ -234,44 +273,28 @@ export function initEditorController() {
             el.inpSimText.value = '';
             el.inpSimExpl.value = '';
         }
-
         el.modalEditor.style.display = 'flex';
     }
 
-    // (C) 儲存編輯
     el.btnSaveEdit.addEventListener('click', () => {
         const index = parseInt(el.inpIndex.value);
         if (isNaN(index) || index < 0 || index >= state.questions.length) return;
-
-        // 更新 state
         const q = state.questions[index];
         q.id = el.inpId.value;
         q.text = el.inpText.value;
         q.expl = el.inpExpl.value;
-
-        // 更新類題 (如果使用者有輸入內容)
         const simText = el.inpSimText.value.trim();
         const simExpl = el.inpSimExpl.value.trim();
-
         if (simText) {
-            q.similar = {
-                text: simText,
-                expl: simExpl
-            };
+            q.similar = { text: simText, expl: simExpl };
         } else {
-            // 如果清空了，就移除類題屬性
             delete q.similar;
         }
-
-        // 關閉視窗並重繪
         el.modalEditor.style.display = 'none';
         renderPreview(state.questions, state.sourceType || 'Edited');
-        
-        // 提示
-        // alert("修改已儲存 (尚未存入歷史紀錄，請記得生成試卷或手動備份)");
     });
 
-    // --- 內部函式 ---
+    // Helper Functions
     function updatePreview() {
         const parsed = parseQuestionMixed(el.txtRawQ.value, '');
         state.questions = parsed;
@@ -285,8 +308,6 @@ export function initEditorController() {
             el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>';
             return;
         }
-        
-        // [新增] 這裡加入了編輯按鈕 (btn-edit-q)
         el.previewQ.innerHTML = questions.map((q, i) => `
             <div class="parsed-item ${q.expl?'has-expl':''}">
                 <div class="parsed-actions">
@@ -309,7 +330,6 @@ export function initEditorController() {
             el.historyList.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">尚無紀錄</div>';
             return;
         }
-
         el.historyList.innerHTML = list.map(item => `
             <div class="history-item">
                 <div class="hist-info">
@@ -329,11 +349,10 @@ export function initEditorController() {
                 const record = loadHistory(id);
                 if (record) {
                     if(confirm(`確定載入「${record.title}」？\n這將覆蓋目前的編輯內容。`)) {
-                        state.questions = JSON.parse(JSON.stringify(record.data)); // Deep Copy 防止汙染歷史
+                        state.questions = JSON.parse(JSON.stringify(record.data));
                         state.sourceType = 'history';
-                        // 讓 textarea 顯示狀態，但不影響編輯
                         el.txtRawQ.value = `[歷史紀錄] ${record.title}\n時間：${record.dateStr}`;
-                        el.txtRawQ.disabled = true; // 鎖定文字區，強制使用 GUI 編輯
+                        el.txtRawQ.disabled = true;
                         renderPreview(state.questions, 'History');
                         el.modalHistory.style.display = 'none';
                     }
