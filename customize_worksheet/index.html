@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/worksheetStyle.css">
+    <link rel="stylesheet" href="assets/css/historyItem.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -52,6 +53,8 @@
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group">
                         <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 分析</button>
+                        <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0; margin-left:5px;">🔮 生成類題</button>
+                        <button id="btn-history" class="btn-tool" style="margin-left:5px;">📜 紀錄</button>
                     </div>
                     <div class="toolbar-group" style="margin-left: auto;">
                         <button id="btn-clear-q" class="btn-tool text-danger">🗑️ 清空</button>
@@ -191,6 +194,23 @@
                 </div>
             </div>
             <div class="modal-footer"><button id="btn-confirm-grade" class="btn-primary">確認並匯入</button></div>
+        </div>
+    </div>
+
+    <div id="modal-history" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>📜 出題歷史紀錄</h2>
+                <span class="close-modal" data-target="modal-history">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="history-list" class="history-list-container">
+                    <div style="text-align:center; color:#888;">暫無紀錄</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal-btn">關閉</button>
+            </div>
         </div>
     </div>
 

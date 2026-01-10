@@ -1,0 +1,30 @@
+/* 歷史紀錄列表樣式 */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s;
+}
+.history-item:hover {
+    background-color: #f9f9f9;
+}
+.hist-info {
+    display: flex;
+    flex-direction: column;
+}
+.hist-title {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: #333;
+}
+.hist-meta {
+    font-size: 0.85em;
+    color: #888;
+    margin-top: 4px;
+}
+.hist-actions {
+    display: flex;
+    gap: 8px;
+}
