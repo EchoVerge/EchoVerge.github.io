@@ -8,7 +8,7 @@ body {
     font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
     margin: 0;
     padding: 0;
-    background: #f0f2f5;
+    background: #f8f9fa;
     color: #333;
     height: 100vh; /* 佔滿視窗高度 */
     display: flex;
@@ -83,14 +83,19 @@ button { font-family: inherit; }
 /* 4. 試卷資訊列 (Info Bar) */
 .exam-info-bar {
     background: #e3f2fd;
-    border-bottom: 1px solid #bbdefb;
-    padding: 8px 20px;
+    /* [修改] 依照需求調整間距 */
+    margin: 0 20px;       /* 兩側留白 */
+    padding: 8px 10px;    /* 上下 8px，左右稍微留 10px 緩衝，避免文字貼齊邊緣太擠 */
     display: flex;
     align-items: center;
     gap: 20px;
     font-size: 0.9rem;
     color: #1565c0;
     flex-shrink: 0;
+    /* 讓浮動條看起來更精緻 */
+    border-radius: 0px;   
+    border: 1px solid #bbdefb;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 .info-group { display: flex; align-items: center; }
 .info-icon { font-size: 1.1rem; margin-right: 5px; }
@@ -325,7 +330,19 @@ textarea#txt-raw-s {
     display: flex; justify-content: space-between; border-bottom: 2px solid #000; 
     margin-bottom: 15px; padding-bottom: 5px; font-family: sans-serif;
 }
-.ans-header-title { font-size: 1.4em; font-weight: bold; }
+.ans-header-title { 
+    font-size: 1.4em; 
+    font-weight: bold;
+    
+    /* [新增] 強制單行，超出顯示刪節號 (...) */
+    white-space: nowrap; 
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    /* 確保標題不會佔據過多寬度，保留空間給右側資訊欄 */
+    flex: 1; 
+    margin-right: 10px;
+}
 .ans-header-info { text-align: right; }
 
 .ans-table { width: 100%; border-collapse: collapse; font-size: 14px; }

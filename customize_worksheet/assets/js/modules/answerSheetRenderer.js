@@ -1,18 +1,17 @@
 /**
  * assets/js/modules/answerSheetRenderer.js
- * V2.3: 實作 3 欄位固定佈局 (左/中/右) 與 15 題分欄
+ * V2.4: 修正 Grid 排版垂直對齊問題 (強制靠上)
  */
 
 export function createAnswerSheet(title, qCount) {
-    // [修改] 為了容納 3 欄 (45題)，將省紙模式閾值提高到 45
+    // 判斷省紙模式 (閾值 45 題)
     const isCompact = qCount <= 45;
     
     // 產生單份表格 HTML
     const singleSheetHtml = generateSingleTable(title, qCount, isCompact);
 
     if (isCompact) {
-        // 省紙模式：上下各一張 (HTML 結構)
-        // 注意：這裡移除了內嵌 <style>，依賴外部 CSS 以保持整潔與列印背景色正常
+        // 省紙模式：上下各一張
         return `
             <div class="sheet-page compact">
                 <div class="sheet-half">${singleSheetHtml}</div>
@@ -33,13 +32,13 @@ export function createAnswerSheet(title, qCount) {
 }
 
 function generateSingleTable(title, qCount, isCompact) {
-    // [修改] 設定每欄 15 題，這樣 1-45 題剛好佔滿 3 欄
+    // 每欄 15 題
     const rowsPerCol = 15; 
     const colCount = Math.ceil(qCount / rowsPerCol);
     
-    // [關鍵修改] 使用 CSS Grid 建立三欄佈局
-    // grid-template-columns: 1fr 1fr 1fr (三等分)
-    let gridHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 10px;">';
+    // [修正重點] 加入 align-items: start 與 align-content: start
+    // 這會強制表格內容「靠上對齊」，不會被垂直拉伸或分散
+    let gridHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 10px; align-items: start; align-content: start;">';
     
     for (let c = 0; c < colCount; c++) {
         let tableRows = '';
@@ -59,8 +58,8 @@ function generateSingleTable(title, qCount, isCompact) {
             `;
         }
         
-        // [關鍵修改] 根據欄位索引決定對齊方式
-        let alignStyle = 'justify-self: start;'; // 預設靠左 (第1欄 1-15)
+        // 根據欄位索引決定水平對齊
+        let alignStyle = 'justify-self: start;'; // 第1欄 (1-15) 靠左
         
         if (c % 3 === 1) {
             alignStyle = 'justify-self: center;'; // 第2欄 (16-30) 置中
@@ -68,7 +67,6 @@ function generateSingleTable(title, qCount, isCompact) {
             alignStyle = 'justify-self: end;';    // 第3欄 (31-45) 靠右
         }
         
-        // 將 alignStyle 應用到 table 上
         gridHtml += `
             <table class="ans-table" style="width: auto; ${alignStyle}">
                 ${tableRows}

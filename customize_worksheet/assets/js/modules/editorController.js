@@ -1,6 +1,10 @@
 /**
  * assets/js/modules/editorController.js
- * V2.3: 整合 Info Bar (狀態列) 邏輯
+ * V3.0: 增強版編輯器
+ * - 支援編輯正確答案 & 類題答案
+ * - 支援多選題格式 (字串)
+ * - 歷史紀錄支援「追加 (Append)」與「標題同步」
+ * - 類題結構巢狀化優化
  */
 
 import { state } from './state.js';
@@ -8,7 +12,7 @@ import { parseFile } from './fileHandler.js';
 import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
 import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
-import { saveHistory, getHistoryList, loadHistory, deleteHistory } from './historyManager.js';
+import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory } from './historyManager.js';
 import { createAnswerSheet } from './answerSheetRenderer.js';
 import { createTeacherKeySection } from './viewRenderer.js';
 
@@ -16,9 +20,8 @@ export function initEditorController() {
     const el = {
         txtRawQ: document.getElementById('txt-raw-q'),
         previewQ: document.getElementById('preview-parsed-q'),
-        // previewCount (移除舊的，改用下方的)
-        infoTitle: document.getElementById('current-exam-title'), // [新] 標題輸入框
-        infoCount: document.getElementById('current-question-count'), // [新] 題數顯示
+        infoTitle: document.getElementById('current-exam-title'),
+        infoCount: document.getElementById('current-question-count'),
         
         btnUploadFile: document.getElementById('btn-upload-file'),
         fileQuestions: document.getElementById('file-questions'),
@@ -31,12 +34,15 @@ export function initEditorController() {
         modalHistory: document.getElementById('modal-history'),
         historyList: document.getElementById('history-list'),
 
+        // Editor Modal Inputs
         modalEditor: document.getElementById('modal-question-editor'),
         btnSaveEdit: document.getElementById('btn-save-edit'),
         inpIndex: document.getElementById('edit-q-index'),
         inpId: document.getElementById('edit-q-id'),
+        inpAns: document.getElementById('edit-q-ans'), // [New]
         inpText: document.getElementById('edit-q-text'),
         inpExpl: document.getElementById('edit-q-expl'),
+        inpSimAns: document.getElementById('edit-q-sim-ans'), // [New]
         inpSimText: document.getElementById('edit-q-sim-text'),
         inpSimExpl: document.getElementById('edit-q-sim-expl'),
 
@@ -59,12 +65,10 @@ export function initEditorController() {
             return alert("請先建立題庫！");
         }
 
-        // [修改] 優先使用 Info Bar 的標題作為預設值
         const currentTitle = el.infoTitle.value.trim() || "測驗卷";
         const title = prompt("請確認試卷標題：", currentTitle);
         if (title === null) return;
         
-        // 若使用者改了標題，同步回 Info Bar
         if(title) el.infoTitle.value = title;
 
         let html = "";
@@ -98,23 +102,21 @@ export function initEditorController() {
     el.fileQuestions.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const fileName = file.name.toLowerCase();
         
-        // [新增] 更新試卷標題為檔名 (去掉副檔名)
         const pureName = file.name.replace(/\.[^/.]+$/, "");
-        el.infoTitle.value = pureName;
+        el.infoTitle.value = pureName; // 自動填入檔名
 
         el.txtRawQ.value = "📂 讀取中...";
         el.txtRawQ.disabled = true;
 
         try {
-            if(fileName.endsWith('xls') || fileName.endsWith('xlsx') || fileName.endsWith('csv')) {
+            if(file.name.match(/\.(xls|xlsx|csv)$/i)) {
                 const rawData = await parseFile(file);
                 state.questions = rawData.map((row, index) => ({
-                    id: String(row.id || row['題號'] || row['ID'] || index + 1).trim(),
-                    text: row.text || row['題目'] || row['question'] || row['Question'] || '',
-                    expl: row.expl || row['解析'] || row['answer'] || row['Answer'] || '',
-                    ans: row.ans || row['答案'] || row['Ans'] || ''
+                    id: String(row.id || row['題號'] || index + 1).trim(),
+                    text: row.text || row['題目'] || '',
+                    expl: row.expl || row['解析'] || '',
+                    ans: row.ans || row['答案'] || ''
                 }));
                 state.sourceType = 'file';
                 el.txtRawQ.value = `[已匯入檔案] ${file.name}\n${state.questions.length} 題`;
@@ -150,9 +152,8 @@ export function initEditorController() {
             state.questions = parsed;
             renderPreview(parsed, 'AI');
             
-            // 儲存紀錄時，使用當前標題
-            const title = el.infoTitle.value || "AI 分析結果";
-            saveHistory(parsed, title);
+            // 儲存紀錄 (含標題)
+            saveHistory(parsed, el.infoTitle.value || "AI 分析結果");
         } catch (e) {
             alert(e.message);
         } finally {
@@ -168,7 +169,7 @@ export function initEditorController() {
             el.txtRawQ.disabled = false;
             state.questions = [];
             state.sourceType = 'text';
-            el.infoTitle.value = "未命名試卷"; // 重置標題
+            el.infoTitle.value = "未命名試卷";
             updatePreview();
         }
     });
@@ -180,13 +181,13 @@ export function initEditorController() {
         updatePreview();
     });
 
-    // 5. 類題生成
+    // 5. 類題生成 (巢狀結構)
     if (el.btnGenSimilar) {
         el.btnGenSimilar.addEventListener('click', async () => {
             if (!state.ai.available) return alert("請先設定 AI Key");
             if (!state.questions || state.questions.length === 0) return alert("請先建立題庫！");
 
-            if (!confirm(`即將為 ${state.questions.length} 道題目生成類題。\n這可能需要一點時間，確定嗎？`)) return;
+            if (!confirm(`即將為 ${state.questions.length} 道題目生成類題。\n這將歸入當前題庫作為子題。確定嗎？`)) return;
 
             const originalBtnText = el.btnGenSimilar.textContent;
             el.btnGenSimilar.disabled = true;
@@ -208,9 +209,11 @@ export function initEditorController() {
                         results.forEach(res => {
                             const targetQ = qMap.get(String(res.id));
                             if (targetQ) {
+                                // [重要] 確保巢狀結構包含答案
                                 targetQ.similar = {
                                     text: res.similarText || "生成失敗",
-                                    expl: res.similarExpl || ""
+                                    expl: res.similarExpl || "",
+                                    ans: res.similarAns || "" // 新增答案
                                 };
                             }
                         });
@@ -218,10 +221,12 @@ export function initEditorController() {
                     processed += batch.length;
                 }
 
-                const title = el.infoTitle.value + " (含類題)";
-                saveHistory(state.questions, title);
+                // 備份到歷史紀錄 (不改變標題，只加上標記)
+                const newTitle = el.infoTitle.value;
+                saveHistory(state.questions, newTitle + " (含類題)");
+                
                 renderPreview(state.questions, 'AI+類題');
-                alert("🎉 類題生成完畢！");
+                alert("🎉 類題生成完畢！已歸入各題之下。");
 
             } catch (e) {
                 console.error(e);
@@ -233,7 +238,7 @@ export function initEditorController() {
         });
     }
 
-    // 6. 歷史紀錄
+    // 6. 歷史紀錄 (支援追加與標題)
     if (el.btnHistory) {
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
@@ -247,7 +252,7 @@ export function initEditorController() {
         });
     }
 
-    // 7. 單題編輯
+    // 7. 單題編輯 (開啟 Modal)
     el.previewQ.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-edit-q');
         if (btn) openEditModal(btn.dataset.index);
@@ -267,14 +272,18 @@ export function initEditorController() {
         if (!q) return;
         el.inpIndex.value = index;
         el.inpId.value = q.id || '';
+        el.inpAns.value = q.ans || ''; // [New]
         el.inpText.value = q.text || '';
         el.inpExpl.value = q.expl || '';
+        
         if (q.similar) {
             el.inpSimText.value = q.similar.text || '';
             el.inpSimExpl.value = q.similar.expl || '';
+            el.inpSimAns.value = q.similar.ans || ''; // [New]
         } else {
             el.inpSimText.value = '';
             el.inpSimExpl.value = '';
+            el.inpSimAns.value = '';
         }
         el.modalEditor.style.display = 'flex';
     }
@@ -284,15 +293,20 @@ export function initEditorController() {
         if (isNaN(index) || index < 0 || index >= state.questions.length) return;
         const q = state.questions[index];
         q.id = el.inpId.value;
+        q.ans = el.inpAns.value.trim(); // [New]
         q.text = el.inpText.value;
         q.expl = el.inpExpl.value;
+        
         const simText = el.inpSimText.value.trim();
         const simExpl = el.inpSimExpl.value.trim();
+        const simAns = el.inpSimAns.value.trim();
+        
         if (simText) {
-            q.similar = { text: simText, expl: simExpl };
+            q.similar = { text: simText, expl: simExpl, ans: simAns };
         } else {
             delete q.similar;
         }
+        
         el.modalEditor.style.display = 'none';
         renderPreview(state.questions, state.sourceType || 'Edited');
     });
@@ -305,7 +319,6 @@ export function initEditorController() {
 
     function renderPreview(questions, source) {
         if (!Array.isArray(questions)) questions = [];
-        // [修改] 更新 Info Bar 上的題數
         el.infoCount.textContent = questions.length;
         
         if (!questions.length) {
@@ -315,13 +328,14 @@ export function initEditorController() {
         el.previewQ.innerHTML = questions.map((q, i) => `
             <div class="parsed-item ${q.expl?'has-expl':''}">
                 <div class="parsed-actions">
-                    <button class="btn-icon-small btn-edit-q" data-index="${i}" title="編輯題目">✏️</button>
-                    <button class="btn-icon-small btn-del-q" data-index="${i}" title="刪除題目" style="color:#d32f2f;">🗑️</button>
+                    <button class="btn-icon-small btn-edit-q" data-index="${i}" title="編輯">✏️</button>
+                    <button class="btn-icon-small btn-del-q" data-index="${i}" title="刪除" style="color:#d32f2f;">🗑️</button>
                 </div>
                 <div class="parsed-header">
                     <span class="parsed-id">#${q.id}</span> 
+                    <span class="parsed-badge" style="background:${q.ans?'#e8f5e9':'#ffebee'}">${q.ans || '未填答'}</span>
                     <span class="parsed-badge">${source}</span>
-                    ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0;">★類題</span>' : ''}
+                    ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0; color:white;">★類題</span>' : ''}
                 </div>
                 <div class="parsed-text">${q.text.substring(0,60)}...</div>
             </div>
@@ -341,23 +355,24 @@ export function initEditorController() {
                     <span class="hist-meta">${item.dateStr} • ${item.count} 題</span>
                 </div>
                 <div class="hist-actions">
-                    <button class="btn-small btn-green btn-load-hist" data-id="${item.id}">📂 載入</button>
-                    <button class="btn-small btn-red btn-del-hist" data-id="${item.id}">🗑️</button>
+                    <button class="btn-small btn-tool btn-rename-hist" data-id="${item.id}" data-title="${item.title}" title="改名">✏️</button>
+                    <button class="btn-small btn-secondary btn-append-hist" data-id="${item.id}" title="加入到目前題庫">➕ 追加</button>
+                    <button class="btn-small btn-green btn-load-hist" data-id="${item.id}" title="覆蓋目前題庫">📂 載入</button>
+                    <button class="btn-small btn-red btn-del-hist" data-id="${item.id}" title="刪除">🗑️</button>
                 </div>
             </div>
         `).join('');
 
+        // 綁定載入按鈕
         document.querySelectorAll('.btn-load-hist').forEach(b => {
             b.addEventListener('click', (e) => {
                 const id = e.target.dataset.id;
                 const record = loadHistory(id);
                 if (record) {
-                    if(confirm(`確定載入「${record.title}」？\n這將覆蓋目前的編輯內容。`)) {
+                    if(confirm(`確定載入「${record.title}」？\n這將【覆蓋】目前的編輯內容。`)) {
                         state.questions = JSON.parse(JSON.stringify(record.data));
                         state.sourceType = 'history';
-                        // [新增] 載入歷史紀錄的標題
-                        el.infoTitle.value = record.title;
-                        
+                        el.infoTitle.value = record.title; 
                         el.txtRawQ.value = `[歷史紀錄] ${record.title}\n時間：${record.dateStr}`;
                         el.txtRawQ.disabled = true;
                         renderPreview(state.questions, 'History');
@@ -366,6 +381,45 @@ export function initEditorController() {
                 }
             });
         });
-        // ... (刪除按鈕邏輯不變) ...
+
+        // 綁定追加按鈕
+        document.querySelectorAll('.btn-append-hist').forEach(b => {
+            b.addEventListener('click', (e) => {
+                const id = e.target.dataset.id;
+                const record = loadHistory(id);
+                if (record) {
+                    const newQs = JSON.parse(JSON.stringify(record.data));
+                    const startId = state.questions.length + 1;
+                    newQs.forEach((q, idx) => { q.id = String(startId + idx); });
+                    state.questions = state.questions.concat(newQs);
+                    renderPreview(state.questions, 'Append');
+                    alert(`已追加 ${newQs.length} 題！`);
+                    el.modalHistory.style.display = 'none';
+                }
+            });
+        });
+
+        // 綁定刪除按鈕
+        document.querySelectorAll('.btn-del-hist').forEach(b => {
+            b.addEventListener('click', (e) => {
+                if(confirm("確定刪除此紀錄？")) {
+                    deleteHistory(e.target.dataset.id);
+                    renderHistoryList();
+                }
+            });
+        });
+
+        // [新增] 綁定改名按鈕
+        document.querySelectorAll('.btn-rename-hist').forEach(b => {
+            b.addEventListener('click', (e) => {
+                const id = e.target.dataset.id;
+                const oldTitle = e.target.dataset.title;
+                const newTitle = prompt("請輸入新名稱：", oldTitle);
+                if (newTitle && newTitle.trim() !== "") {
+                    renameHistory(id, newTitle.trim());
+                    renderHistoryList(); // 重新渲染列表以更新顯示
+                }
+            });
+        });
     }
 }

@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/aiParser.js
- * V2.4: 修正 analyzeAnswerSheetBatch 變數引用錯誤 (base64 is not defined)
+ * V2.5: 更新類題生成 Prompt，加入「類題答案 (similarAns)」
  */
 
 import { recordRequest, handleApiError } from './usageMonitor.js';
@@ -20,7 +20,6 @@ export async function fetchAvailableModels(apiKey) {
 }
 
 async function callGemini(key, model, contents) {
-    // 1. 發送前：記錄請求 (增加 RPM，Token=0，isUpdate=false)
     recordRequest(0, false); 
 
     const url = `${BASE_URL}/models/${model}:generateContent?key=${key}`;
@@ -40,8 +39,6 @@ async function callGemini(key, model, contents) {
         }
 
         const data = await response.json();
-        
-        // 2. 成功後：補登 Token (Token=實際值，isUpdate=true)
         if (data.usageMetadata && data.usageMetadata.totalTokenCount) {
              recordRequest(data.usageMetadata.totalTokenCount, true);
         }
@@ -63,11 +60,11 @@ async function callGemini(key, model, contents) {
 
 // 1. 題目解析
 export async function parseWithGemini(apiKey, model, text) {
-    const prompt = `試題轉JSON [id,text,expl,ans]。內容：${text}`;
+    const prompt = `試題轉 JSON。格式：[{"id":"1","text":"...","expl":"...","ans":"A"}]。請自動偵測答案。內容：${text}`;
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 2. [修正] 批次閱卷 (一次處理多張圖片)
+// 2. 批次閱卷
 export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCount) {
     const promptText = `
     你將收到 ${base64Images.length} 張答案卡圖片。
@@ -75,7 +72,7 @@ export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCoun
     1. 座號 (seat): 若無法辨識回傳 "unknown"。
     2. 作答 (answers): 第 1-${qCount} 題。
     
-    【重要】：請回傳一個 JSON 陣列 (Array)，順序必須對應圖片順序。
+    回傳一個 JSON 陣列 (Array)。
     範例格式：
     [
         {"seat": "01", "answers": {"1":"A", "2":"B"}},
@@ -84,8 +81,6 @@ export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCoun
     `;
 
     const parts = [{ text: promptText }];
-    
-    // [修正點] 這裡原本寫錯變數名稱，現已修正為 b64
     base64Images.forEach(b64 => {
         parts.push({
             inlineData: { mimeType: "image/jpeg", data: b64 }
@@ -101,13 +96,19 @@ export async function analyzeAnswerSheet(base64Image, model, apiKey, qCount) {
     return result[0];
 }
 
-// 4. 批次生成類題
+// 4. [更新] 批次生成類題 (加入 similarAns)
 export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     const simpleList = questions.map(q => ({ id: q.id, text: q.text, ans: q.ans }));
+    
     const prompt = `
     請為以下題目列表產生「複習類題」。
-    規則：改數字或情境、禁止複製原題。
-    回傳 JSON 陣列：[{"id":"1", "similarText":"...", "similarExpl":"..."}]
+    規則：
+    1. 改編數字或情境、禁止直接複製原題。
+    2. 必須提供類題的正確答案 (similarAns)。
+    3. 必須提供類題的解析 (similarExpl)。
+    
+    回傳 JSON 陣列格式：
+    [{"id":"1", "similarText":"...", "similarExpl":"...", "similarAns":"..."}]
     
     題目列表：
     ${JSON.stringify(simpleList)}
