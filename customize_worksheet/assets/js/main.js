@@ -10,6 +10,7 @@ import { initSettingsController } from './modules/settingsController.js';
 import { initEditorController } from './modules/editorController.js';
 import { initGradingController } from './modules/gradingController.js';
 import { initOutputController } from './modules/outputController.js';
+import { initUsageMonitor } from './modules/usageMonitor.js';
 
 // 初始化
 initColumnManager();
@@ -17,6 +18,7 @@ initSettingsController();
 initEditorController();
 initGradingController();
 initOutputController();
+initUsageMonitor();
 
 // 步驟管理器驗證邏輯
 new StepManager(3, {

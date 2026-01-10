@@ -1,131 +1,116 @@
-// assets/js/modules/textParser.js
-
 /**
- * 主入口：解析題目與解析 (支援分開貼上)
- * @param {String} textQ 題目區文字
- * @param {String} textA 解析區文字 (可選)
+ * assets/js/modules/textParser.js
+ * 負責文字解析：
+ * 1. 將純文字轉換為題目物件 (含答案擷取)
+ * 2. 解析錯題速記文字 (座號: 錯題)
  */
-export function parseQuestionMixed(textQ, textA = '') {
-    // 1. 如果使用者只貼在題目區，但裡面包含明顯的「解析分隔線」，嘗試自動切分
-    if (!textA && textQ) {
-        const splitKeywords = ['解析篇', '解答篇', 'Answer Key', 'Answers', '解析：', '解答：'];
-        // 找最後一次出現的大標題分隔
-        for (const kw of splitKeywords) {
-            // 簡單判斷：如果關鍵字出現在後半段，且前後有換行
-            const idx = textQ.lastIndexOf(kw);
-            if (idx > textQ.length * 0.5) { 
-                textA = textQ.substring(idx);
-                textQ = textQ.substring(0, idx);
-                console.log("自動偵測到解析區塊，已分離處理");
-                break;
-            }
-        }
+
+// ==========================================
+// 1. 題目解析核心 (Step 1 用)
+// ==========================================
+export function parseQuestionMixed(text, defaultExpl = '') {
+    if (!text) return [];
+
+    // 預處理：統一換行符號
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // 嘗試分割題目 (常見格式：數字開頭 + 點/頓號)
+    // Regex 邏輯：找到 "1. " 或 "1、" 開頭的段落，直到下一個數字開頭前
+    const regex = /(\d+)[.、\s]([\s\S]*?)(?=(?:\n\d+[.、\s])|$)/g;
+    
+    let matches;
+    const questions = [];
+    
+    // 如果 Regex 找不到任何題目，嘗試用雙換行分割
+    if (!text.match(regex)) {
+        const blocks = text.split(/\n\n+/);
+        return blocks.map((block, i) => extractAnswerFromBlock(i + 1, block.trim(), defaultExpl));
     }
 
-    // 2. 分別解析
-    const questions = parseBlock(textQ, 'question');
-    const explanations = parseBlock(textA, 'explanation');
-
-    // 3. 合併 (以題目為準，將解析塞進去)
-    // 建立索引
-    const explMap = {};
-    explanations.forEach(item => {
-        explMap[normalizeId(item.id)] = item.content;
-    });
-
-    // 合併
-    questions.forEach(q => {
-        const nId = normalizeId(q.id);
-        // 如果解析區有對應題號，優先使用
-        if (explMap[nId]) {
-            q.expl = explMap[nId];
-        } 
-        // 否則保留原本在題目區抓到的解析 (如果有)
-    });
+    while ((matches = regex.exec(text)) !== null) {
+        const id = matches[1];
+        const content = matches[2].trim();
+        questions.push(extractAnswerFromBlock(id, content, defaultExpl));
+    }
 
     return questions;
 }
 
 /**
- * 內部函式：解析單一區塊
- * @param {String} text 
- * @param {String} type 'question' | 'explanation'
+ * 內部 Helper: 從題目區塊中分離「題目本文」、「解析」與「答案」
  */
-function parseBlock(text, type) {
+function extractAnswerFromBlock(id, content, defaultExpl) {
+    let text = content;
+    let expl = defaultExpl;
+    let ans = '';
+
+    // 1. 嘗試擷取解析 (Explanation)
+    // 常見關鍵字：解析、說明、詳解
+    const explRegex = /\n(解析|說明|詳解|Note)[:：]([\s\S]*)/i;
+    const explMatch = text.match(explRegex);
+    
+    if (explMatch) {
+        expl = explMatch[2].trim();
+        text = text.replace(explMatch[0], '').trim(); // 從本文移除解析部分
+    }
+
+    // 2. 嘗試擷取答案 (Answer) - 從本文或解析中找
+    // 支援格式： (A), [B], 答案：C, Ans: D
+    // 優先找獨立一行的答案
+    const ansRegex = /(?:答案|Ans|Answer)[:：\s]*([A-E])(?:\)|\])?/i;
+    const bracketAnsRegex = /[\(\[]([A-E])[\)\]]$/m; // 行尾的 (A) 或 [A]
+
+    // 先找明確標示 "答案：A" 的
+    let ansMatch = text.match(ansRegex) || expl.match(ansRegex);
+    
+    if (ansMatch) {
+        ans = ansMatch[1].toUpperCase();
+    } else {
+        // 若沒找到，找行尾括號 (A)
+        ansMatch = text.match(bracketAnsRegex) || expl.match(bracketAnsRegex);
+        if (ansMatch) ans = ansMatch[1].toUpperCase();
+    }
+
+    return {
+        id: id,
+        text: text,
+        expl: expl,
+        ans: ans // 標準答案欄位
+    };
+}
+
+// ==========================================
+// 2. [補回] 錯題速記解析 (Step 2 用)
+// ==========================================
+export function parseErrorText(text) {
     if (!text) return [];
+    const lines = text.split('\n');
+    const result = [];
     
-    const lines = text.split(/\r?\n/);
-    const items = [];
-    let currentItem = null;
-
-    // 正則：匹配行首的題號
-    // 支援：1. / 1、 / (1) / Q1. / Question 1
-    const regexId = /^(?:Q|Question)?\s*(\d+|[\(（]\d+[\)）])[\.\、\s]/i;
-    
-    // 正則：匹配行內的解析關鍵字 (用於混合模式)
-    const regexExplParams = /(解析|詳解|答案|Ans|Answer)[:：]/i;
-
     lines.forEach(line => {
         line = line.trim();
         if (!line) return;
-
-        const idMatch = line.match(regexId);
-
-        if (idMatch) {
-            // 遇到新題號 -> 存檔
-            if (currentItem) items.push(currentItem);
-            
-            const idStr = idMatch[1].replace(/[\(\)（）]/g, ''); // 去括號
-            let content = line.replace(regexId, '').trim();
-            
-            currentItem = {
-                id: idStr,
-                content: content, // 暫存內容
-                text: content,    // 題目
-                expl: ''          // 解析
-            };
-        } else {
-            // 接續上一題
-            if (currentItem) {
-                // 如果是題目區，嘗試抓行內解析
-                if (type === 'question' && regexExplParams.test(line)) {
-                    // 發現解析關鍵字，之後的都算解析
-                    currentItem.expl += (currentItem.expl ? '\n' : '') + line;
-                } else {
-                    // 一般內容追加
-                    if (currentItem.expl) {
-                        currentItem.expl += '\n' + line;
-                    } else {
-                        currentItem.text += '\n' + line; // 加到題目
-                        currentItem.content += '\n' + line; // 加到原始內容(給解析區用)
-                    }
-                }
-            }
-        }
-    });
-
-    if (currentItem) items.push(currentItem);
-    return items;
-}
-
-// 題號正規化 (去除空白、轉字串)
-function normalizeId(id) {
-    return String(id).trim();
-}
-
-// (保留之前的 parseErrorText 不變)
-export function parseErrorText(text) {
-    // ...維持原樣...
-    const lines = text.split(/\r?\n/);
-    const students = [];
-    lines.forEach(line => {
+        if (line.startsWith('[已匯入')) return; // 跳過系統訊息行
+        
+        // 格式範例: "05: 1, 3, 5" 或 "06: 全對"
+        // 抓取冒號前的座號，與冒號後的內容
         const parts = line.split(/[:：]/);
         if (parts.length >= 2) {
-            students.push({
-                '座號': parts[0].trim(),
-                '錯題列表': parts.slice(1).join(':').trim()
+            const seat = parts[0].trim();
+            const errorStr = parts[1].trim();
+            
+            // 分割錯題 ID
+            let errors = [];
+            if (errorStr && errorStr !== '全對' && errorStr !== '無錯題' && errorStr !== '無') {
+                // 支援逗號、空格分隔
+                errors = errorStr.split(/[,，\s]+/).filter(x => x);
+            }
+            
+            result.push({
+                seat: seat,
+                errors: errors
             });
         }
     });
-    return students;
+    return result;
 }

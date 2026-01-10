@@ -80,3 +80,15 @@ textarea { flex: 1; border: none; padding: 15px; resize: none; outline: none; fo
 .q-row { display: flex; align-items: center; border-bottom: 1px solid #f0f0f0; }
 .q-options { display: flex; gap: 5px; }
 .bubble-opt { width: 18px; height: 18px; border: 1px solid #999; border-radius: 50%; text-align: center; font-size: 10px; line-height: 18px; color: #ccc; }
+
+/* 編輯模式表單樣式 */
+.form-group {margin-bottom: 15px;}
+.form-group label {display: block;font-weight: bold;margin-bottom: 5px;color: #555;}
+.input-field {width: 100%;padding: 8px;border: 1px solid #ddd;border-radius: 4px;font-size: 14px;font-family: inherit;box-sizing: border-box; /* 確保 padding 不會撐破寬度 */}
+.input-field:focus {border-color: #2196F3;outline: none;}
+
+/* 預覽區的編輯按鈕 */
+.parsed-actions {position: absolute; /* 絕對定位在卡片右上角 */top: 10px;right: 10px;display: flex;gap: 5px;}
+.btn-icon-small {background: #fff;border: 1px solid #ddd;cursor: pointer;padding: 4px 8px;border-radius: 4px;font-size: 14px;transition: all 0.2s;}
+.btn-icon-small:hover {background: #f0f0f0;color: #2196F3;border-color: #2196F3;}
+.parsed-item {position: relative; /* 讓 actions 可以定位 */}

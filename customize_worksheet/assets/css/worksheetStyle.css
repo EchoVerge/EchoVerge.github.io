@@ -87,3 +87,84 @@
         padding: 0;
     }
 }
+
+/* =========================================
+   雙面列印分頁控制
+   ========================================= */
+
+/* 1. 確保每個學生的試卷結束後，強制換頁 (讓下一位學生從新的一張紙開始) */
+.page-break-active {
+    page-break-after: always; /* 舊版瀏覽器支援 */
+    break-after: page;        /* 標準語法 */
+    display: block;           /* 確保是區塊元素 */
+}
+
+/* 2. 補白區塊樣式 (用於將奇數頁補成偶數頁) */
+.page-filler {
+    display: block;
+    page-break-before: always; /* 強制在自己之前換頁 */
+    break-before: page;
+    height: 1px;               /* 佔用極小高度，避免產生額外空白頁 */
+    visibility: hidden;        /* 內容隱藏 */
+}
+
+/* 3. 在網頁預覽時顯示分頁線 (方便老師檢查) */
+@media screen {
+    .page-break-active {
+        border-bottom: 5px dashed #ccc; /* 顯示虛線代表分頁 */
+        margin-bottom: 40px;            /* 拉開間距 */
+        position: relative;
+    }
+    
+    /* 選擇性：加上文字提示 */
+    .page-break-active::after {
+        content: "--- 這裡是分頁線 (列印時會強制換頁) ---";
+        display: block;
+        text-align: center;
+        color: #999;
+        font-size: 12px;
+        margin-top: 10px;
+    }
+
+    /* 讓補白區塊在螢幕上也稍微可見，或是顯示提示 */
+    .page-filler {
+        visibility: visible;
+        background: repeating-linear-gradient(
+            45deg,
+            #f3f3f3,
+            #f3f3f3 10px,
+            #ffffff 10px,
+            #ffffff 20px
+        );
+        height: 50px; /* 螢幕上顯示高度，讓老師知道這裡補了一頁 */
+        border: 1px dotted #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        font-size: 12px;
+    }
+    .page-filler::before {
+        content: "[系統自動補白頁 - 確保雙面列印不跑版]";
+    }
+}
+
+/* 4. 列印時隱藏多餘提示 */
+@media print {
+    .page-break-active {
+        border-bottom: none !important;
+        margin-bottom: 0 !important;
+    }
+    .page-break-active::after {
+        display: none !important;
+    }
+    .page-filler {
+        visibility: hidden !important; /* 列印時隱藏內容 */
+        background: none !important;
+        border: none !important;
+        height: 1px !important; /* 恢復極小高度 */
+    }
+    .page-filler::before {
+        display: none !important;
+    }
+}

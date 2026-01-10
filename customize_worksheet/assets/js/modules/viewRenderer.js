@@ -87,10 +87,15 @@ export function createTeacherKeySection(questions) {
 
     let rows = '';
     sorted.forEach(q => {
+        // [新增] 顯示標準答案
+        const ansBadge = q.ans ? `<span style="color:red; font-weight:bold;">[${q.ans}]</span>` : '';
+        
         rows += `
             <tr>
                 <td style="width:10%; text-align:center;">${q.id}</td>
-                <td style="width:50%;">${q.text}</td>
+                <td style="width:50%;">
+                    ${q.text} <br>
+                    ${ansBadge} </td>
                 <td style="width:40%;">${q.expl}</td>
             </tr>
         `;

@@ -1,13 +1,12 @@
 /**
  * assets/js/modules/editorController.js
- * 負責 Step 1: 題目編輯、檔案匯入、AI 解析預覽、類題生成、歷史紀錄
+ * 負責 Step 1: 題目編輯、檔案匯入、AI 解析預覽、類題生成、歷史紀錄、單題編輯
  */
 
 import { state } from './state.js';
 import { parseFile } from './fileHandler.js';
 import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
-// [新增] 引入新函式
 import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
 import { saveHistory, getHistoryList, loadHistory, deleteHistory } from './historyManager.js';
 
@@ -22,11 +21,22 @@ export function initEditorController() {
         btnAiParse: document.getElementById('btn-ai-parse'),
         btnClearQ: document.getElementById('btn-clear-q'),
         
-        // [新增] 按鈕與 Modal
+        // AI 與 歷史
         btnGenSimilar: document.getElementById('btn-gen-similar'),
         btnHistory: document.getElementById('btn-history'),
         modalHistory: document.getElementById('modal-history'),
-        historyList: document.getElementById('history-list')
+        historyList: document.getElementById('history-list'),
+
+        // [新增] 編輯相關元素
+        modalEditor: document.getElementById('modal-question-editor'),
+        btnSaveEdit: document.getElementById('btn-save-edit'),
+        // 編輯輸入框
+        inpIndex: document.getElementById('edit-q-index'),
+        inpId: document.getElementById('edit-q-id'),
+        inpText: document.getElementById('edit-q-text'),
+        inpExpl: document.getElementById('edit-q-expl'),
+        inpSimText: document.getElementById('edit-q-sim-text'),
+        inpSimExpl: document.getElementById('edit-q-sim-expl')
     };
 
     // 1. 編輯器輸入監聽
@@ -76,7 +86,7 @@ export function initEditorController() {
         e.target.value = '';
     });
 
-    // 3. AI 分析 (原功能)
+    // 3. AI 分析
     el.btnAiParse.addEventListener('click', async () => {
         if (!state.ai.available) return alert("請先設定 AI Key");
         const text = el.txtRawQ.value;
@@ -90,10 +100,7 @@ export function initEditorController() {
             const parsed = await parseWithGemini(state.ai.key, state.ai.model, text);
             state.questions = parsed;
             renderPreview(parsed, 'AI');
-            
-            // [新增] 分析完自動存個檔
             saveHistory(parsed, `AI 分析結果 - ${parsed.length} 題`);
-            
         } catch (e) {
             alert(e.message);
         } finally {
@@ -119,7 +126,7 @@ export function initEditorController() {
         updatePreview();
     });
 
-    // 5. [新增] 生成類題 (Batch)
+    // 5. 生成類題 (Batch)
     if (el.btnGenSimilar) {
         el.btnGenSimilar.addEventListener('click', async () => {
             if (!state.ai.available) return alert("請先設定 AI Key");
@@ -132,8 +139,7 @@ export function initEditorController() {
             el.btnGenSimilar.textContent = "⏳ 初始化...";
 
             try {
-                // 分批處理：每次處理 5 題
-                const BATCH_SIZE = 5;
+                const BATCH_SIZE = 10;
                 const total = state.questions.length;
                 let processed = 0;
                 const qMap = new Map();
@@ -141,7 +147,6 @@ export function initEditorController() {
 
                 for (let i = 0; i < total; i += BATCH_SIZE) {
                     el.btnGenSimilar.textContent = `⏳ 生成中 (${processed}/${total})...`;
-                    
                     const batch = state.questions.slice(i, i + BATCH_SIZE);
                     const results = await generateSimilarQuestionsBatch(batch, state.ai.model, state.ai.key);
                     
@@ -159,13 +164,10 @@ export function initEditorController() {
                     processed += batch.length;
                 }
 
-                // [重要] 生成完畢後，自動存檔
                 const timeStr = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'});
                 saveHistory(state.questions, `${timeStr} 題庫備份【包含複測類題】`);
-
-                // 更新介面
                 renderPreview(state.questions, 'AI+類題');
-                alert("🎉 類題生成完畢！\n已自動儲存至歷史紀錄，標題包含【包含複測類題】。\n\n現在匯出學生訂正卷時，系統會自動帶入這些類題。");
+                alert("🎉 類題生成完畢！");
 
             } catch (e) {
                 console.error(e);
@@ -177,24 +179,130 @@ export function initEditorController() {
         });
     }
 
-    // 6. [新增] 歷史紀錄功能
+    // 6. 歷史紀錄功能
     if (el.btnHistory) {
-        // 開啟 Modal
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
             renderHistoryList();
         });
 
-        // 關閉 Modal (通用)
         document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const targetId = btn.dataset.target || 'modal-history';
-                document.getElementById(targetId).style.display = 'none';
+                const targetId = btn.dataset.target;
+                if(targetId) document.getElementById(targetId).style.display = 'none';
             });
         });
     }
 
-    // 內部函式：渲染歷史列表
+    // [新增] 7. 單題編輯功能
+    // (A) 監聽預覽列表的點擊事件 (Event Delegation)
+    el.previewQ.addEventListener('click', (e) => {
+        // 如果點擊的是編輯按鈕 (或是按鈕內的圖示)
+        const btn = e.target.closest('.btn-edit-q');
+        if (btn) {
+            const index = btn.dataset.index;
+            openEditModal(index);
+        }
+        
+        // (選擇性) 如果有刪除按鈕
+        const btnDel = e.target.closest('.btn-del-q');
+        if (btnDel) {
+            const index = btnDel.dataset.index;
+            if(confirm('確定刪除此題？')) {
+                state.questions.splice(index, 1);
+                renderPreview(state.questions, state.sourceType || 'Edit');
+            }
+        }
+    });
+
+    // (B) 開啟編輯視窗
+    function openEditModal(index) {
+        const q = state.questions[index];
+        if (!q) return;
+
+        // 填入資料
+        el.inpIndex.value = index;
+        el.inpId.value = q.id || '';
+        el.inpText.value = q.text || '';
+        el.inpExpl.value = q.expl || '';
+        
+        // 類題資料 (若無則留空)
+        if (q.similar) {
+            el.inpSimText.value = q.similar.text || '';
+            el.inpSimExpl.value = q.similar.expl || '';
+        } else {
+            el.inpSimText.value = '';
+            el.inpSimExpl.value = '';
+        }
+
+        el.modalEditor.style.display = 'flex';
+    }
+
+    // (C) 儲存編輯
+    el.btnSaveEdit.addEventListener('click', () => {
+        const index = parseInt(el.inpIndex.value);
+        if (isNaN(index) || index < 0 || index >= state.questions.length) return;
+
+        // 更新 state
+        const q = state.questions[index];
+        q.id = el.inpId.value;
+        q.text = el.inpText.value;
+        q.expl = el.inpExpl.value;
+
+        // 更新類題 (如果使用者有輸入內容)
+        const simText = el.inpSimText.value.trim();
+        const simExpl = el.inpSimExpl.value.trim();
+
+        if (simText) {
+            q.similar = {
+                text: simText,
+                expl: simExpl
+            };
+        } else {
+            // 如果清空了，就移除類題屬性
+            delete q.similar;
+        }
+
+        // 關閉視窗並重繪
+        el.modalEditor.style.display = 'none';
+        renderPreview(state.questions, state.sourceType || 'Edited');
+        
+        // 提示
+        // alert("修改已儲存 (尚未存入歷史紀錄，請記得生成試卷或手動備份)");
+    });
+
+    // --- 內部函式 ---
+    function updatePreview() {
+        const parsed = parseQuestionMixed(el.txtRawQ.value, '');
+        state.questions = parsed;
+        renderPreview(parsed, 'Regex');
+    }
+
+    function renderPreview(questions, source) {
+        if (!Array.isArray(questions)) questions = [];
+        el.previewCount.textContent = questions.length;
+        if (!questions.length) {
+            el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>';
+            return;
+        }
+        
+        // [新增] 這裡加入了編輯按鈕 (btn-edit-q)
+        el.previewQ.innerHTML = questions.map((q, i) => `
+            <div class="parsed-item ${q.expl?'has-expl':''}">
+                <div class="parsed-actions">
+                    <button class="btn-icon-small btn-edit-q" data-index="${i}" title="編輯題目">✏️</button>
+                    <button class="btn-icon-small btn-del-q" data-index="${i}" title="刪除題目" style="color:#d32f2f;">🗑️</button>
+                </div>
+                <div class="parsed-header">
+                    <span class="parsed-id">#${q.id}</span> 
+                    <span class="parsed-badge">${source}</span>
+                    ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0;">★類題</span>' : ''}
+                </div>
+                <div class="parsed-text">${q.text.substring(0,60)}...</div>
+            </div>
+        `).join('');
+    }
+
     function renderHistoryList() {
         const list = getHistoryList();
         if (list.length === 0) {
@@ -215,16 +323,17 @@ export function initEditorController() {
             </div>
         `).join('');
 
-        // 綁定動態生成的按鈕事件
         document.querySelectorAll('.btn-load-hist').forEach(b => {
             b.addEventListener('click', (e) => {
                 const id = e.target.dataset.id;
                 const record = loadHistory(id);
                 if (record) {
                     if(confirm(`確定載入「${record.title}」？\n這將覆蓋目前的編輯內容。`)) {
-                        state.questions = record.data; // 載入資料
+                        state.questions = JSON.parse(JSON.stringify(record.data)); // Deep Copy 防止汙染歷史
                         state.sourceType = 'history';
+                        // 讓 textarea 顯示狀態，但不影響編輯
                         el.txtRawQ.value = `[歷史紀錄] ${record.title}\n時間：${record.dateStr}`;
+                        el.txtRawQ.disabled = true; // 鎖定文字區，強制使用 GUI 編輯
                         renderPreview(state.questions, 'History');
                         el.modalHistory.style.display = 'none';
                     }
@@ -236,36 +345,9 @@ export function initEditorController() {
             b.addEventListener('click', (e) => {
                 if(confirm("確定刪除此紀錄？")) {
                     deleteHistory(e.target.dataset.id);
-                    renderHistoryList(); // 重新渲染
+                    renderHistoryList();
                 }
             });
         });
-    }
-
-    // --- 內部函式 (保持原本邏輯) ---
-    function updatePreview() {
-        const parsed = parseQuestionMixed(el.txtRawQ.value, '');
-        state.questions = parsed;
-        renderPreview(parsed, 'Regex');
-    }
-
-    function renderPreview(questions, source) {
-        if (!Array.isArray(questions)) questions = [];
-        el.previewCount.textContent = questions.length;
-        if (!questions.length) {
-            el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>';
-            return;
-        }
-        
-        el.previewQ.innerHTML = questions.map((q, i) => `
-            <div class="parsed-item ${q.expl?'has-expl':''}">
-                <div class="parsed-header">
-                    <span class="parsed-id">#${q.id}</span> 
-                    <span class="parsed-badge">${source}</span>
-                    ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0;">★類題</span>' : ''}
-                </div>
-                <div class="parsed-text">${q.text.substring(0,60)}...</div>
-            </div>
-        `).join('');
     }
 }

@@ -71,10 +71,14 @@ export function initOutputController() {
     if(el.btnAnswerSheet) {
         el.btnAnswerSheet.addEventListener('click', () => {
             if(!state.questions || !state.questions.length) return alert("無題目");
+            
+            // 直接呼叫，Renderer 會自動判斷是否使用 Compact Mode
             const html = createAnswerSheet(el.inputTitle.value, state.questions.length);
+            
             el.outputArea.innerHTML = html;
             el.btnPrint.style.display = 'none'; 
-            setTimeout(() => { if(confirm("列印答案卡?")) window.print(); }, 500);
+            
+            setTimeout(() => { if(confirm("預覽已生成！是否列印？")) window.print(); }, 500);
         });
     }
 

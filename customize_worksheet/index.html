@@ -15,6 +15,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
 </head>
 <body>
 
@@ -103,7 +107,7 @@
                                 <span>⌨️ 錯題速記</span>
                                 <div style="display:flex; gap:5px;">
                                     <button id="btn-camera-grade" class="btn-xs btn-ai-gradient" style="border:none; color:white;">📷 拍照閱卷</button>
-                                    <input type="file" id="file-grade-image" accept="image/*" style="display: none;">
+                                    <input type="file" id="file-grade-image" accept="image/*, .pdf" style="display: none;">
                                     <button id="btn-upload-student" class="btn-xs">📂 上傳 Excel</button>
                                     <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
                                 </div>
@@ -210,6 +214,49 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary close-modal-btn">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-question-editor" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>✏️ 編輯題目</h2>
+                <span class="close-modal" data-target="modal-question-editor">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit-question">
+                    <input type="hidden" id="edit-q-index"> <div class="form-group">
+                        <label>題號 (ID)</label>
+                        <input type="text" id="edit-q-id" class="input-field" style="width: 100px;">
+                    </div>
+
+                    <div class="form-group">
+                        <label>題目內容 (Question)</label>
+                        <textarea id="edit-q-text" class="input-field" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>題目解析 (Explanation)</label>
+                        <textarea id="edit-q-expl" class="input-field" rows="2"></textarea>
+                    </div>
+
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
+
+                    <div class="form-group">
+                        <label style="color: #9c27b0;">★ 類題內容 (Similar Question)</label>
+                        <textarea id="edit-q-sim-text" class="input-field" rows="3" placeholder="若無類題，此處留空即可"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="color: #9c27b0;">★ 類題解析 (Similar Explanation)</label>
+                        <textarea id="edit-q-sim-expl" class="input-field" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal-btn" data-target="modal-question-editor">取消</button>
+                <button id="btn-save-edit" class="btn-primary">💾 儲存修改</button>
             </div>
         </div>
     </div>
