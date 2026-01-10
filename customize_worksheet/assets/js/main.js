@@ -36,3 +36,12 @@ new StepManager(3, {
         return true;
     }
 });
+
+window.checkState = () => {
+    console.log("Current Mode:", state.mode);
+    console.log("Questions:", state.questions);
+    console.log("Students:", state.students);
+    
+    if (state.questions.length === 0) console.warn("⚠️ 警告：題庫是空的！");
+    if (state.mode === 'error' && state.students.length === 0) console.warn("⚠️ 警告：錯題模式下沒有學生資料！");
+};

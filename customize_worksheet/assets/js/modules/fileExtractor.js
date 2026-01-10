@@ -7,16 +7,36 @@
 const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+const PDF_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
 export async function extractTextFromFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
-
+    
     if (ext === 'docx') {
-        return await extractDocx(file);
-    } else if (ext === 'pdf') {
-        return await extractPdf(file);
-    } else {
-        throw new Error("不支援的檔案格式，僅支援 .docx 或 .pdf");
+        if (!window.mammoth) throw new Error("Mammoth library load failed");
+        const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+        return result.value;
+    } 
+    else if (ext === 'pdf') {
+        if (!window.pdfjsLib) throw new Error("PDF.js library load failed");
+        
+        // 設定 Worker
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+        
+        const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        let fullText = "";
+        
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            // 簡單合併字串
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += `--- Page ${i} ---\n${pageText}\n\n`;
+        }
+        return fullText;
     }
+    
+    throw new Error("不支援的格式 (僅支援 .docx, .pdf)");
 }
 
 /**

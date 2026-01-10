@@ -43,13 +43,20 @@ export function initEditorController() {
         el.txtRawQ.disabled = true;
 
         try {
-            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
-                // Excel 模式
-                const data = await parseFile(file);
-                state.questions = data;
+            if(name.endsWith('xls') || name.endsWith('xlsx') || name.endsWith('csv')) {
+                const rawData = await parseFile(f);
+                
+                // [修正] 資料正規化：確保一定有 id, text, expl
+                state.questions = rawData.map((row, index) => ({
+                    // 嘗試讀取各種可能的欄位名，如果都沒有，就用流水號 (index+1)
+                    id: String(row.id || row['題號'] || row['ID'] || index + 1).trim(),
+                    text: row.text || row['題目'] || row['question'] || row['Question'] || '',
+                    expl: row.expl || row['解析'] || row['answer'] || row['Answer'] || ''
+                }));
+
                 state.sourceType = 'file';
-                el.txtRawQ.value = `[已匯入] ${file.name}\n${data.length} 題`;
-                renderPreview(data, 'File');
+                el.txt.value = `[已匯入檔案] ${f.name}\n${state.questions.length} 題`;
+                renderPreview('File'); // 這會更新畫面上的計數
             } else {
                 // Word/PDF 模式
                 const text = await extractTextFromFile(file);
