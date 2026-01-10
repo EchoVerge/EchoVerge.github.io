@@ -1,0 +1,89 @@
+/* =========================================
+   新增：試卷輸出美化樣式 (由程式夥伴提供)
+   ========================================= */
+
+/* 1. 試卷整體容器設定 */
+.student-section {
+    font-family: "Times New Roman", "PMingLiU", serif; /* 使用適合閱讀的襯線字體 */
+    padding: 20px;
+    box-sizing: border-box;
+    background: white; /* 確保背景純白 */
+}
+
+/* 2. 表格專屬樣式 */
+.student-section table {
+    width: 100%;
+    border-collapse: collapse; /* 關鍵：合併邊框，讓線條變細且連接 */
+    margin-top: 15px;
+    font-size: 11pt; /* 適當的字體大小 */
+}
+
+/* 儲存格 (標頭 th 與內容 td) 共用設定 */
+.student-section th, 
+.student-section td {
+    border: 1px solid #000; /* 黑色實線邊框 */
+    padding: 8px 10px;      /* 內距：上下 8px，左右 10px */
+    line-height: 1.5;       /* 行高舒適度 */
+    vertical-align: top;    /* 內容靠上對齊 */
+    text-align: justify;    /* 文字左右對齊，閱讀較整齊 */
+}
+
+/* 表頭專屬設定 */
+.student-section th {
+    background-color: #f2f2f2; /* 淺灰色背景 */
+    color: #000;
+    font-weight: bold;
+    text-align: center;     /* 標題置中 */
+    white-space: nowrap;    /* 標題不換行 */
+}
+
+/* 3. 試卷標題區美化 */
+.worksheet-header {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #000; /* 標題區下方加一條粗線 */
+    text-align: center;
+}
+
+.worksheet-header h2 {
+    margin: 0 0 10px 0;
+    font-size: 24px;
+    letter-spacing: 2px;
+}
+
+.worksheet-info {
+    display: flex;
+    justify-content: space-between; /* 姓名靠左，日期靠右 */
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* 4. 教師解答卷特別樣式 (讓解析那一欄稍微小一點字，避免太佔版面) */
+.student-section td:nth-child(3) {
+    font-size: 0.95em; 
+}
+
+/* =========================================
+   列印專用設定 (Print Media Query)
+   ========================================= */
+@media print {
+    /* 強制列印背景色 (Chrome/Edge 需要此設定才能印出灰底) */
+    .student-section th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background-color: #f2f2f2 !important; 
+    }
+
+    /* 確保線條在列印時也是黑色的 */
+    .student-section th, 
+    .student-section td {
+        border: 1px solid #000 !important;
+    }
+    
+    /* 移除網頁上的陰影效果，讓紙張看起來乾淨 */
+    .student-section {
+        box-shadow: none !important;
+        margin: 0;
+        padding: 0;
+    }
+}
