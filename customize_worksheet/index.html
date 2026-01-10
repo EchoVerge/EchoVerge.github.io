@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教師自編考卷數位助教 V9 (AI版)</title>
+    <title>教師自編考卷數位助教 V12 (全能版)</title>
     
     <link rel="stylesheet" href="assets/css/style.css">
 
@@ -11,255 +11,174 @@
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
-    <div class="control-panel" style="position: relative;">
+    <div class="control-panel">
         <div style="position: absolute; top: 20px; right: 20px;">
-            <button id="btn-ai-settings" class="btn-small" style="background:#f0f0f0; border:1px solid #ccc; display: flex; align-items: center; gap: 5px;">
-                🤖 設定 AI Key
-            </button>
+            <button id="btn-ai-settings" class="btn-small btn-outline">🤖 設定 AI</button>
         </div>
 
-        <div style="text-align: center; margin-bottom: 25px;">
-            <h1 style="margin: 5px 0;">🎓 教師自編考卷數位助教</h1>
-            <p style="color: #666; font-size: 0.95em;">
-                Word 題目貼上即用，支援 AI 智慧辨識、全班測驗與錯題訂正模式
-            </p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="margin: 5px 0;">🎓 考卷數位助教</h1>
+            <p style="color: #666; font-size: 0.9em;">支援 Excel、Word、PDF 匯入，結合 AI 智慧排版</p>
+        </div>
+
+        <div class="stepper-container">
+            <div class="step-indicator active" data-step="1">
+                <div class="circle">1</div>
+                <div class="label">建立題庫</div>
+            </div>
+            <div class="line"></div>
+            <div class="step-indicator" data-step="2">
+                <div class="circle">2</div>
+                <div class="label">設定對象</div>
+            </div>
+            <div class="line"></div>
+            <div class="step-indicator" data-step="3">
+                <div class="circle">3</div>
+                <div class="label">輸出設定</div>
+            </div>
         </div>
         
-        <div class="step-section">
-            <div class="step-header">
-                <div class="step-number">1</div>
-                <h3>輸入考卷題目</h3>
+        <div class="step-section active" data-step="1">
+            <div class="smart-editor-container">
+                <div class="editor-toolbar">
+                    <div class="toolbar-group">
+                        <button id="btn-upload-file" class="btn-tool" title="匯入 Excel, Word, PDF">📂 匯入檔案</button>
+                        <button id="btn-demo-data" class="btn-tool">🎲 範例</button>
+                        <input type="file" id="file-questions" accept=".csv, .xlsx, .xls, .docx, .pdf" style="display: none;">
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 深度分析</button>
+                        <span id="ai-status-badge" style="display:none;"></span>
+                    </div>
+                    <div class="toolbar-group" style="margin-left: auto;">
+                        <button id="btn-clear-q" class="btn-tool text-danger">🗑️ 清空</button>
+                    </div>
+                </div>
+
+                <div class="editor-main">
+                    <div class="editor-pane input-pane">
+                        <div class="pane-label">📝 題目輸入區 (支援直接貼上 Word/PDF 文字)</div>
+                        <textarea id="txt-raw-q" placeholder="請在此貼上題目...&#10;1. 題目內容...&#10;(A)選項 (B)選項"></textarea>
+                    </div>
+                    <div class="editor-pane preview-pane">
+                        <div class="pane-label">👁️ 辨識結果 (<span id="preview-count">0</span> 題)</div>
+                        <div id="preview-parsed-q" class="preview-content">
+                            <div class="empty-state">👈 請在左側輸入文字<br>或點擊上方「匯入檔案」</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="panel-row">
-                <div class="input-group drop-zone" id="drop-zone-question">
-                    <label>方式 A: 上傳檔案 (Excel/CSV)</label>
-                    <input type="file" id="file-questions" accept=".csv, .xlsx, .xls">
-                    <small class="hint">直接拖曳檔案至此</small>
-                </div>
-                
-                <div class="or-divider">或</div>
-                
-                <div class="input-group" style="flex: 1.5;">
-                    <label>方式 B: 從 Word 複製貼上 <span class="tag-new">推薦</span></label>
-                    <button id="btn-paste-questions" class="btn-magic">🪄 開啟智慧文字貼上板</button>
-                    <small id="q-status" class="status-text">尚未輸入資料</small>
-                </div>
+
+            <div class="nav-buttons right">
+                <button class="btn-primary btn-next" data-action="next">下一步：設定對象 ➔</button>
             </div>
         </div>
 
-        <div class="step-section">
-            <div class="step-header">
-                <div class="step-number">2</div>
-                <h3>設定出題對象與範圍</h3>
-            </div>
+        <div class="step-section" data-step="2" style="display: none;">
             
             <div class="mode-tabs">
-                <button class="mode-tab active" data-mode="quiz">全班統一 / 隨機出題</button>
-                <button class="mode-tab" data-mode="error">個別錯題訂正</button>
+                <button class="mode-tab active" data-mode="quiz">📝 全班測驗 / AB卷</button>
+                <button class="mode-tab" data-mode="error">🎯 錯題訂正</button>
             </div>
 
             <div id="panel-quiz" class="mode-panel">
-                <div class="panel-row">
-                    <div class="input-group">
-                        <label>出題範圍 (輸入題號)</label>
-                        <input type="text" id="input-range" placeholder="留空代表全選。範例: 1-10, 15, 20" style="width: 100%;">
-                        <div style="margin-top: 15px;">
-                            <label style="display:inline; cursor:pointer;">
-                                <input type="checkbox" id="chk-randomize" style="transform: scale(1.2); margin-right: 5px;"> 
-                                題目隨機排序 (製作 AB 卷)
-                            </label>
-                        </div>
+                <div class="input-group">
+                    <label>出題範圍 (輸入題號，留空則全選)</label>
+                    <input type="text" id="input-range" placeholder="例如: 1-10, 15">
+                    <div style="margin-top: 15px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="chk-randomize"> 題目隨機排序 (製作 AB 卷)
+                        </label>
                     </div>
                 </div>
             </div>
 
             <div id="panel-error" class="mode-panel" style="display: none;">
-                <div class="panel-row">
-                    <div class="input-group drop-zone" id="drop-zone-student">
-                        <label>方式 A: 上傳錯題檔</label>
-                        <input type="file" id="file-students" accept=".csv, .xlsx, .xls">
-                    </div>
-                    
-                    <div class="or-divider">或</div>
-                    
-                    <div class="input-group" style="flex: 1.5;">
-                        <label>方式 B: 快速登錄錯題 <span class="tag-new">推薦</span></label>
-                        <button id="btn-paste-errors" class="btn-magic">⌨️ 開啟錯題速記板</button>
-                        <small id="s-status" class="status-text">尚未輸入資料</small>
+                <div class="smart-editor-container compact">
+                    <div class="editor-main">
+                        <div class="editor-pane input-pane">
+                            <div class="pane-label">
+                                ⌨️ 錯題速記 (格式: 座號: 題號)
+                                <button id="btn-upload-student" class="btn-xs float-right">📂 上傳 Excel</button>
+                                <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
+                            </div>
+                            <textarea id="txt-raw-s" placeholder="01: 1, 5, 8&#10;02: 3, 4&#10;王小明: 1, 10"></textarea>
+                        </div>
                     </div>
                 </div>
+                <small id="s-status" class="status-text">尚未輸入資料</small>
+            </div>
+
+            <div class="nav-buttons split">
+                <button class="btn-secondary" data-action="prev">⬅ 上一步</button>
+                <button class="btn-primary btn-next" data-action="next">下一步：輸出設定 ➔</button>
             </div>
         </div>
 
-        <div class="step-section">
-            <div class="step-header">
-                <div class="step-number">3</div>
-                <h3>輸出設定</h3>
-            </div>
+        <div class="step-section" data-step="3" style="display: none;">
+            
             <div class="panel-row">
                 <div class="input-group options-group">
                     <label>試卷標題</label>
-                    <input type="text" id="input-title" value="測驗卷" placeholder="輸入標題...">
+                    <input type="text" id="input-title" value="測驗卷">
                 </div>
                 <div class="input-group options-group">
-                    <label>樣式與功能</label>
-                    <div style="display:flex; gap:15px; flex-wrap: wrap;">
-                        <button id="btn-open-settings" class="btn-secondary">⚙️ 欄位設定</button>
-                        
-                        <label style="display:flex; align-items:center; cursor:pointer;">
-                            <input type="checkbox" id="chk-page-break" checked style="margin-right:5px; transform: scale(1.2);"> 
-                            強制分頁
+                    <label>功能開關</label>
+                    <div class="checkbox-group">
+                        <button id="btn-open-settings" class="btn-small">⚙️ 欄位設定</button>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="chk-page-break" checked> 強制分頁
                         </label>
-                        
-                        <label style="display:flex; align-items:center; cursor:pointer;">
-                            <input type="checkbox" id="chk-teacher-key" style="margin-right:5px; transform: scale(1.2);"> 
-                            生成解答卷
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="chk-teacher-key"> 生成解答卷
                         </label>
                     </div>
                 </div>
             </div>
             
-            <button id="btn-generate" disabled>🚀 生成文件</button>
-            
-            <div style="margin-top: 15px; text-align: right;">
-                <button id="btn-print" class="btn-print" style="display: none;">🖨️ 列印 / 另存 PDF</button>
+            <div class="generation-area">
+                <button id="btn-generate" class="btn-lg-primary">🚀 生成文件</button>
+                <button id="btn-print" class="btn-lg-secondary" style="display: none;">🖨️ 列印 / 另存 PDF</button>
+            </div>
+
+            <div class="nav-buttons left">
+                <button class="btn-secondary" data-action="prev">⬅ 上一步</button>
             </div>
         </div>
     </div>
 
     <div id="output-area">
-        <div class="placeholder-text">
-            (預覽區域：請先完成上方設定並點擊生成)
-        </div>
-    </div>
-
-    <div id="modal-paste-q" class="modal">
-        <div class="modal-content" style="max-width: 1000px; height: 90vh;">
-            <div class="modal-header">
-                <h2>🪄 智慧題目匯入</h2>
-                <span class="close-modal" data-target="modal-paste-q">&times;</span>
-            </div>
-            
-            <div class="modal-body" style="padding: 0; display: flex; flex-direction: column;">
-                <div style="padding: 12px 20px; background: #e3f2fd; border-bottom: 1px solid #bbdefb; color: #0d47a1; font-size: 0.9em;">
-                    <b>💡 使用技巧：</b>
-                    若您的 Word 檔中，解析是<b>附在文件最後面</b> (非緊跟題目)，請將「題目部分」貼在左側，「解析/答案部分」貼在中間。<br>
-                    若格式複雜 (如解析夾在選項中)，建議使用 <b>AI 深度分析</b>。
-                </div>
-
-                <div style="display: flex; flex: 1; overflow: hidden;">
-                    <div style="flex: 1; display: flex; flex-direction: column; padding: 15px; border-right: 1px solid #ddd;">
-                        <label style="font-weight:bold; color:#2196F3; margin-bottom:8px;">📋 題目區 (必要)</label>
-                        <textarea id="txt-raw-q" 
-                            placeholder="請貼上題目內容...&#10;1. 這裡是題目第一題...&#10;(A)選項 (B)選項&#10;&#10;2. 這裡是第二題..." 
-                            style="flex:1; padding:10px; font-family: monospace; resize: none; border: 1px solid #ccc; border-radius: 4px;"></textarea>
-                    </div>
-
-                    <div style="flex: 1; display: flex; flex-direction: column; padding: 15px; border-right: 1px solid #ddd; background-color: #fffde7;">
-                        <label style="font-weight:bold; color:#f57f17; margin-bottom:8px;">💡 解析/答案區 (選填)</label>
-                        <textarea id="txt-raw-a" 
-                            placeholder="若解析分開，請貼於此...&#10;1. 答案(B)，因為...&#10;2. 答案(A)，解析..." 
-                            style="flex:1; padding:10px; font-family: monospace; resize: none; border: 1px solid #fbc02d; border-radius: 4px;"></textarea>
-                    </div>
-
-                    <div style="flex: 0.8; display: flex; flex-direction: column; background: #f9f9f9;">
-                        <div style="padding: 10px 15px; border-bottom: 1px solid #ddd; font-weight:bold; color:#666; background: #f0f0f0;">
-                            預覽辨識結果 (<span id="preview-count">0</span> 題)
-                        </div>
-                        <div id="preview-parsed-q" style="flex:1; overflow-y:auto; padding:10px;">
-                            <div style="color:#999; text-align:center; margin-top:50px;">
-                                等待輸入...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer" style="justify-content: space-between; display: flex;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span id="ai-model-badge" style="font-size: 0.8em; color: #666; display: none;">
-                        🟢 使用模型: <span id="current-model-name">...</span>
-                    </span>
-                    <button id="btn-ai-parse" class="btn-magic" style="width: auto; padding: 8px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                        ✨ AI 深度分析
-                    </button>
-                </div>
-                <button id="btn-confirm-q" class="btn-primary">確認匯入資料</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-paste-s" class="modal">
-        <div class="modal-content" style="max-width: 600px; height: 60vh;">
-            <div class="modal-header">
-                <h2>⌨️ 錯題速記板</h2>
-                <span class="close-modal" data-target="modal-paste-s">&times;</span>
-            </div>
-            <div class="modal-body" style="flex-direction: column; padding: 20px;">
-                <p style="color:#666; margin-top:0;">請輸入學生的錯題紀錄。格式：<b>座號/姓名: 錯題號</b> (換行輸入下一位)</p>
-                <textarea id="txt-raw-s" 
-                    placeholder="01: 1, 5, 8&#10;02: 3, 4&#10;王小明: 1, 10" 
-                    style="flex:1; padding:15px; font-size: 16px; font-family: monospace; border: 1px solid #ccc; border-radius: 4px; resize: none;"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button id="btn-confirm-s" class="btn-primary">確認匯入資料</button>
-            </div>
-        </div>
+        <div class="placeholder-text">(預覽區域)</div>
     </div>
 
     <div id="settings-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>表格樣式設定</h2>
-                <span class="close-modal" data-target="settings-modal">&times;</span>
-            </div>
+            <div class="modal-header"><h2>表格樣式設定</h2><span class="close-modal" data-target="settings-modal">&times;</span></div>
             <div class="modal-body">
-                <div class="settings-pane">
-                    <h3>欄位配置</h3>
-                    <div id="modal-column-list"></div>
-                    <div class="modal-actions">
-                        <button id="btn-add-col-modal" class="btn-small btn-green">+ 新增欄位</button>
-                        <button id="btn-reset-col-modal" class="btn-small btn-red">重置預設</button>
-                    </div>
-                </div>
-                <div class="preview-pane">
-                    <h3>即時預覽</h3>
-                    <div id="modal-preview-area" class="preview-box"></div>
-                </div>
+                <div class="settings-pane"><div id="modal-column-list"></div><div class="modal-actions"><button id="btn-add-col-modal" class="btn-small btn-green">+ 新增</button><button id="btn-reset-col-modal" class="btn-small btn-red">重置</button></div></div>
+                <div class="preview-pane"><div id="modal-preview-area" class="preview-box"></div></div>
             </div>
-            <div class="modal-footer">
-                <button id="btn-save-settings" class="btn-primary">儲存設定</button>
-            </div>
+            <div class="modal-footer"><button id="btn-save-settings" class="btn-primary">儲存</button></div>
         </div>
     </div>
 
     <div id="modal-ai-settings" class="modal">
-        <div class="modal-content" style="max-width: 500px; height: auto;">
-            <div class="modal-header">
-                <h2>🤖 Google AI 設定</h2>
-                <span class="close-modal" data-target="modal-ai-settings">&times;</span>
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header"><h2>🤖 Google AI 設定</h2><span class="close-modal" data-target="modal-ai-settings">&times;</span></div>
+            <div class="modal-body">
+                <label>API Key</label><input type="password" id="input-api-key" placeholder="貼上 Key..." style="width:100%; padding:8px; margin:5px 0 10px;">
+                <p style="font-size:0.8em; color:#666; margin-bottom:10px;">請至 Google AI Studio 申請免費 Key。</p>
+                <button id="btn-check-models" class="btn-secondary">驗證並偵測模型</button>
+                <div id="model-select-area" style="display:none; margin-top:15px;"><label>選擇模型</label><select id="select-model" style="width:100%; padding:8px;"></select></div>
             </div>
-            <div class="modal-body" style="flex-direction: column; padding: 20px;">
-                <label style="font-weight: bold; margin-bottom: 5px;">Google AI Studio API Key</label>
-                <input type="password" id="input-api-key" placeholder="貼上您的 API Key..." style="padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px;">
-                <p style="font-size: 0.85em; color: #666;">
-                    請至 <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> 申請免費 Key。<br>
-                    Key 僅儲存於您的瀏覽器中 (LocalStorage)，不會傳送至我們的伺服器。
-                </p>
-                
-                <button id="btn-check-models" class="btn-secondary" style="margin-top: 10px;">🔄 驗證並偵測模型</button>
-                
-                <div id="model-select-area" style="margin-top: 20px; display: none;">
-                    <label style="font-weight: bold; margin-bottom: 5px;">選擇模型</label>
-                    <select id="select-model" style="width: 100%; padding: 10px; border-radius: 4px;"></select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="btn-save-ai" class="btn-primary">儲存設定</button>
-            </div>
+            <div class="modal-footer"><button id="btn-save-ai" class="btn-primary">儲存</button></div>
         </div>
     </div>
 
