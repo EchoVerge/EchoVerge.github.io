@@ -66,3 +66,21 @@ function parseCSV(file) {
         });
     });
 }
+
+/**
+ * [V13 Phase 2 新增] 將檔案轉為 Base64 字串 (用於圖片上傳 AI)
+ * @param {File} file 
+ * @returns {Promise<String>} Base64 string (without prefix)
+ */
+export function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            // 移除 data:image/jpeg;base64, 的前綴，Gemini API 只需要純 Base64
+            const base64Content = reader.result.split(',')[1];
+            resolve(base64Content);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
