@@ -1,20 +1,19 @@
 /**
  * assets/js/modules/gradingController.js
- * V2.1: 實作批次閱卷 (Batching) - 每 3 張圖呼叫一次 AI
+ * V2.2: 精簡版 - 移除測驗模式，鎖定為「錯題訂正/閱卷」
  */
 
 import { state } from './state.js';
 import { parseFile, fileToBase64 } from './fileHandler.js';
 import { parseErrorText } from './textParser.js';
-import { analyzeAnswerSheetBatch } from './aiParser.js'; // 改用 Batch 版
+import { analyzeAnswerSheetBatch } from './aiParser.js'; 
 
 export function initGradingController() {
     state.gradedData = []; 
+    state.mode = 'error'; // [重要] 強制設定為錯題模式
 
     const el = {
-        tabs: document.querySelectorAll('.mode-tab'),
-        panelQuiz: document.getElementById('panel-quiz'),
-        panelError: document.getElementById('panel-error'),
+        // 移除 tabs, panelQuiz, panelError 的選取
         txtS: document.getElementById('txt-raw-s'),
         status: document.getElementById('s-status'),
         btnUp: document.getElementById('btn-upload-student'),
@@ -33,30 +32,22 @@ export function initGradingController() {
 
     // 1. 加入校對按鈕
     if (el.txtS) {
-        const toolbar = document.createElement('div');
-        toolbar.style.marginBottom = '5px';
-        toolbar.innerHTML = `<button id="btn-review-grading" class="btn-xs" style="background:#ff9800; color:white; display:none;">🔍 校對 / 修正</button>`;
-        el.txtS.parentNode.insertBefore(toolbar, el.txtS);
-        document.getElementById('btn-review-grading').addEventListener('click', () => {
-            if (state.gradedData.length === 0) return alert("無資料");
-            openReviewModal(0);
-        });
-    }
-
-    // 2. 模式切換
-    if (el.tabs.length > 0) {
-        el.tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                el.tabs.forEach(t => t.classList.remove('active'));
-                e.target.classList.add('active');
-                state.mode = e.target.dataset.mode;
-                if (el.panelQuiz) el.panelQuiz.style.display = state.mode === 'quiz' ? 'block' : 'none';
-                if (el.panelError) el.panelError.style.display = state.mode === 'error' ? 'block' : 'none';
+        // 避免重複加入
+        if (!document.getElementById('btn-review-grading')) {
+            const toolbar = document.createElement('div');
+            toolbar.style.marginBottom = '5px';
+            toolbar.innerHTML = `<button id="btn-review-grading" class="btn-xs" style="background:#ff9800; color:white; display:none;">🔍 校對 / 修正</button>`;
+            el.txtS.parentNode.insertBefore(toolbar, el.txtS);
+            document.getElementById('btn-review-grading').addEventListener('click', () => {
+                if (state.gradedData.length === 0) return alert("無資料");
+                openReviewModal(0);
             });
-        });
+        }
     }
 
-    // 3. 輸入監聽
+    // [已移除] 模式切換監聽器 (tabs)
+
+    // 2. 輸入監聽
     if (el.txtS) {
         el.txtS.addEventListener('input', () => {
             const parsed = parseErrorText(el.txtS.value);
@@ -66,7 +57,7 @@ export function initGradingController() {
         });
     }
 
-    // 4. Excel 上傳
+    // 3. Excel 上傳
     if (el.btnUp && el.file) {
         el.btnUp.addEventListener('click', () => el.file.click());
         el.file.addEventListener('change', async (e) => {
@@ -80,13 +71,12 @@ export function initGradingController() {
         });
     }
 
-    // 5. [核心修改] 批次閱卷
+    // 4. 批次閱卷
     if(el.btnCam && el.fileImg) {
         el.btnCam.addEventListener('click', () => {
             if(!state.ai.available) return alert("請先設定 AI Key");
             if(!state.questions || !state.questions.length) return alert("Step 1 無題庫");
             
-            // 自動抓標準答案
             const keys = state.questions.map(q => {
                 if (q.ans) return q.ans.toUpperCase();
                 const m = ((q.expl||"")+(q.text||"")).match(/答案[:：\s]*([ABCDE])|[\(（]([ABCDE])[\)）]/i);
@@ -116,33 +106,28 @@ export function initGradingController() {
                     images = [await fileToBase64(file)];
                 } else { throw new Error("格式錯誤"); }
 
-                // [批次設定] 每次處理 3 張 (Gemini Flash 建議值，既省額度又準確)
                 const BATCH_SIZE = 3; 
                 let resultsText = "";
                 let successCount = 0;
 
                 for (let i = 0; i < images.length; i += BATCH_SIZE) {
-                    // 切割出目前要處理的一批圖片
                     const chunkImages = images.slice(i, i + BATCH_SIZE);
                     const rawBase64s = chunkImages.map(img => img.split(',')[1]);
 
                     const progressMsg = `🤖 正在分析第 ${i+1}~${i+chunkImages.length} 頁 (共 ${images.length} 頁)...`;
                     el.detailList.innerHTML = `<div style="text-align:center; color:#1565c0; font-weight:bold;">${progressMsg}</div>`;
-                    el.imgPrev.src = chunkImages[0]; // 顯示該批第一張作為代表
+                    el.imgPrev.src = chunkImages[0];
 
                     try {
-                        // 呼叫 AI (傳送陣列)
                         const results = await analyzeAnswerSheetBatch(rawBase64s, state.ai.model, state.ai.key, state.questions.length);
                         
-                        // 處理回傳的陣列
                         if (Array.isArray(results)) {
                             results.forEach((res, idx) => {
-                                const realIndex = i + idx; // 全域索引
+                                const realIndex = i + idx;
                                 const seat = res.seat && res.seat !== "unknown" ? res.seat : `??_${realIndex+1}`;
                                 const wrongs = gradePaper(res.answers, el.keyInput.value, false);
                                 const errStr = wrongs.length === 0 ? "" : wrongs.join(', ');
 
-                                // 存入暫存 (校對用)
                                 state.gradedData.push({
                                     id: realIndex,
                                     base64: chunkImages[idx],
@@ -164,7 +149,7 @@ export function initGradingController() {
                     el.txtS.dispatchEvent(new Event('input'));
                 }
 
-                el.detailList.innerHTML = `<div style="text-align:center; color:green;">✅ 完成！共 ${successCount} 筆。<br>每 3 張圖片合併為 1 次呼叫，已節省 API 用量。</div>`;
+                el.detailList.innerHTML = `<div style="text-align:center; color:green;">✅ 完成！共 ${successCount} 筆。</div>`;
                 el.btnConfirm.textContent = "關閉視窗";
                 el.btnConfirm.style.display = 'inline-block';
                 el.btnConfirm.onclick = () => { 

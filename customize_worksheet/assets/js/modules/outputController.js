@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/outputController.js
- * 負責 Step 3: 最終產出、設定讀取、渲染 HTML、雙面列印補頁
+ * V1.1: 加入空值檢查，支援精簡版 Step 2
  */
 
 import { state } from './state.js';
@@ -17,11 +17,12 @@ export function initOutputController() {
         inputTitle: document.getElementById('input-title'),
         chkPageBreak: document.getElementById('chk-page-break'),
         chkTeacherKey: document.getElementById('chk-teacher-key'),
+        // [修改] 下面這兩個元素在精簡版可能不存在，允許為 null
         chkRandomize: document.getElementById('chk-randomize'),
         inputRange: document.getElementById('input-range')
     };
 
-    // 1. 生成文件 (改為 async 以等待渲染)
+    // 1. 生成文件
     el.btnGenerate.addEventListener('click', async () => {
         const config = {
             title: el.inputTitle.value,
@@ -31,17 +32,18 @@ export function initOutputController() {
         
         el.outputArea.innerHTML = '';
         
-        // 呼叫資料準備函式
-        const dataToPrint = prepareData(el.inputRange.value, el.chkRandomize.checked);
-        
-        if(!dataToPrint.length) return alert("無資料可生成 (請確認題庫是否有題目，或範圍設定是否正確)");
+        // [修改] 安全讀取 (若元素不存在則給預設值)
+        const rangeVal = el.inputRange ? el.inputRange.value : '';
+        const isRandom = el.chkRandomize ? el.chkRandomize.checked : false;
 
-        // 渲染每一位學生的試卷
+        const dataToPrint = prepareData(rangeVal, isRandom);
+        
+        if(!dataToPrint.length) return alert("無資料可生成 (請確認題庫是否有題目，或錯題列表是否有內容)");
+
         dataToPrint.forEach(d => {
             el.outputArea.innerHTML += createStudentSection(d.student, d.qList, config);
         });
 
-        // 教師解答卷
         if(el.chkTeacherKey.checked) {
             const allQMap = new Map();
             dataToPrint.forEach(d => {
@@ -53,17 +55,12 @@ export function initOutputController() {
             }
         }
 
-        // 顯示列印按鈕
         el.btnPrint.style.display = 'inline-block';
         
-        // [關鍵步驟] 等待 MathJax 渲染完成，因為公式會改變高度
         if (window.MathJax && window.MathJax.typesetPromise) {
-            try {
-                await window.MathJax.typesetPromise();
-            } catch(e) { console.error(e); }
+            try { await window.MathJax.typesetPromise(); } catch(e) { console.error(e); }
         }
         
-        // [新增] 執行雙面列印補頁邏輯
         ensureEvenPages(); 
     });
 
@@ -71,13 +68,9 @@ export function initOutputController() {
     if(el.btnAnswerSheet) {
         el.btnAnswerSheet.addEventListener('click', () => {
             if(!state.questions || !state.questions.length) return alert("無題目");
-            
-            // 直接呼叫，Renderer 會自動判斷是否使用 Compact Mode
             const html = createAnswerSheet(el.inputTitle.value, state.questions.length);
-            
             el.outputArea.innerHTML = html;
             el.btnPrint.style.display = 'none'; 
-            
             setTimeout(() => { if(confirm("預覽已生成！是否列印？")) window.print(); }, 500);
         });
     }
@@ -93,8 +86,8 @@ function prepareData(rangeStr, isRandom) {
     
     let result = [];
 
+    // 若強制為 error 模式，此區塊實際上不會執行，但保留邏輯以防未來擴充
     if(state.mode === 'quiz') {
-        // --- 模式 A: 全班測驗 ---
         let selectedQs = [];
         const range = rangeStr.trim();
         if (!range) {
@@ -125,7 +118,7 @@ function prepareData(rangeStr, isRandom) {
         });
 
     } else {
-        // --- 模式 B: 錯題訂正 ---
+        // --- 錯題訂正模式 ---
         if(!state.students || !state.students.length) return [];
 
         state.students.forEach(s => {
@@ -153,40 +146,20 @@ function prepareData(rangeStr, isRandom) {
     return result;
 }
 
-/**
- * [雙面列印補頁功能]
- * 確保每個 student-section (包含學生卷與教師解答卷) 的頁數都是偶數
- */
 function ensureEvenPages() {
-    // 1. 清除舊的補頁元素 (避免重複生成)
     document.querySelectorAll('.page-filler').forEach(e => e.remove());
-
-    // 2. 設定一頁的有效高度閥值 (像素)
-    // A4 297mm @ 96dpi 約 1123px。
-    // 保守估計一頁內容約 1000px (扣除邊距)。
     const PAGE_HEIGHT_THRESHOLD = 1000; 
-
     const sections = document.querySelectorAll('.student-section');
-    
     sections.forEach(sec => {
         const height = sec.scrollHeight;
         const estimatedPages = Math.ceil(height / PAGE_HEIGHT_THRESHOLD);
-
-        // 如果估算的頁數是奇數 (1, 3, 5...)
         if (estimatedPages % 2 !== 0) {
-            // 插入一個補白元素
             const filler = document.createElement('div');
             filler.className = 'page-filler';
-            
-            // 設定樣式：強制在自己之前分頁 -> 變成新的一頁 (偶數頁)
-            // 且內容空白
             filler.style.pageBreakBefore = 'always';
             filler.style.height = '1px';
             filler.innerHTML = '&nbsp;'; 
-            
             sec.appendChild(filler);
-            
-            console.log(`[AutoPad] 區塊高度 ${height}px (約 ${estimatedPages} 頁)，已補上空白頁。`);
         }
     });
 }

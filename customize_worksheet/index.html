@@ -84,27 +84,13 @@
         </div>
 
         <div class="step-section" data-step="2" style="display: none;">
-            <div class="mode-tabs">
-                <button class="mode-tab active" data-mode="quiz">📝 全班測驗 / AB卷</button>
-                <button class="mode-tab" data-mode="error">🎯 錯題訂正 / 閱卷</button>
-            </div>
-
-            <div id="panel-quiz" class="mode-panel">
-                <div class="input-group">
-                    <label>出題範圍</label>
-                    <input type="text" id="input-range" placeholder="例如: 1-10, 15 (留空則全選)" style="width: 100%;">
-                    <div style="margin-top: 15px;">
-                        <label class="checkbox-label"><input type="checkbox" id="chk-randomize"> 題目隨機排序</label>
-                    </div>
-                </div>
-            </div>
-
-            <div id="panel-error" class="mode-panel" style="display: none;">
+            
+            <div id="panel-error" class="mode-panel">
                 <div class="smart-editor-container compact">
                     <div class="editor-main">
                         <div class="editor-pane input-pane">
                             <div class="pane-label">
-                                <span>⌨️ 錯題速記</span>
+                                <span>🎯 錯題訂正 / 閱卷 (速記區)</span>
                                 <div style="display:flex; gap:5px;">
                                     <button id="btn-camera-grade" class="btn-xs btn-ai-gradient" style="border:none; color:white;">📷 拍照閱卷</button>
                                     <input type="file" id="file-grade-image" accept="image/*, .pdf" style="display: none;">
