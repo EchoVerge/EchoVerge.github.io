@@ -1,0 +1,73 @@
+/* 全域設定 */
+body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; margin: 0; padding: 20px; background: #f5f5f5; color: #333; }
+
+/* 控制面板 */
+.control-panel {
+    background: white; padding: 25px; border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto 30px auto; max-width: 900px;
+}
+.panel-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; }
+.input-group { flex: 1; min-width: 250px; background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+.input-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #555; }
+.input-group input[type="text"], .input-group input[type="file"] { width: 95%; padding: 5px; }
+.hint { color: #888; display: block; margin-top: 5px; font-size: 0.85em; }
+
+.options-group { background: #e8f5e9; border-color: #c8e6c9; }
+
+button {
+    background-color: #2196F3; color: white; padding: 12px 24px; border: none;
+    border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.3s;
+}
+button:hover { background-color: #1976D2; }
+button:disabled { background-color: #ccc; cursor: not-allowed; }
+#status-msg { margin-left: 15px; font-weight: bold; }
+
+/* 輸出/預覽區 */
+#output-area { background: white; max-width: 210mm; margin: 0 auto; min-height: 297mm; padding: 20mm; box-sizing: border-box; position: relative; }
+.placeholder-text { text-align: center; color: #aaa; padding-top: 100px; }
+
+/* 學生作業區塊 */
+.student-section { page-break-after: always; margin-bottom: 50px; }
+.worksheet-header { text-align: center; border-bottom: 2px solid #333; margin-bottom: 20px; padding-bottom: 10px; }
+.worksheet-info { display: flex; justify-content: space-between; font-size: 14px; margin-top: 10px; }
+
+/* 表格樣式 */
+table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+th, td { border: 1px solid #333; padding: 10px; vertical-align: top; word-wrap: break-word; }
+th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+
+/* 圖片與內容 */
+td img { max-width: 100%; height: auto; display: block; margin: 5px 0; }
+
+/* 欄位寬度設定 */
+.col-id { width: 40px; text-align: center; }
+.col-content { width: auto; }
+.col-answer { width: 30%; }
+.col-blank { width: 25%; }
+
+/* 隱藏解析模式：當父層有 .hide-answer 時 */
+.hide-answer .col-answer { display: none; }
+.hide-answer .col-content { width: 65%; } /* 解析隱藏後，題目欄位變寬 */
+
+.btn-small {
+    background-color: white;
+    color: #1565c0;
+    border: 1px solid #1565c0;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-right: 5px;
+}
+.btn-small:hover {
+    background-color: #e3f2fd;
+}
+
+/* 列印專用樣式 */
+@media print {
+    body { background: white; padding: 0; }
+    .control-panel { display: none; }
+    #output-area { width: 100%; max-width: none; padding: 0; margin: 0; box-shadow: none; }
+    .student-section { margin: 0; padding: 10mm; height: auto; border: none; }
+    .student-section:last-child { page-break-after: auto; }
+}

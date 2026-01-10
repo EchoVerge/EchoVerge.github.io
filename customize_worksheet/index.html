@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客製化作業生成器 V4 (Excel 支援版)</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+    <div class="control-panel">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <h1 style="margin: 5px 0;">🛠️ 作業生成控制台</h1>
+        </div>
+        
+        <p>請上傳 CSV 或 Excel (.xlsx) 檔案。系統支援 LaTeX 數學公式與 HTML 圖片。</p>
+
+        <div class="template-section" style="background: #e3f2fd; padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbdefb;">
+            <span style="font-weight: bold; color: #1565c0; margin-right: 10px;">📥 第一次使用？下載範本：</span>
+            <button id="btn-dl-student-template" class="btn-small">下載「學生選題」範本</button>
+            <button id="btn-dl-question-template" class="btn-small">下載「題庫」範本</button>
+        </div>
+        
+        <div class="panel-row">
+            <div class="input-group">
+                <label>1. 學生/選題資料</label>
+                <input type="file" id="file-students" accept=".csv, .xlsx, .xls">
+            </div>
+            <div class="input-group">
+                <label>2. 題庫資料</label>
+                <input type="file" id="file-questions" accept=".csv, .xlsx, .xls">
+            </div>
+        </div>
+
+        <div class="panel-row">
+            <div class="input-group options-group">
+                <label>基本設定</label>
+                <input type="text" id="input-title" value="錯題訂正表" placeholder="輸入標題...">
+                
+                <p style="font-size:0.8em; color:#666; margin-top:5px;">
+                    提示：想要製作無解析考卷？請在右側設定移除「解析」欄位即可。
+                </p>
+            </div>
+            
+            <div class="input-group options-group" id="column-manager-container">
+                </div>
+        </div>
+
+        <button id="btn-generate" disabled>🚀 生成作業</button>
+        <span id="status-msg"></span>
+    </div>
+
+    <div id="output-area">
+        <div class="placeholder-text">
+            (預覽區域：請先上傳檔案並點擊生成)
+        </div>
+    </div>
+
+    <script type="module" src="assets/js/main.js"></script>
+</body>
+</html>
