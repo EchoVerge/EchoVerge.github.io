@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/editorController.js
- * V2.1: 新增 Step 1 直接輸出功能 (答題卡/教師卷)，標題採 Prompt 詢問
+ * V2.2: 輸出時改為「顯示預覽視窗」，而非直接列印
  */
 
 import { state } from './state.js';
@@ -9,7 +9,6 @@ import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
 import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
 import { saveHistory, getHistoryList, loadHistory, deleteHistory } from './historyManager.js';
-// [新增] 引入渲染器
 import { createAnswerSheet } from './answerSheetRenderer.js';
 import { createTeacherKeySection } from './viewRenderer.js';
 
@@ -38,10 +37,10 @@ export function initEditorController() {
         inpSimText: document.getElementById('edit-q-sim-text'),
         inpSimExpl: document.getElementById('edit-q-sim-expl'),
 
-        // [新增] Step 1 輸出按鈕
         btnPrintSheet1: document.getElementById('btn-print-sheet-step1'),
         btnPrintKey1: document.getElementById('btn-print-key-step1'),
-        outputArea: document.getElementById('output-area')
+        outputArea: document.getElementById('output-area'),
+        modalPreview: document.getElementById('modal-print-preview') // [新增] 預覽視窗
     };
 
     // --- Step 1 輸出功能 ---
@@ -57,11 +56,8 @@ export function initEditorController() {
             return alert("請先建立題庫！");
         }
 
-        // [Prompt] 詢問標題，預設為「測驗卷」
         const defaultTitle = "測驗卷";
         const title = prompt("請輸入試卷標題：", defaultTitle);
-        
-        // 若使用者按取消，則終止
         if (title === null) return;
 
         let html = "";
@@ -69,26 +65,21 @@ export function initEditorController() {
             html = createAnswerSheet(title || defaultTitle, state.questions.length);
         } else if (type === 'key') {
             html = createTeacherKeySection(state.questions);
-            // 補上標題 (因為 createTeacherKeySection 只有表格)
-            // 其實 viewRenderer 裡面已經有了標題 header，但這裡我們可以再確認一下
-            // 為了完整性，我們通常直接用 viewRenderer 出來的 HTML 即可，因為它有包含 css class
         }
 
-        // 寫入 Output Area 並列印
+        // 1. 填入內容
         el.outputArea.innerHTML = html;
         
-        // 渲染數學公式 (如果有)
+        // 2. 顯示預覽視窗 (不再直接列印)
+        el.modalPreview.style.display = 'flex';
+        
+        // 3. 渲染公式 (如果有)
         if (window.MathJax && window.MathJax.typesetPromise) {
-            window.MathJax.typesetPromise().then(() => {
-                setTimeout(() => window.print(), 200);
-            });
-        } else {
-            setTimeout(() => window.print(), 200);
+            window.MathJax.typesetPromise().catch(e => console.error(e));
         }
     }
 
-    // ... (以下為原本的編輯器邏輯，保持不變) ...
-    // 1. 編輯器輸入監聽
+    // ... (以下保持原本邏輯) ...
     let timeout;
     el.txtRawQ.addEventListener('input', () => {
         if (state.sourceType === 'file') return;
@@ -99,7 +90,6 @@ export function initEditorController() {
         }, 300);
     });
 
-    // 2. 檔案匯入
     el.btnUploadFile.addEventListener('click', () => el.fileQuestions.click());
     el.fileQuestions.addEventListener('change', async (e) => {
         const file = e.target.files[0];
@@ -136,7 +126,6 @@ export function initEditorController() {
         e.target.value = '';
     });
 
-    // 3. AI 分析
     el.btnAiParse.addEventListener('click', async () => {
         if (!state.ai.available) return alert("請先設定 AI Key");
         const text = el.txtRawQ.value;
@@ -159,7 +148,6 @@ export function initEditorController() {
         }
     });
 
-    // 4. 清空與範例
     el.btnClearQ.addEventListener('click', () => {
         if (confirm("清空？")) {
             el.txtRawQ.value = '';
@@ -176,7 +164,6 @@ export function initEditorController() {
         updatePreview();
     });
 
-    // 5. 生成類題 (Batch)
     if (el.btnGenSimilar) {
         el.btnGenSimilar.addEventListener('click', async () => {
             if (!state.ai.available) return alert("請先設定 AI Key");
@@ -229,7 +216,6 @@ export function initEditorController() {
         });
     }
 
-    // 6. 歷史紀錄
     if (el.btnHistory) {
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
@@ -243,7 +229,6 @@ export function initEditorController() {
         });
     }
 
-    // 7. 單題編輯
     el.previewQ.addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-edit-q');
         if (btn) {
@@ -294,7 +279,6 @@ export function initEditorController() {
         renderPreview(state.questions, state.sourceType || 'Edited');
     });
 
-    // Helper Functions
     function updatePreview() {
         const parsed = parseQuestionMixed(el.txtRawQ.value, '');
         state.questions = parsed;

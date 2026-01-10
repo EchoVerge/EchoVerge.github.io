@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教師自編考卷數位助教 V14</title>
+    <title>考卷數位助教 V17 (Tab Layout)</title>
     
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/worksheetStyle.css">
@@ -22,52 +22,38 @@
 </head>
 <body>
 
-    <div class="control-panel">
-        <div style="position: absolute; top: 20px; right: 20px;">
-            <button id="btn-ai-settings" class="btn-small btn-outline">🤖 設定 AI</button>
+    <div class="app-header">
+        <div class="brand">
+            <h1>🎓 考卷數位助教</h1>
         </div>
+        <div class="header-actions">
+            <button id="btn-open-settings" class="btn-icon" title="欄位設定">⚙️</button>
+            <button id="btn-ai-settings" class="btn-icon" title="AI 設定">🤖</button>
+        </div>
+    </div>
 
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h1 style="margin: 5px 0;">🎓 考卷數位助教</h1>
-            <p style="color: #666; font-size: 0.9em;">AI 賦能：從出題、閱卷到個別化訂正的一站式解決方案</p>
-        </div>
+    <div class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-edit">📝 建立題庫</button>
+        <button class="tab-btn" data-tab="tab-export">🖨️ 考前輸出</button>
+        <button class="tab-btn" data-tab="tab-grade">⚖️ 閱卷與補救</button>
+    </div>
 
-        <div class="stepper-container">
-            <div class="step-indicator active" data-step="1">
-                <div class="circle">1</div><div class="label">建立題庫</div>
-            </div>
-            <div class="line"></div>
-            <div class="step-indicator" data-step="2">
-                <div class="circle">2</div><div class="label">閱卷/對象</div>
-            </div>
-            <div class="line"></div>
-            <div class="step-indicator" data-step="3">
-                <div class="circle">3</div><div class="label">補救輸出</div>
-            </div>
-        </div>
+    <div class="tab-container">
         
-        <div class="step-section active" data-step="1">
+        <div id="tab-edit" class="tab-content active">
             <div class="smart-editor-container">
                 <div class="editor-toolbar">
                     <div class="toolbar-group">
-                        <button id="btn-upload-file" class="btn-tool" title="匯入 Excel, Word, PDF">📂 匯入檔案</button>
+                        <button id="btn-upload-file" class="btn-tool">📂 匯入</button>
                         <button id="btn-demo-data" class="btn-tool">🎲 範例</button>
                         <input type="file" id="file-questions" accept=".csv, .xlsx, .xls, .docx, .pdf" style="display: none;">
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group">
                         <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 分析</button>
-                        <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0; margin-left:5px;">🔮 生成類題</button>
-                        <button id="btn-history" class="btn-tool" style="margin-left:5px;">📜 紀錄</button>
+                        <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0;">🔮 生成類題</button>
+                        <button id="btn-history" class="btn-tool">📜 紀錄</button>
                     </div>
-                    
-                    <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <span style="font-size:12px; color:#666; margin-right:5px;">🖨️ 輸出:</span>
-                        <button id="btn-print-sheet-step1" class="btn-tool" style="background:#607d8b; color:white;">📄 答題卡</button>
-                        <button id="btn-print-key-step1" class="btn-tool" style="background:#795548; color:white;">🗝️ 教師卷</button>
-                    </div>
-
                     <div class="toolbar-group" style="margin-left: auto;">
                         <button id="btn-clear-q" class="btn-tool text-danger">🗑️ 清空</button>
                     </div>
@@ -79,174 +65,82 @@
                         <textarea id="txt-raw-q" placeholder="請在此貼上題目文字..."></textarea>
                     </div>
                     <div class="editor-pane preview-pane">
-                        <div class="pane-label">👁️ 辨識結果 (<span id="preview-count">0</span> 題)</div>
+                        <div class="pane-label">👁️ 預覽 (<span id="preview-count">0</span> 題)</div>
                         <div id="preview-parsed-q" class="preview-content">
                             <div class="empty-state">👈 請輸入文字或匯入檔案</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="nav-buttons right">
-                <button class="btn-primary btn-next" data-action="next">下一步 ➔</button>
+        </div>
+
+        <div id="tab-export" class="tab-content">
+            <div class="export-dashboard">
+                <div class="export-card">
+                    <div class="card-icon">📄</div>
+                    <h3>空白答案卡</h3>
+                    <p>供學生畫記使用，支援自動排版</p>
+                    <button id="btn-print-sheet-step1" class="btn-primary-action" style="background:#607d8b;">🖨️ 產生答案卡</button>
+                </div>
+                <div class="export-card">
+                    <div class="card-icon">🗝️</div>
+                    <h3>教師詳解卷</h3>
+                    <p>包含完整題目、答案與解析</p>
+                    <button id="btn-print-key-step1" class="btn-primary-action" style="background:#795548;">🖨️ 產生詳解卷</button>
+                </div>
+            </div>
+            <div style="text-align:center; margin-top:20px; color:#666;">
+                💡 提示：請先在「建立題庫」分頁完成出題，再進行輸出。
             </div>
         </div>
 
-        <div class="step-section" data-step="2" style="display: none;">
-            <div id="panel-error" class="mode-panel">
-                <div class="smart-editor-container compact">
-                    <div class="editor-main">
-                        <div class="editor-pane input-pane">
-                            <div class="pane-label">
-                                <span>🎯 錯題訂正 / 閱卷 (速記區)</span>
-                                <div style="display:flex; gap:5px;">
-                                    <button id="btn-camera-grade" class="btn-xs btn-ai-gradient" style="border:none; color:white;">📷 拍照閱卷</button>
-                                    <input type="file" id="file-grade-image" accept="image/*, .pdf" style="display: none;">
-                                    <button id="btn-upload-student" class="btn-xs">📂 上傳 Excel</button>
-                                    <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
-                                </div>
-                            </div>
-                            <textarea id="txt-raw-s" placeholder="格式範例：&#10;01: 1, 5&#10;02: 3, 4"></textarea>
+        <div id="tab-grade" class="tab-content">
+            <div class="grading-layout">
+                <div class="grading-tools-panel">
+                    <div class="panel-label">📊 成績輸入與 AI 閱卷</div>
+                    <div class="grading-toolbar">
+                        <button id="btn-camera-grade" class="btn-tool btn-ai-gradient" style="color:white;">📷 拍照/PDF閱卷</button>
+                        <input type="file" id="file-grade-image" accept="image/*, .pdf" style="display: none;">
+                        <button id="btn-upload-student" class="btn-tool">📂 上傳 Excel 成績</button>
+                        <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
                         </div>
+                    <div class="grading-input-wrapper">
+                        <textarea id="txt-raw-s" placeholder="在此輸入錯題代碼，例如：&#10;01: 1, 5&#10;02: 3, 4"></textarea>
                     </div>
+                    <div class="status-bar" id="s-status-badge">目前人數: 0</div>
                 </div>
-                <small id="s-status" class="status-text">尚未輸入資料</small>
-            </div>
 
-            <div class="nav-buttons split">
-                <button class="btn-secondary" data-action="prev">⬅ 上一步</button>
-                <button class="btn-primary btn-next" data-action="next">下一步 ➔</button>
-            </div>
-        </div>
-
-        <div class="step-section" data-step="3" style="display: none;">
-            <div class="panel-row">
-                <div class="input-group options-group" style="width: 100%;">
-                    <label>輸出設定</label>
-                    <div class="checkbox-group">
-                        <button id="btn-open-settings" class="btn-small">⚙️ 欄位設定</button>
-                        <label class="checkbox-label"><input type="checkbox" id="chk-teacher-key"> 同步產生教師解答卷</label>
-                    </div>
+                <div class="remedial-action-panel">
+                    <div class="panel-label">🚀 補救教學</div>
+                    <p style="color:#555; margin-bottom:15px;">系統將根據上方輸入的錯題，自動配對題目與類題，生成每位學生專屬的訂正學習單。</p>
+                    <button id="btn-generate" class="btn-lg-primary" style="width:100%; padding:15px; font-size:1.2em;">🚀 生成個別化訂正學習單</button>
                 </div>
             </div>
-            
-            <div class="generation-area">
-                <button id="btn-generate" class="btn-lg-primary">🚀 生成個別化訂正學習單</button>
-                <button id="btn-print" class="btn-lg-secondary" style="display: none;">🖨️ 列印</button>
-            </div>
-
-            <div class="nav-buttons left">
-                <button class="btn-secondary" data-action="prev">⬅ 上一步</button>
-            </div>
         </div>
+
     </div>
 
-    <div id="output-area">
-        <div class="placeholder-text">(預覽區域)</div>
-    </div>
-
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>表格樣式設定</h2><span class="close-modal" data-target="settings-modal">&times;</span></div>
-            <div class="modal-body">
-                <div class="settings-pane"><div id="modal-column-list"></div><div class="modal-actions"><button id="btn-add-col-modal" class="btn-small btn-green">+ 新增</button><button id="btn-reset-col-modal" class="btn-small btn-red">重置</button></div></div>
-                <div class="preview-pane"><div id="modal-preview-area" class="preview-box"></div></div>
-            </div>
-            <div class="modal-footer"><button id="btn-save-settings" class="btn-primary">儲存</button></div>
-        </div>
-    </div>
-
-    <div id="modal-ai-settings" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header"><h2>🤖 Google AI 設定</h2><span class="close-modal" data-target="modal-ai-settings">&times;</span></div>
-            <div class="modal-body">
-                <label>API Key</label><input type="password" id="input-api-key" placeholder="貼上 Key..." style="width:100%; padding:8px; margin:5px 0 10px;">
-                <button id="btn-check-models" class="btn-secondary">驗證</button>
-                <div id="model-select-area" style="display:none; margin-top:10px;"><label>模型</label><select id="select-model" style="width:100%; padding:8px;"></select></div>
-            </div>
-            <div class="modal-footer"><button id="btn-save-ai" class="btn-primary">儲存</button></div>
-        </div>
-    </div>
-
-    <div id="modal-grade-result" class="modal">
-        <div class="modal-content" style="max-width: 800px; height: 90vh;">
-            <div class="modal-header"><h2>📷 AI 閱卷校對</h2><span class="close-modal" data-target="modal-grade-result">&times;</span></div>
-            <div class="modal-body" style="display: flex; gap: 20px; padding: 0;">
-                <div style="flex: 1; background: #333; display: flex; align-items: center; justify-content: center;"><img id="grade-img-preview" style="max-width: 100%; max-height: 100%;"></div>
-                <div style="flex: 1; padding: 20px; overflow-y: auto;">
-                    <div style="background: #e3f2fd; padding: 10px; margin-bottom: 15px;">
-                        <label style="font-weight:bold; color:#1565c0;">🔑 標準答案</label>
-                        <input type="text" id="input-answer-key" placeholder="A,B,C..." style="width:100%; padding:5px; font-family:monospace;">
-                    </div>
-                    <div style="margin-bottom:10px;"><b>座號：</b><input type="text" id="grade-seat-val" style="width:60px; text-align:center; font-weight:bold;"></div>
-                    <div id="grade-details-list" style="border:1px solid #eee; padding:10px; max-height:300px; overflow-y:auto;"></div>
-                    <div style="margin-top: 15px; border-top: 2px dashed #ccc; padding-top:10px;">
-                        <b style="color: #d32f2f;">❌ 錯題：</b><span id="grade-error-ids" style="font-weight:bold;"></span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer"><button id="btn-confirm-grade" class="btn-primary">確認並匯入</button></div>
-        </div>
-    </div>
-
-    <div id="modal-history" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
+    <div id="modal-print-preview" class="modal">
+        <div class="modal-content" style="width: 250mm; max-width: 95vw; height: 90vh; padding: 0; display: flex; flex-direction: column;">
             <div class="modal-header">
-                <h2>📜 出題歷史紀錄</h2>
-                <span class="close-modal" data-target="modal-history">&times;</span>
+                <h2>📄 列印預覽</h2>
+                <span class="close-modal" data-target="modal-print-preview">&times;</span>
             </div>
-            <div class="modal-body">
-                <div id="history-list" class="history-list-container">
-                    <div style="text-align:center; color:#888;">暫無紀錄</div>
-                </div>
+            <div class="modal-body" style="background: #525659; padding: 20px; flex: 1; overflow-y: auto;">
+                <div id="output-area" class="paper-preview"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn-secondary close-modal-btn">關閉</button>
+                <button class="btn-secondary close-modal-btn" data-target="modal-print-preview">關閉</button>
+                <button id="btn-print-action" class="btn-primary">🖨️ 確認列印</button>
             </div>
         </div>
     </div>
 
-    <div id="modal-question-editor" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2>✏️ 編輯題目</h2>
-                <span class="close-modal" data-target="modal-question-editor">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="form-edit-question">
-                    <input type="hidden" id="edit-q-index"> <div class="form-group">
-                        <label>題號 (ID)</label>
-                        <input type="text" id="edit-q-id" class="input-field" style="width: 100px;">
-                    </div>
-
-                    <div class="form-group">
-                        <label>題目內容 (Question)</label>
-                        <textarea id="edit-q-text" class="input-field" rows="3"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>題目解析 (Explanation)</label>
-                        <textarea id="edit-q-expl" class="input-field" rows="2"></textarea>
-                    </div>
-
-                    <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
-
-                    <div class="form-group">
-                        <label style="color: #9c27b0;">★ 類題內容 (Similar Question)</label>
-                        <textarea id="edit-q-sim-text" class="input-field" rows="3" placeholder="若無類題，此處留空即可"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label style="color: #9c27b0;">★ 類題解析 (Similar Explanation)</label>
-                        <textarea id="edit-q-sim-expl" class="input-field" rows="2"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary close-modal-btn" data-target="modal-question-editor">取消</button>
-                <button id="btn-save-edit" class="btn-primary">💾 儲存修改</button>
-            </div>
-        </div>
-    </div>
+    <div id="settings-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>表格樣式設定</h2><span class="close-modal" data-target="settings-modal">&times;</span></div><div class="modal-body"><div class="settings-pane"><div id="modal-column-list"></div><div class="modal-actions"><button id="btn-add-col-modal" class="btn-small btn-green">+ 新增</button><button id="btn-reset-col-modal" class="btn-small btn-red">重置</button></div></div><div class="preview-pane"><div id="modal-preview-area" class="preview-box"></div></div></div><div class="modal-footer"><button id="btn-save-settings" class="btn-primary">儲存</button></div></div></div>
+    <div id="modal-ai-settings" class="modal"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2>🤖 Google AI 設定</h2><span class="close-modal" data-target="modal-ai-settings">&times;</span></div><div class="modal-body"><label>API Key</label><input type="password" id="input-api-key" placeholder="貼上 Key..." style="width:100%; padding:8px; margin:5px 0 10px;"><button id="btn-check-models" class="btn-secondary">驗證</button><div id="model-select-area" style="display:none; margin-top:10px;"><label>模型</label><select id="select-model" style="width:100%; padding:8px;"></select></div></div><div class="modal-footer"><button id="btn-save-ai" class="btn-primary">儲存</button></div></div></div>
+    <div id="modal-grade-result" class="modal"><div class="modal-content" style="max-width: 800px; height: 90vh;"><div class="modal-header"><h2>📷 AI 閱卷校對</h2><span class="close-modal" data-target="modal-grade-result">&times;</span></div><div class="modal-body" style="display: flex; gap: 20px; padding: 0;"><div style="flex: 1; background: #333; display: flex; align-items: center; justify-content: center;"><img id="grade-img-preview" style="max-width: 100%; max-height: 100%;"></div><div style="flex: 1; padding: 20px; overflow-y: auto;"><div style="background: #e3f2fd; padding: 10px; margin-bottom: 15px;"><label style="font-weight:bold; color:#1565c0;">🔑 標準答案</label><input type="text" id="input-answer-key" placeholder="A,B,C..." style="width:100%; padding:5px; font-family:monospace;"></div><div style="margin-bottom:10px;"><b>座號：</b><input type="text" id="grade-seat-val" style="width:60px; text-align:center; font-weight:bold;"></div><div id="grade-details-list" style="border:1px solid #eee; padding:10px; max-height:300px; overflow-y:auto;"></div><div style="margin-top: 15px; border-top: 2px dashed #ccc; padding-top:10px;"><b style="color: #d32f2f;">❌ 錯題：</b><span id="grade-error-ids" style="font-weight:bold;"></span></div></div></div><div class="modal-footer"><button id="btn-confirm-grade" class="btn-primary">確認並匯入</button></div></div></div>
+    <div id="modal-history" class="modal"><div class="modal-content" style="max-width: 600px;"><div class="modal-header"><h2>📜 出題歷史紀錄</h2><span class="close-modal" data-target="modal-history">&times;</span></div><div class="modal-body"><div id="history-list" class="history-list-container"><div style="text-align:center; color:#888;">暫無紀錄</div></div></div><div class="modal-footer"><button class="btn-secondary close-modal-btn">關閉</button></div></div></div>
+    <div id="modal-question-editor" class="modal"><div class="modal-content" style="max-width: 800px;"><div class="modal-header"><h2>✏️ 編輯題目</h2><span class="close-modal" data-target="modal-question-editor">&times;</span></div><div class="modal-body"><form id="form-edit-question"><input type="hidden" id="edit-q-index"> <div class="form-group"><label>題號 (ID)</label><input type="text" id="edit-q-id" class="input-field" style="width: 100px;"></div><div class="form-group"><label>題目內容 (Question)</label><textarea id="edit-q-text" class="input-field" rows="3"></textarea></div><div class="form-group"><label>題目解析 (Explanation)</label><textarea id="edit-q-expl" class="input-field" rows="2"></textarea></div><hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;"><div class="form-group"><label style="color: #9c27b0;">★ 類題內容 (Similar Question)</label><textarea id="edit-q-sim-text" class="input-field" rows="3" placeholder="若無類題，此處留空即可"></textarea></div><div class="form-group"><label style="color: #9c27b0;">★ 類題解析 (Similar Explanation)</label><textarea id="edit-q-sim-expl" class="input-field" rows="2"></textarea></div></form></div><div class="modal-footer"><button class="btn-secondary close-modal-btn" data-target="modal-question-editor">取消</button><button id="btn-save-edit" class="btn-primary">💾 儲存修改</button></div></div></div>
 
     <script type="module" src="assets/js/main.js"></script>
 </body>

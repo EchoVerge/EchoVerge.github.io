@@ -1,9 +1,8 @@
 /**
  * assets/js/main.js
- * V13 入口：初始化所有控制器
+ * V4.0: Tab Layout (分頁式架構) 入口
  */
 import { initColumnManager } from './modules/columnManager.js';
-import { StepManager } from './modules/stepManager.js';
 import { state } from './modules/state.js';
 
 import { initSettingsController } from './modules/settingsController.js';
@@ -12,38 +11,36 @@ import { initGradingController } from './modules/gradingController.js';
 import { initOutputController } from './modules/outputController.js';
 import { initUsageMonitor } from './modules/usageMonitor.js';
 
-// 初始化
+// 初始化控制器
 initColumnManager();
 initSettingsController();
-initEditorController();
-initGradingController();
-initOutputController();
+initEditorController(); // 控制 Tab 1 & Tab 2 (因為輸出按鈕在 EditorController 處理)
+initGradingController(); // 控制 Tab 3 上半部
+initOutputController();  // 控制 Tab 3 下半部 (生成按鈕)
 initUsageMonitor();
 
-// 步驟管理器驗證邏輯
-new StepManager(3, {
-    validate: (step) => {
-        if (step === 1) {
-            if (!state.questions || state.questions.length === 0) {
-                alert("請先輸入或匯入題目！");
-                return false;
-            }
-        }
-        if (step === 2 && state.mode === 'error') {
-            if (!state.students || state.students.length === 0) {
-                alert("錯題模式需輸入學生資料或進行閱卷！");
-                return false;
-            }
-        }
-        return true;
-    }
+// 1. 分頁切換邏輯
+const tabs = document.querySelectorAll('.tab-btn');
+const contents = document.querySelectorAll('.tab-content');
+
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        // 移除所有 active
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+        
+        // 啟用當前
+        tab.classList.add('active');
+        const targetId = tab.dataset.tab;
+        document.getElementById(targetId).classList.add('active');
+    });
 });
 
-window.checkState = () => {
-    console.log("Current Mode:", state.mode);
-    console.log("Questions:", state.questions);
-    console.log("Students:", state.students);
-    
-    if (state.questions.length === 0) console.warn("⚠️ 警告：題庫是空的！");
-    if (state.mode === 'error' && state.students.length === 0) console.warn("⚠️ 警告：錯題模式下沒有學生資料！");
-};
+// 2. 列印確認監聽
+const btnPrintAction = document.getElementById('btn-print-action');
+if (btnPrintAction) {
+    btnPrintAction.addEventListener('click', () => window.print());
+}
+
+state.mode = 'tab-layout';
+console.log("🎓 考卷數位助教 V17 Tab Layout Ready!");

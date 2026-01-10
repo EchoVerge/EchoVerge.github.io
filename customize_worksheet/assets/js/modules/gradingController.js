@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/gradingController.js
- * V2.2: 精簡版 - 移除測驗模式，鎖定為「錯題訂正/閱卷」
+ * V3.1 (Tab Layout): 簡化版，只負責 Tab 3 的閱卷功能
  */
 
 import { state } from './state.js';
@@ -10,16 +10,17 @@ import { analyzeAnswerSheetBatch } from './aiParser.js';
 
 export function initGradingController() {
     state.gradedData = []; 
-    state.mode = 'error'; // [重要] 強制設定為錯題模式
-
+    
     const el = {
-        // 移除 tabs, panelQuiz, panelError 的選取
         txtS: document.getElementById('txt-raw-s'),
-        status: document.getElementById('s-status'),
+        statusBadge: document.getElementById('s-status-badge'),
+        
         btnUp: document.getElementById('btn-upload-student'),
         file: document.getElementById('file-students'),
         btnCam: document.getElementById('btn-camera-grade'),
         fileImg: document.getElementById('file-grade-image'),
+        
+        // Modals
         modal: document.getElementById('modal-grade-result'),
         imgPrev: document.getElementById('grade-img-preview'),
         keyInput: document.getElementById('input-answer-key'),
@@ -30,30 +31,32 @@ export function initGradingController() {
         closeBtns: document.querySelectorAll('.close-modal')
     };
 
-    // 1. 加入校對按鈕
+    // 1. 加入校對按鈕 (動態)
     if (el.txtS) {
-        // 避免重複加入
-        if (!document.getElementById('btn-review-grading')) {
-            const toolbar = document.createElement('div');
-            toolbar.style.marginBottom = '5px';
-            toolbar.innerHTML = `<button id="btn-review-grading" class="btn-xs" style="background:#ff9800; color:white; display:none;">🔍 校對 / 修正</button>`;
-            el.txtS.parentNode.insertBefore(toolbar, el.txtS);
-            document.getElementById('btn-review-grading').addEventListener('click', () => {
-                if (state.gradedData.length === 0) return alert("無資料");
-                openReviewModal(0);
-            });
-        }
+        const btnReview = document.createElement('button');
+        btnReview.id = 'btn-review-grading';
+        btnReview.className = 'btn-tool';
+        btnReview.style.cssText = 'background:#ff9800; color:white; display:none; margin-left:10px;';
+        btnReview.textContent = '🔍 校對模式';
+        
+        // 插入到工具列
+        const toolbar = document.querySelector('.grading-toolbar');
+        if(toolbar) toolbar.appendChild(btnReview);
+
+        btnReview.addEventListener('click', () => {
+            if (state.gradedData.length === 0) return alert("無閱卷資料");
+            openReviewModal(0);
+        });
     }
 
-    // [已移除] 模式切換監聽器 (tabs)
-
-    // 2. 輸入監聽
+    // 2. 輸入監聽 & 狀態統計
     if (el.txtS) {
         el.txtS.addEventListener('input', () => {
             const parsed = parseErrorText(el.txtS.value);
             state.students = parsed;
-            el.status.textContent = parsed.length > 0 ? `✅ 已辨識 ${parsed.length} 位` : '尚未輸入';
-            el.status.className = parsed.length > 0 ? 'status-text ok' : 'status-text';
+            if(el.statusBadge) {
+                el.statusBadge.textContent = `目前人數: ${parsed.length}`;
+            }
         });
     }
 
@@ -71,11 +74,11 @@ export function initGradingController() {
         });
     }
 
-    // 4. 批次閱卷
+    // 4. 批次閱卷 (保持不變)
     if(el.btnCam && el.fileImg) {
         el.btnCam.addEventListener('click', () => {
             if(!state.ai.available) return alert("請先設定 AI Key");
-            if(!state.questions || !state.questions.length) return alert("Step 1 無題庫");
+            if(!state.questions || !state.questions.length) return alert("請先建立題庫");
             
             const keys = state.questions.map(q => {
                 if (q.ans) return q.ans.toUpperCase();
@@ -91,7 +94,9 @@ export function initGradingController() {
             if(!file) return;
             
             state.gradedData = []; 
-            document.getElementById('btn-review-grading').style.display = 'none';
+            const btnReview = document.getElementById('btn-review-grading');
+            if(btnReview) btnReview.style.display = 'none';
+            
             el.modal.style.display = 'flex';
             el.imgPrev.src = '';
             el.btnConfirm.style.display = 'none';
@@ -145,7 +150,10 @@ export function initGradingController() {
                         resultsText += `[錯誤] 第 ${i+1}~${i+chunkImages.length} 批次失敗\n`;
                     }
 
-                    el.txtS.value = resultsText;
+                    const curVal = el.txtS.value;
+                    const prefix = curVal && !curVal.endsWith('\n') ? '\n' : '';
+                    el.txtS.value = curVal + prefix + resultsText;
+                    resultsText = ""; 
                     el.txtS.dispatchEvent(new Event('input'));
                 }
 
@@ -154,7 +162,7 @@ export function initGradingController() {
                 el.btnConfirm.style.display = 'inline-block';
                 el.btnConfirm.onclick = () => { 
                     el.modal.style.display = 'none';
-                    if (state.gradedData.length > 0) document.getElementById('btn-review-grading').style.display = 'inline-block';
+                    if (state.gradedData.length > 0 && btnReview) btnReview.style.display = 'inline-block';
                 };
 
             } catch(err) { 

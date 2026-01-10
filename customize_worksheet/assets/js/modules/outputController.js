@@ -1,7 +1,6 @@
 /**
  * assets/js/modules/outputController.js
- * V2.0: Step 3 專注於「個別化訂正學習單」
- * 標題改用 Prompt，分頁強制開啟
+ * V2.1: 輸出時改為「顯示預覽視窗」，並將確認列印的控制權交給 Modal
  */
 
 import { state } from './state.js';
@@ -11,15 +10,13 @@ import { getColumnConfig } from './columnManager.js';
 export function initOutputController() {
     const el = {
         btnGenerate: document.getElementById('btn-generate'),
-        btnPrint: document.getElementById('btn-print'),
         outputArea: document.getElementById('output-area'),
-        // [移除] input-title, chk-page-break, btn-answer-sheet
+        modalPreview: document.getElementById('modal-print-preview'), // [新增]
         chkTeacherKey: document.getElementById('chk-teacher-key')
     };
 
     // 1. 生成個別化訂正試卷
     el.btnGenerate.addEventListener('click', async () => {
-        // [Prompt] 詢問標題
         const defaultTitle = "訂正學習單";
         const title = prompt("請輸入訂正卷標題：", defaultTitle);
         if (title === null) return;
@@ -27,24 +24,21 @@ export function initOutputController() {
         const config = {
             title: title || defaultTitle,
             columns: getColumnConfig(),
-            pageBreak: true // [重要] 強制啟用分頁
+            pageBreak: true
         };
         
         el.outputArea.innerHTML = '';
         
-        // 準備資料 (錯題對應)
         const dataToPrint = prepareData();
         
         if(!dataToPrint.length) return alert("無資料可生成 (請確認Step 2是否有輸入錯題資料)");
 
-        // 渲染每一位學生的訂正卷
+        // 1. 填入內容
         dataToPrint.forEach(d => {
             el.outputArea.innerHTML += createStudentSection(d.student, d.qList, config);
         });
 
-        // 若勾選教師解答卷 (Step 3 的選項)
         if(el.chkTeacherKey && el.chkTeacherKey.checked) {
-            // 收集所有出現過的錯題
             const allQMap = new Map();
             dataToPrint.forEach(d => {
                 d.qList.forEach(q => allQMap.set(q.id, q));
@@ -55,21 +49,18 @@ export function initOutputController() {
             }
         }
 
-        el.btnPrint.style.display = 'inline-block';
+        // 2. 顯示預覽視窗
+        el.modalPreview.style.display = 'flex';
         
-        // 渲染數學公式
+        // 3. 處理樣式與公式
         if (window.MathJax && window.MathJax.typesetPromise) {
             try { await window.MathJax.typesetPromise(); } catch(e) { console.error(e); }
         }
-        
         ensureEvenPages(); 
     });
-
-    // 2. 列印
-    el.btnPrint.addEventListener('click', () => window.print());
 }
 
-// 資料準備邏輯 (鎖定為錯題模式)
+// 資料準備邏輯
 function prepareData() {
     const qMap = {};
     if (state.questions) {
