@@ -1,4 +1,4 @@
-const CACHE_NAME = 'teacher-salary-v1.1';
+const CACHE_NAME = 'teacher-salary-v1.2';
 // 這裡列出所有需要快取的檔案
 const ASSETS_TO_CACHE = [
     './',
