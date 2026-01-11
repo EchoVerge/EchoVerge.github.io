@@ -196,6 +196,32 @@ export function initEditorController() {
         });
     }
 
+    // 範例按鈕 (委派，因為它可能被 renderPreview 覆蓋)
+    if (el.previewQ) {
+        el.previewQ.addEventListener('click', (e) => {
+            // 處理 Demo 按鈕
+            if (e.target.id === 'btn-demo-data') {
+                el.txtRawQ.value = `1. 這是範例題目\n(A) 選項 A\n(B) 選項 B\n解析：答案是(A)`;
+                el.txtRawQ.disabled = false;
+                el.infoTitle.value = "範例試卷";
+                currentHistoryId = null;
+                updatePreview(); // 這會觸發 parse，並重新渲染 previewQ，Demo 按鈕會消失
+            }
+            
+            // 處理編輯/刪除按鈕
+            const btnEdit = e.target.closest('.btn-edit-q');
+            if (btnEdit) openEditModal(btnEdit.dataset.index);
+            const btnDel = e.target.closest('.btn-del-q');
+            if (btnDel) {
+                const index = btnDel.dataset.index;
+                if(confirm('確定刪除此題？')) {
+                    state.questions.splice(index, 1);
+                    renderPreview(state.questions, state.sourceType || 'Edit');
+                }
+            }
+        });
+    }
+
     // --- 初始化拖曳排序 (SortableJS) ---
     if (el.previewQ) {
         new Sortable(el.previewQ, {
@@ -612,10 +638,15 @@ export function initEditorController() {
         if (!Array.isArray(questions)) questions = [];
         el.infoCount.textContent = questions.length;
         if (!questions.length) {
-            el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>'; return;
+            el.previewQ.innerHTML = `
+                <div class="empty-state">
+                    <p>👈 請輸入文字或匯入檔案</p>
+                    <button id="btn-demo-data" class="btn-small btn-secondary" style="margin-top:10px;">🎲 載入範例題目</button>
+                </div>`; 
+            return;
         }
         el.previewQ.innerHTML = questions.map((q, i) => `
-            <div class="parsed-item ${q.expl?'has-expl':''}">
+            <div class="parsed-item ${q.expl?'has-expl':''}" data-id="${i}">
                 <div class="parsed-actions">
                     <button class="btn-icon-small btn-edit-q" data-index="${i}" title="編輯">✏️</button>
                     <button class="btn-icon-small btn-del-q" data-index="${i}" title="刪除" style="color:#d32f2f;">🗑️</button>

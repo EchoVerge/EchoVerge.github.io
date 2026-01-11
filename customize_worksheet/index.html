@@ -50,6 +50,7 @@
             <button id="btn-cloud-settings" class="btn-icon" title="雲端存檔與會員" style="color:#1565c0; border-color:#90caf9;">☁️</button>
             <button id="btn-open-settings" class="btn-icon" title="欄位設定">⚙️</button>
             <button id="btn-ai-settings" class="btn-icon" title="AI 設定">🤖</button>
+            <button id="btn-help" class="btn-icon" title="教學導覽">❓</button>
         </div>
     </div>
 
@@ -76,35 +77,42 @@
         <div id="tab-edit" class="tab-content active">
             <div class="smart-editor-container">
                 <div class="editor-toolbar">
-                    <div class="toolbar-group">
-                        <button id="btn-upload-file" class="btn-tool">📂 匯入</button>
-                        <button id="btn-demo-data" class="btn-tool">🎲 範例</button>
+                    <div class="toolbar-group" id="group-source">
+                        <button id="btn-upload-file" class="btn-tool">📂 匯入檔案</button>
+                        <button id="btn-vision-parse" class="btn-tool" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); color: white; border:none;">📷 圖片/PDF</button>
                         <input type="file" id="file-questions" accept=".csv, .xlsx, .xls, .docx, .pdf" style="display: none;">
-                    </div>
-                    <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 純文字</button>
-                        <button id="btn-vision-parse" class="btn-tool" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); color: white; border:none;">📷 圖片/PDF 辨識</button>
                         <input type="file" id="file-vision" accept="image/*, .pdf" style="display: none;">
+                    </div>
+                    
+                    <div class="toolbar-divider"></div>
+                    
+                    <div class="toolbar-group" id="group-process">
+                        <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 純文字</button>
                         <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0;">🔮 生成類題</button>
                     </div>
-                    <div class="toolbar-group" style="margin-left: auto;">
+                    
+                    <div class="toolbar-group" style="margin-left: auto;" id="group-manage">
                         <button id="btn-history" class="btn-tool" style="margin-right: 5px;">📜 紀錄</button>
                         <button id="btn-save-q" class="btn-tool" style="margin-right:5px; color:#1565c0; border-color:#90caf9;">💾 儲存</button>
-                        <button id="btn-save-as-q" class="btn-tool" style="margin-right:5px;">📂 另存</button>
+                        <button id="btn-save-as-q" class="btn-tool" style="margin-right:5px;" title="另存新檔">📑 另存</button>
                         <button id="btn-clear-q" class="btn-tool text-danger">🗑️ 清空</button>
                     </div>
                 </div>
 
                 <div class="editor-main">
-                    <div class="editor-pane input-pane">
-                        <div class="pane-label">📝 題目輸入區</div>
-                        <textarea id="txt-raw-q" placeholder="請在此貼上題目文字..."></textarea>
+                    <div class="editor-pane input-pane" id="pane-input">
+                        <div class="pane-label">📝 題目輸入區 (可直接貼上文字)</div>
+                        <textarea id="txt-raw-q" placeholder="1. 這是第一題...&#10;   (A) 選項一&#10;   (B) 選項二"></textarea>
                     </div>
-                    <div class="editor-pane preview-pane">
-                        <div class="pane-label">👁️ 預覽</div>
+                    <div class="editor-pane preview-pane" id="pane-preview">
+                        <div class="pane-label">
+                            <span>👁️ 預覽 (可拖曳排序)</span>
+                        </div>
                         <div id="preview-parsed-q" class="preview-content">
-                            <div class="empty-state">👈 請輸入文字或匯入檔案</div>
+                            <div class="empty-state">
+                                <p>👈 請輸入文字或匯入檔案</p>
+                                <button id="btn-demo-data" class="btn-small btn-secondary" style="margin-top:10px;">🎲 載入範例題目</button>
+                            </div>
                         </div>
                     </div>
                 </div>
