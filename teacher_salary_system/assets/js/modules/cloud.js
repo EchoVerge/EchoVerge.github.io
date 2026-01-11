@@ -1,8 +1,7 @@
 import { db } from './db.js';
 import { state } from './state.js';
-import { openSettingsModal } from './settings.js'; 
 
-// Firebase 設定 (請保持您原本的設定)
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDIda8VOxiHP2okFRjOGl8bYPmlKjDc2lc",
   authDomain: "echoverge-tw.firebaseapp.com",
@@ -15,6 +14,7 @@ const firebaseConfig = {
 
 let app, auth, firestore;
 let currentUser = null;
+let cloudModal = null; // BS5 Modal Instance
 
 try {
     app = firebase.initializeApp(firebaseConfig);
@@ -22,6 +22,36 @@ try {
     firestore = firebase.firestore();
 } catch (e) {
     console.error("Firebase 初始化失敗", e);
+}
+
+// 開啟選單
+export function openCloudModal() {
+    if (!cloudModal) {
+        const el = document.getElementById('cloudModal');
+        if (el) cloudModal = new bootstrap.Modal(el);
+    }
+    // 更新 UI 狀態
+    updateCloudUI();
+    if(cloudModal) cloudModal.show();
+}
+
+function updateCloudUI() {
+    const emailEl = document.getElementById('cloudUserEmail');
+    const statusEl = document.getElementById('cloudProStatus');
+    const redeemSec = document.getElementById('cloudRedeemSection');
+    
+    if (currentUser) {
+        emailEl.textContent = currentUser.email;
+        if (state.isPro) {
+            statusEl.innerHTML = `<i class="bi bi-check-circle-fill"></i> 專業版已啟用`;
+            statusEl.className = "small text-success fw-bold";
+            if(redeemSec) redeemSec.style.display = 'none';
+        } else {
+            statusEl.innerHTML = `<i class="bi bi-x-circle-fill"></i> 未啟用 / 已過期`;
+            statusEl.className = "small text-danger fw-bold";
+            if(redeemSec) redeemSec.style.display = 'block';
+        }
+    }
 }
 
 // 登入
@@ -33,13 +63,12 @@ export function loginGoogle() {
 // 登出
 export function logoutGoogle() {
     auth.signOut();
-    localStorage.removeItem('site_pro_key'); // 清除本地權限
+    localStorage.removeItem('site_pro_key');
     localStorage.removeItem('site_pro_expiry');
     state.isPro = false;
     location.reload();
 }
 
-// 監聽登入狀態
 export function initCloudAuth() {
     if (!auth) return;
     auth.onAuthStateChanged(async user => {
@@ -49,22 +78,18 @@ export function initCloudAuth() {
         const userEmail = document.getElementById('userEmail');
 
         if (user) {
-            btnLogin.style.display = 'none';
-            userInfo.style.display = 'block';
-            userEmail.innerText = user.email;
-            
-            // 登入後，自動檢查雲端權限 (解決換裝置需重輸入的問題)
+            if(btnLogin) btnLogin.style.display = 'none';
+            if(userInfo) userInfo.style.display = 'block';
+            if(userEmail) userEmail.innerText = user.email;
             await checkRemoteStatus(user.uid);
         } else {
-            btnLogin.style.display = 'block';
-            userInfo.style.display = 'none';
-            // 登出後清除 Pro 狀態
+            if(btnLogin) btnLogin.style.display = 'block';
+            if(userInfo) userInfo.style.display = 'none';
             state.isPro = false;
         }
     });
 }
 
-// [核心] 檢查雲端權限狀態 (換裝置登入時自動執行)
 async function checkRemoteStatus(uid) {
     try {
         const doc = await firestore.collection('users').doc(uid).collection('account').doc('info').get();
@@ -73,56 +98,47 @@ async function checkRemoteStatus(uid) {
             const now = new Date();
             const expiryDate = data.expiryDate ? data.expiryDate.toDate() : null;
 
-            // 檢查是否過期
             if (data.activeCode && expiryDate && expiryDate > now) {
-                console.log("雲端權限驗證成功，效期至", expiryDate);
-                // 同步回本地
                 state.isPro = true;
                 localStorage.setItem('site_pro_key', data.activeCode);
                 localStorage.setItem('site_pro_expiry', expiryDate.toISOString());
             } else {
-                console.log("權限已過期或無效");
                 state.isPro = false;
                 localStorage.removeItem('site_pro_key');
             }
+            updateCloudUI(); // 更新 Modal UI
         }
     } catch (e) {
         console.error("檢查權限失敗", e);
     }
 }
 
-// [核心] 啟用序號 (綁定邏輯)
-export async function redeemCode(inputCode) {
-    if (!currentUser) {
-        alert("請先登入 Google 帳號才能綁定序號。");
-        return false;
+// Modal 內的啟用按鈕
+export async function redeemCodeInModal() {
+    const input = document.getElementById('cloudRedeemCode');
+    if(input && input.value.trim()) {
+        await redeemCode(input.value.trim());
     }
+}
+
+// 核心啟用邏輯
+export async function redeemCode(inputCode) {
+    if (!currentUser) return alert("請先登入");
 
     const codeRef = firestore.collection('sys_codes').doc(inputCode);
     const userAccountRef = firestore.collection('users').doc(currentUser.uid).collection('account').doc('info');
 
     try {
         await firestore.runTransaction(async (transaction) => {
-            // 1. 讀取序號文件
             const codeDoc = await transaction.get(codeRef);
-            if (!codeDoc.exists) {
-                throw "無效的序號 (Code not found)";
-            }
+            if (!codeDoc.exists) throw "無效的序號";
 
             const codeData = codeDoc.data();
+            if (codeData.boundTo && codeData.boundTo !== currentUser.uid) throw "此序號已被使用";
 
-            // 2. 檢查是否已被綁定
-            if (codeData.boundTo && codeData.boundTo !== currentUser.uid) {
-                throw "此序號已被其他人使用！";
-            }
-
-            // 3. 檢查是否是重複啟用 (如果是自己綁定的，視為恢復)
-            if (codeData.boundTo === currentUser.uid) {
-                // 已經是自己的，直接更新使用者端資料即可
-            } else {
-                // 4. 執行綁定 (第一次使用)
+            if (codeData.boundTo !== currentUser.uid) {
                 const now = new Date();
-                const expiryDays = codeData.expiryDays || 365; // 預設一年
+                const expiryDays = codeData.expiryDays || 365;
                 const expiryDate = new Date(now.getTime() + expiryDays * 24 * 60 * 60 * 1000);
 
                 transaction.update(codeRef, {
@@ -139,81 +155,65 @@ export async function redeemCode(inputCode) {
             }
         });
 
-        alert("🎉 啟用成功！序號已綁定至您的帳號。");
-        // 重新拉取狀態
+        alert("🎉 啟用成功！");
         await checkRemoteStatus(currentUser.uid);
-        return true;
-
     } catch (e) {
-        console.error(e);
-        const msg = typeof e === 'string' ? e : e.message;
-        alert("啟用失敗：" + msg);
-        return false;
+        alert("啟用失敗：" + (typeof e === 'string' ? e : e.message));
     }
 }
 
-// 同步資料 (備份邏輯)
-export async function syncData() {
+// [拆分] 上傳
+export async function syncUpload() {
     if (!currentUser) return;
+    if (!state.isPro) return alert("請先啟用專業版權限。");
 
-    // 1. 本地檢查
-    if (!state.isPro) {
-        alert("權限無效或已過期，請重新輸入序號。");
-        openSettingsModal(); // 方便用戶去輸入
-        return;
-    }
+    if(!confirm("確定要【備份】本機資料到雲端嗎？\n(這會覆蓋雲端上舊的備份)")) return;
 
-    const choice = confirm("請選擇同步方式：\n\n[確定] = 上傳本機資料到雲端 (備份)\n[取消] = 從雲端下載資料回本機 (還原)");
+    const backupDocRef = firestore.collection('users').doc(currentUser.uid).collection('data').doc('backup');
+
+    const data = { 
+        semesters: await db.semesters.toArray(), 
+        records: await db.records.toArray(), 
+        settings: await db.settings.toArray(),
+        lastUpdated: new Date().toISOString()
+    };
     
-    // 改為儲存在受保護的 data/backup 路徑
-    const backupDocRef = firestore.collection('users').doc(currentUser.uid)
-        .collection('data').doc('backup');
+    try {
+        await backupDocRef.set({ backupData: JSON.stringify(data) });
+        alert("✅ 上傳成功！資料已備份。");
+        if(cloudModal) cloudModal.hide();
+    } catch (e) {
+        console.error(e);
+        alert("上傳失敗：" + e.message);
+    }
+}
 
-    if (choice) {
-        // 上傳
-        const data = { 
-            semesters: await db.semesters.toArray(), 
-            records: await db.records.toArray(), 
-            settings: await db.settings.toArray(),
-            lastUpdated: new Date().toISOString()
-        };
-        
-        try {
-            await backupDocRef.set({ backupData: JSON.stringify(data) });
-            alert("✅ 上傳成功！資料已同步到雲端。");
-        } catch (e) {
-            console.error(e);
-            if (e.code === 'permission-denied') {
-                alert("⛔ 權限不足：您的序號可能已過期或無效。\n資料庫拒絕寫入。");
-            } else {
-                alert("上傳失敗：" + e.message);
-            }
-        }
+// [拆分] 下載
+export async function syncDownload() {
+    if (!currentUser) return;
+    if (!state.isPro) return alert("請先啟用專業版權限。");
 
-    } else {
-        // 下載
-        try {
-            const doc = await backupDocRef.get();
-            if (doc.exists && doc.data().backupData) {
-                const cloudJson = JSON.parse(doc.data().backupData);
-                
-                await db.transaction('rw', db.semesters, db.records, db.settings, async () => {
-                    await db.semesters.clear(); await db.records.clear(); await db.settings.clear();
-                    if(cloudJson.semesters) await db.semesters.bulkAdd(cloudJson.semesters);
-                    if(cloudJson.records) await db.records.bulkAdd(cloudJson.records);
-                    if(cloudJson.settings) await db.settings.bulkAdd(cloudJson.settings);
-                });
-                alert("✅ 下載成功！已還原雲端資料。");
-                location.reload();
-            } else {
-                alert("雲端尚無備份資料。");
-            }
-        } catch (e) {
-            if (e.code === 'permission-denied') {
-                alert("⛔ 權限不足：您的序號可能已過期或無效。");
-            } else {
-                alert("下載失敗：" + e.message);
-            }
+    if(!confirm("確定要從雲端【還原】資料嗎？\n(這會清除本機目前的所有資料！)")) return;
+
+    const backupDocRef = firestore.collection('users').doc(currentUser.uid).collection('data').doc('backup');
+
+    try {
+        const doc = await backupDocRef.get();
+        if (doc.exists && doc.data().backupData) {
+            const cloudJson = JSON.parse(doc.data().backupData);
+            
+            await db.transaction('rw', db.semesters, db.records, db.settings, async () => {
+                await db.semesters.clear(); await db.records.clear(); await db.settings.clear();
+                if(cloudJson.semesters) await db.semesters.bulkAdd(cloudJson.semesters);
+                if(cloudJson.records) await db.records.bulkAdd(cloudJson.records);
+                if(cloudJson.settings) await db.settings.bulkAdd(cloudJson.settings);
+            });
+            alert("✅ 下載成功！頁面將重新整理。");
+            location.reload();
+        } else {
+            alert("雲端尚無備份資料。");
         }
+    } catch (e) {
+        alert("下載失敗：" + e.message);
     }
 }

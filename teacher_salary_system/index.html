@@ -50,11 +50,13 @@
                     <i class="bi bi-google"></i> 登入同步資料
                 </button>
                 <div id="userInfo" style="display:none;">
-                    <small class="d-block text-muted mb-1" id="userEmail"></small>
-                    <button class="btn btn-outline-success btn-sm w-100 mb-1" onclick="syncData()">
-                        <i class="bi bi-cloud-arrow-up"></i> 立即同步
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <small class="text-muted text-truncate" id="userEmail" style="max-width: 120px;"></small>
+                        <button class="btn btn-link btn-sm text-danger p-0 text-decoration-none" onclick="logoutGoogle()" style="font-size:0.8rem;">登出</button>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm w-100" onclick="openCloudModal()">
+                        <i class="bi bi-cloud"></i> 雲端選單
                     </button>
-                    <button class="btn btn-link btn-sm text-danger" onclick="logoutGoogle()">登出</button>
                 </div>
             </div>
             <hr>
@@ -342,6 +344,59 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-primary w-100" onclick="batchAddRecords()">執行批次新增</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="cloudModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title"><i class="bi bi-cloud-check-fill text-primary"></i> 雲端備份與還原</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-light border d-flex align-items-center mb-3 py-2">
+                        <i class="bi bi-person-badge fs-3 me-3 text-secondary"></i>
+                        <div>
+                            <div id="cloudUserEmail" class="fw-bold text-dark">user@example.com</div>
+                            <div id="cloudProStatus" class="small text-danger">未啟用專業版</div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-3 mb-3">
+                        <button class="btn btn-success py-2 text-start px-3 shadow-sm" onclick="syncUpload()">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold"><i class="bi bi-cloud-upload me-2"></i> 備份至雲端</div>
+                                    <small class="text-white-50" style="font-size:0.75rem;">將本機資料上傳 (覆蓋雲端)</small>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                        </button>
+                        
+                        <button class="btn btn-outline-primary py-2 text-start px-3" onclick="syncDownload()">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold"><i class="bi bi-cloud-download me-2"></i> 從雲端還原</div>
+                                    <small class="text-muted" style="font-size:0.75rem;">下載資料回本機 (覆蓋本機)</small>
+                                </div>
+                                <i class="bi bi-chevron-right"></i>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div id="cloudRedeemSection" class="border-top pt-3 mt-3">
+                        <label class="form-label small fw-bold text-secondary">🔑 啟用專業版序號</label>
+                        <div class="input-group">
+                            <input type="text" id="cloudRedeemCode" class="form-control" placeholder="輸入序號...">
+                            <button class="btn btn-primary" onclick="redeemCodeInModal()">啟用</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-1">
+                    <small class="text-muted ms-auto" style="font-size:0.7rem;">EchoVerge Cloud Sync</small>
                 </div>
             </div>
         </div>

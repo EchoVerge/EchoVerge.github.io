@@ -28,8 +28,8 @@ import {
     initBackupModal, openBackupModal, exportBackup, importBackup 
 } from './modules/backup.js';
 
-// 引入雲端功能
-import { initCloudAuth, loginGoogle, logoutGoogle, syncData } from './modules/cloud.js';
+// [修改] 引入雲端功能 (包含新的拆分函式)
+import { loginGoogle, logoutGoogle, initCloudAuth, openCloudModal, syncUpload, syncDownload, redeemCodeInModal } from './modules/cloud.js';
 
 import { initSearch } from './modules/search.js';
 import { initBatchModal, openBatchModal, batchAddRecords } from './modules/batch.js';
@@ -72,7 +72,7 @@ window.onload = async function() {
     // 5. 初始化拖曳功能
     initDragAndDrop();
 
-    // 6. 權限檢查
+    // 6. 權限檢查 (本地)
     checkProStatus();
 
     // 7. 啟動時間檢查定時器 (每 60 秒檢查一次)
@@ -133,13 +133,18 @@ window.openStatsModal = openStatsModal;
 window.calculateStats = calculateStats;
 window.exportStatsExcel = exportStatsExcel;
 
-// 7. 備份與雲端相關
+// 7. 備份與雲端相關 [修改重點]
 window.openBackupModal = openBackupModal;
 window.exportBackup = exportBackup;
 window.importBackup = importBackup;
+
+// 雲端功能綁定
 window.loginGoogle = loginGoogle;
 window.logoutGoogle = logoutGoogle;
-window.syncData = syncData;
+window.openCloudModal = openCloudModal;     // 開啟選單
+window.syncUpload = syncUpload;             // 上傳備份
+window.syncDownload = syncDownload;         // 下載還原
+window.redeemCodeInModal = redeemCodeInModal; // 啟用序號
 
 // 8. 批次模式
 window.openBatchModal = openBatchModal;
