@@ -16,6 +16,9 @@ import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory 
 import { createAnswerSheet } from './answerSheetRenderer.js';
 import { createTeacherKeySection } from './viewRenderer.js';
 
+// [新增] 用來追蹤目前正在編輯的歷史紀錄 ID
+let currentHistoryId = null;
+
 export function initEditorController() {
     const el = {
         txtRawQ: document.getElementById('txt-raw-q'),
@@ -28,6 +31,10 @@ export function initEditorController() {
         btnDemoData: document.getElementById('btn-demo-data'),
         btnAiParse: document.getElementById('btn-ai-parse'),
         btnClearQ: document.getElementById('btn-clear-q'),
+
+        // 儲存按鈕
+        btnSaveQ: document.getElementById('btn-save-q'),
+        btnSaveAsQ: document.getElementById('btn-save-as-q'),
         
         btnGenSimilar: document.getElementById('btn-gen-similar'),
         btnHistory: document.getElementById('btn-history'),
@@ -51,6 +58,49 @@ export function initEditorController() {
         outputArea: document.getElementById('output-area'),
         modalPreview: document.getElementById('modal-print-preview')
     };
+
+    // --- 0. 儲存與另存功能 ---
+    // [儲存]
+    if(el.btnSaveQ) {
+        el.btnSaveQ.addEventListener('click', () => {
+            if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
+            
+            const title = el.infoTitle.value.trim() || "未命名試卷";
+            
+            if (currentHistoryId) {
+                // 更新現有紀錄
+                const success = updateHistory(currentHistoryId, state.questions, title);
+                if (success) {
+                    alert(`已儲存變更至「${title}」`);
+                } else {
+                    // 若 ID 不存在 (可能被刪除)，轉為新存檔
+                    currentHistoryId = saveHistory(state.questions, title);
+                    alert(`原紀錄已不存在，已另存為新紀錄「${title}」`);
+                }
+            } else {
+                // 尚未有 ID，建立新紀錄
+                currentHistoryId = saveHistory(state.questions, title);
+                alert(`已儲存為新紀錄「${title}」`);
+            }
+        });
+    }
+
+    // [另存新檔]
+    if(el.btnSaveAsQ) {
+        el.btnSaveAsQ.addEventListener('click', () => {
+            if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
+            
+            const defaultTitle = el.infoTitle.value.trim() + " (副本)";
+            const newTitle = prompt("另存新檔名稱：", defaultTitle);
+            
+            if (newTitle) {
+                el.infoTitle.value = newTitle;
+                // 強制產生新 ID
+                currentHistoryId = saveHistory(state.questions, newTitle);
+                alert(`已另存為「${newTitle}」`);
+            }
+        });
+    }
 
     // --- Step 1 輸出功能 ---
     if (el.btnPrintSheet1) {
