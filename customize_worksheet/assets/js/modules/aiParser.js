@@ -96,7 +96,7 @@ export async function analyzeAnswerSheet(base64Image, model, apiKey, qCount) {
     return result[0];
 }
 
-// 4. [更新] 批次生成類題 (加入 similarAns)
+// 4. 批次生成類題 (加入 similarAns)
 export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     const simpleList = questions.map(q => ({ id: q.id, text: q.text, ans: q.ans }));
     
@@ -114,4 +114,70 @@ export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     ${JSON.stringify(simpleList)}
     `;
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
+}
+
+// 5. 支援多張圖片分析 (Vision)
+export async function parseImageWithGemini(apiKey, model, base64Images) {
+    // 如果傳入的是單張字串，轉為陣列，保持相容性
+    const images = Array.isArray(base64Images) ? base64Images : [base64Images];
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    
+    // 建立 Image Parts
+    const imageParts = images.map(img => {
+        // 移除 DataURL 前綴
+        const cleanBase64 = img.split(',')[1];
+        return {
+            inline_data: {
+                mime_type: "image/jpeg",
+                data: cleanBase64
+            }
+        };
+    });
+
+    const prompt = `
+    請分析這些圖片(這是一份試卷的各個頁面)，並將其提取為 JSON 格式。
+    
+    [重要規則]
+    1. 請將所有頁面的題目合併處理，即使圖片包含多題，也要全部列出。
+    2. 如果圖片有數學公式，請轉換為 LaTeX 格式 (用 $ 包裹)。
+    3. 忽略圖片中的手寫筆跡或雜訊，只提取題目印刷文字。
+    4. 直接回傳 JSON Array，不要有 Markdown 標記。
+
+    JSON 結構：
+    [
+      { "id": "1", "text": "題目內容(含選項)", "ans": "答案(若有)", "expl": "解析(若有)" }
+    ]
+    `;
+
+    // 組合 Payload: Prompt 文字 + 所有圖片
+    const payload = {
+        contents: [{
+            parts: [
+                { text: prompt },
+                ...imageParts // 展開所有圖片物件
+            ]
+        }]
+    };
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+        const errObj = await response.json();
+        throw new Error("Vision API 錯誤: " + (errObj.error?.message || response.statusText));
+    }
+
+    const data = await response.json();
+    try {
+        const rawText = data.candidates[0].content.parts[0].text;
+        const jsonText = rawText.replace(/```json|```/g, '').trim();
+        return JSON.parse(jsonText);
+    } catch (e) {
+        console.error("AI Response:", data);
+        throw new Error("無法解析 AI 回傳的資料 (可能圖片模糊或無文字)");
+    }
 }

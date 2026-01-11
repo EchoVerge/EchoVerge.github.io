@@ -10,8 +10,9 @@ import { initEditorController } from './modules/editorController.js';
 import { initGradingController } from './modules/gradingController.js';
 import { initOutputController } from './modules/outputController.js';
 import { initUsageMonitor } from './modules/usageMonitor.js';
-// [新增] 引入雲端模組
+// 引入雲端模組
 import { initCloudManager } from './modules/cloudManager.js';
+import { initOnboarding } from './modules/onboarding.js';
 
 // 初始化控制器
 initColumnManager();
@@ -20,8 +21,9 @@ initEditorController();
 initGradingController();
 initOutputController();
 initUsageMonitor();
-// [新增] 初始化雲端功能
+// 初始化雲端功能
 initCloudManager();
+initOnboarding();
 
 // 分頁切換邏輯
 const tabs = document.querySelectorAll('.tab-btn');

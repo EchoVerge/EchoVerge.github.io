@@ -11,7 +11,7 @@ import { state } from './state.js';
 import { parseFile } from './fileHandler.js';
 import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
-import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
+import { parseWithGemini, generateSimilarQuestionsBatch, parseImageWithGemini } from './aiParser.js';
 // [修改] 引入新的 async history manager (需配合 V3.0 historyManager.js 與 db.js)
 import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory, updateHistory } from './historyManager.js';
 import { createAnswerSheet } from './answerSheetRenderer.js';
@@ -50,6 +50,39 @@ function compressImage(file, maxWidth = 800, quality = 0.7) {
     });
 }
 
+// PDF 轉圖片 (處理所有頁面)
+async function convertPdfToImages(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    const totalPages = pdf.numPages;
+    const images = [];
+
+    // 限制最大處理頁數 (避免記憶體爆掉，例如設為 10 頁)
+    const MAX_PAGES = 10;
+    const pagesToProcess = Math.min(totalPages, MAX_PAGES);
+
+    for (let i = 1; i <= pagesToProcess; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 1.5 }); // 1.5倍解析度通常夠用了，太高會讓 Base64 過長
+        
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        
+        // 轉為 Base64 並加入陣列
+        images.push(canvas.toDataURL('image/jpeg', 0.8));
+    }
+
+    if (totalPages > MAX_PAGES) {
+        alert(`提示：PDF 共有 ${totalPages} 頁，為了效能考量，僅處理前 ${MAX_PAGES} 頁。`);
+    }
+
+    return images;
+}
+
 // 用來追蹤目前正在編輯的歷史紀錄 ID
 let currentHistoryId = null;
 
@@ -64,8 +97,10 @@ export function initEditorController() {
         fileQuestions: document.getElementById('file-questions'),
         btnDemoData: document.getElementById('btn-demo-data'),
         btnAiParse: document.getElementById('btn-ai-parse'),
+        btnVisionParse: document.getElementById('btn-vision-parse'),
+        fileVision: document.getElementById('file-vision'),
+
         btnClearQ: document.getElementById('btn-clear-q'),
-        
         // 儲存按鈕
         btnSaveQ: document.getElementById('btn-save-q'),
         btnSaveAsQ: document.getElementById('btn-save-as-q'),
@@ -104,6 +139,62 @@ export function initEditorController() {
 
     // [暫存] 編輯時的圖片 DataURL
     let tempEditingImg = null;
+
+    // --- Vision 辨識流程 ---
+    if (el.btnVisionParse) {
+        el.btnVisionParse.addEventListener('click', () => {
+            if (!state.ai.available) return alert("請先設定 AI Key (需支援 Gemini 1.5 Flash)");
+            el.fileVision.click();
+        });
+
+        el.fileVision.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const originalText = el.btnVisionParse.textContent;
+            el.btnVisionParse.disabled = true;
+
+            try {
+                let base64Images = []; // 改為陣列
+                
+                // 1. 判斷檔案類型
+                if (file.type === 'application/pdf') {
+                    el.btnVisionParse.textContent = "📄 PDF轉檔中(多頁)...";
+                    // 呼叫新的多頁轉檔函式
+                    base64Images = await convertPdfToImages(file);
+                } else {
+                    el.btnVisionParse.textContent = "🖼️ 圖片壓縮...";
+                    // 單張圖片轉為單一元素的陣列
+                    const img = await compressImage(file);
+                    base64Images = [img];
+                }
+
+                // 2. 送出 AI 請求
+                el.btnVisionParse.textContent = `🤖 AI 辨識中 (${base64Images.length} 頁)...`;
+                
+                // 呼叫支援陣列的 API 函式
+                const parsed = await parseImageWithGemini(state.ai.key, state.ai.model, base64Images);
+                
+                // 3. 渲染結果
+                state.questions = parsed;
+                state.sourceType = 'vision';
+                
+                el.txtRawQ.value = `[AI Vision 辨識結果]\n檔案：${file.name}\n頁數：${base64Images.length}\n題數：${parsed.length}`;
+                renderPreview(parsed, 'Vision');
+                
+                currentHistoryId = await saveHistory(parsed, file.name.split('.')[0] + " (辨識)");
+                alert(`辨識成功！共讀取 ${base64Images.length} 頁，生成 ${parsed.length} 題。`);
+
+            } catch (err) {
+                console.error(err);
+                alert("辨識失敗：" + err.message);
+            } finally {
+                el.btnVisionParse.textContent = originalText;
+                el.btnVisionParse.disabled = false;
+                el.fileVision.value = ''; 
+            }
+        });
+    }
 
     // --- 初始化拖曳排序 (SortableJS) ---
     if (el.previewQ) {
