@@ -97,6 +97,7 @@ export function initEditorController() {
         fileQuestions: document.getElementById('file-questions'),
         btnDemoData: document.getElementById('btn-demo-data'),
         btnAiParse: document.getElementById('btn-ai-parse'),
+        btnAiSolve: document.getElementById('btn-ai-solve'),
         btnVisionParse: document.getElementById('btn-vision-parse'),
         fileVision: document.getElementById('file-vision'),
 
@@ -426,6 +427,67 @@ export function initEditorController() {
             el.btnAiParse.disabled = false;
         }
     });
+
+    // 3-1 AI 自動解題
+    if (el.btnAiSolve) {
+        el.btnAiSolve.addEventListener('click', async () => {
+            if (!state.ai.available) return alert("請先設定 AI Key");
+            if (!state.questions || state.questions.length === 0) return alert("請先建立題庫 (輸入文字並格式化，或匯入檔案)！");
+
+            if (!confirm(`即將為 ${state.questions.length} 道題目進行自動解題。\n這將覆蓋原本的答案與解析。確定嗎？`)) return;
+
+            const originalText = el.btnAiSolve.textContent;
+            el.btnAiSolve.disabled = true;
+            el.btnAiSolve.textContent = "🧠 解題中...";
+
+            try {
+                // 為了避免 Token 超過限制，建議分批處理 (例如每批 10 題)
+                const BATCH_SIZE = 10;
+                const total = state.questions.length;
+                let processed = 0;
+                
+                // 建立 ID 對照表以便更新
+                const qMap = new Map();
+                state.questions.forEach(q => qMap.set(String(q.id), q));
+
+                for (let i = 0; i < total; i += BATCH_SIZE) {
+                    el.btnAiSolve.textContent = `🧠 解題中 (${processed}/${total})...`;
+                    const batch = state.questions.slice(i, i + BATCH_SIZE);
+                    
+                    // 引入我們剛寫好的函式
+                    const results = await import('./aiParser.js').then(m => m.autoSolveQuestionsBatch(batch, state.ai.model, state.ai.key));
+                    
+                    if (Array.isArray(results)) {
+                        results.forEach(res => {
+                            const targetQ = qMap.get(String(res.id));
+                            if (targetQ) {
+                                targetQ.ans = res.ans || targetQ.ans;
+                                targetQ.expl = res.expl || targetQ.expl;
+                            }
+                        });
+                    }
+                    processed += batch.length;
+                }
+
+                // 更新介面與存檔
+                renderPreview(state.questions, 'AI Solved');
+                const title = el.infoTitle.value.includes('(詳解)') ? el.infoTitle.value : el.infoTitle.value + " (詳解)";
+                el.infoTitle.value = title;
+                
+                if(currentHistoryId) await updateHistory(currentHistoryId, state.questions, title);
+                else currentHistoryId = await saveHistory(state.questions, title);
+
+                alert("🎉 自動解題完成！");
+
+            } catch (e) {
+                console.error(e);
+                alert("解題失敗：" + e.message);
+            } finally {
+                el.btnAiSolve.disabled = false;
+                el.btnAiSolve.textContent = originalText;
+            }
+        });
+    }
 
     // 4. 清空
     el.btnClearQ.addEventListener('click', () => {

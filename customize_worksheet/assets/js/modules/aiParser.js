@@ -181,3 +181,26 @@ export async function parseImageWithGemini(apiKey, model, base64Images) {
         throw new Error("無法解析 AI 回傳的資料 (可能圖片模糊或無文字)");
     }
 }
+
+// 6. 批次自動解題 (補全 ans 與 expl)
+export async function autoSolveQuestionsBatch(questions, model, apiKey) {
+    // 只傳送題目文字與ID，節省 Token
+    const simpleList = questions.map(q => ({ id: q.id, text: q.text }));
+    
+    const prompt = `
+    你是一位學科專家。請為以下題目提供正確答案與詳細解析。
+    
+    [輸入題目]
+    ${JSON.stringify(simpleList)}
+
+    [輸出規則]
+    請回傳一個 JSON 陣列，包含原本的 id 以及生成的 ans (答案) 和 expl (解析)。
+    格式範例：
+    [
+      { "id": "1", "ans": "A", "expl": "因為..." },
+      { "id": "2", "ans": "C", "expl": "解題步驟..." }
+    ]
+    `;
+
+    return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
+}

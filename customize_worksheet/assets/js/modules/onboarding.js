@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/onboarding.js
- * V2.2: 修復按鈕選取錯誤 (使用 data-tab 取代 id)
+ * V2.3: 配合按鈕分組調整教學文案
  */
 
 let driverObj;
@@ -25,7 +25,6 @@ export function initOnboarding() {
 export function startTour() {
     if (!window.driver) return;
 
-    // 預先抓取導航按鈕 (使用 data-tab 屬性，比 ID 更穩定)
     const getNavBtn = (tabName) => document.querySelector(`button[data-tab="${tabName}"]`);
 
     driverObj = window.driver.js.driver({
@@ -34,39 +33,41 @@ export function startTour() {
         steps: [
             { 
                 element: '#btn-ai-settings', 
-                popover: { title: '1. 設定 AI Key', description: '第一步請先設定 Google AI Key，才能使用 AI 分析與 Vision 辨識功能。' } 
+                popover: { title: '1. 設定 AI Key', description: '第一步請先設定 Google AI Key，才能使用 AI 功能。' } 
             },
             { 
+                // Group 1: 來源
                 element: '#group-source', 
-                popover: { title: '2. 匯入題庫', description: '支援從 Excel/Word 匯入，或使用全新的「圖片/PDF 辨識」直接讀取考卷影像。' } 
+                popover: { title: '2. 匯入題目', description: '您有三種方式建立題庫：<br>1. <b>匯入檔案</b> (Excel/Word)<br>2. <b>圖片/PDF 辨識</b> (Vision)<br>3. <b>AI 格式化</b> (整理貼上的文字)' } 
             },
             { 
                 element: '#pane-input', 
-                popover: { title: '3. 手動編輯', description: '您也可以將題目文字直接貼在這裡，讓系統進行分析。' } 
+                popover: { title: '3. 文字輸入區', description: '若選擇手動貼上題目，請貼在此處，再點擊上方的「✨ AI 格式化」按鈕進行整理。' } 
             },
             { 
+                // Group 2: 處理
                 element: '#group-process', 
-                popover: { title: '4. AI 處理', description: '貼上文字後點選「AI 純文字」，或點選「生成類題」來擴充題庫。' } 
+                popover: { title: '4. AI 賦能', description: '題目整理好後，可使用「🧠 自動解題」補全解析，或「🔮 生成類題」來擴充題庫。' } 
             },
             { 
                 element: '#pane-preview', 
-                popover: { title: '5. 預覽與排序', description: '分析後的題目會出現在這。您可以拖曳卡片調整順序，或點擊鉛筆圖示進行編輯。' } 
+                popover: { title: '5. 預覽與排序', description: '這裡顯示最終的題庫內容。您可以拖曳卡片調整順序，或點擊鉛筆圖示進行編輯。' } 
             },
             { 
                 element: '#group-manage', 
                 popover: { title: '6. 存檔管理', description: '記得隨時儲存！「紀錄」按鈕可找回之前的試卷。' } 
             },
             { 
-                element: 'button[data-tab="tab-export"]', // 改用屬性選擇器
+                element: 'button[data-tab="tab-export"]', 
                 popover: { title: '7. 考前輸出', description: '切換到此頁籤，可匯出 Word 試卷 (含圖片) 或產生答案卡。' } 
             },
             { 
-                element: 'button[data-tab="tab-grade"]', // 改用屬性選擇器
+                element: 'button[data-tab="tab-grade"]', 
                 popover: { title: '8. 閱卷與補救', description: '考完試後，可用相機閱卷並生成學生的補救學習單。' } 
             },
             { 
                 element: '#btn-cloud-settings', 
-                popover: { title: '9. 雲端備份', description: '強烈建議登入 Google 帳號，將資料安全備份到雲端，避免遺失。' } 
+                popover: { title: '9. 雲端備份', description: '強烈建議登入 Google 帳號，將資料安全備份到雲端。' } 
             }
         ],
         onHighlightStarted: (element) => {
@@ -76,17 +77,13 @@ export function startTour() {
             const navExport = getNavBtn('tab-export');
             const navGrade = getNavBtn('tab-grade');
 
-            // 1. 如果目標是「考前輸出」按鈕 -> 點擊切換
             if (element === navExport) {
                 navExport?.click();
             }
-            // 2. 如果目標是「閱卷」按鈕 -> 點擊切換
             else if (element === navGrade) {
                 navGrade?.click();
             }
-            // 3. 如果目標位於「建立題庫 (#tab-edit)」區塊內 -> 切換回題庫分頁
             else if (element.closest && element.closest('#tab-edit')) {
-                // 只有當按鈕存在且目前不是 active 狀態時才點擊
                 if (navEdit && !navEdit.classList.contains('active')) {
                     navEdit.click();
                 }

@@ -78,8 +78,10 @@
             <div class="smart-editor-container">
                 <div class="editor-toolbar">
                     <div class="toolbar-group" id="group-source">
-                        <button id="btn-upload-file" class="btn-tool">📂 匯入檔案</button>
-                        <button id="btn-vision-parse" class="btn-tool" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); color: white; border:none;">📷 圖片/PDF</button>
+                        <button id="btn-upload-file" class="btn-tool" title="匯入 Excel/Word 檔">📂 匯入檔案</button>
+                        <button id="btn-vision-parse" class="btn-tool" style="background: linear-gradient(135deg, #FF6B6B, #FF8E53); color: white; border:none;" title="辨識圖片或 PDF 試卷">📷 圖片/PDF</button>
+                        <button id="btn-ai-parse" class="btn-tool btn-ai-gradient" title="將輸入框的雜亂文字轉為題庫格式">✨ AI 格式化</button>
+                        
                         <input type="file" id="file-questions" accept=".csv, .xlsx, .xls, .docx, .pdf" style="display: none;">
                         <input type="file" id="file-vision" accept="image/*, .pdf" style="display: none;">
                     </div>
@@ -87,8 +89,8 @@
                     <div class="toolbar-divider"></div>
                     
                     <div class="toolbar-group" id="group-process">
-                        <button id="btn-ai-parse" class="btn-tool btn-ai-gradient">✨ AI 純文字</button>
-                        <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0;">🔮 生成類題</button>
+                        <button id="btn-ai-solve" class="btn-tool" style="border:1px solid #2e7d32; color:#2e7d32;" title="為現有題目自動生成答案與解析">🧠 AI 自動解題</button>
+                        <button id="btn-gen-similar" class="btn-tool" style="border:1px solid #9c27b0; color:#9c27b0;" title="為現有題目生成類題">🔮 生成類題</button>
                     </div>
                     
                     <div class="toolbar-group" style="margin-left: auto;" id="group-manage">
