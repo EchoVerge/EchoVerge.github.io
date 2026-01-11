@@ -59,7 +59,7 @@
 
         .gallery-grid {
             display: grid;
-            /* 關鍵：自動填滿，每格最小 300px，最大 1fr */
+            /* 自動填滿，每格最小 320px */
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 30px;
         }
@@ -84,7 +84,7 @@
             box-shadow: 0 15px 30px rgba(0,0,0,0.15);
         }
 
-        /* 卡片封面圖 (目前用 CSS 漸層模擬) */
+        /* 卡片封面圖 */
         .card-cover {
             height: 180px;
             display: flex;
@@ -95,17 +95,24 @@
             position: relative;
         }
 
-        /* 專案 A 的封面配色 */
+        /* --- 專案配色設定 --- */
+        
+        /* 專案 1: 薪資系統 (藍青色) */
         .cover-salary {
             background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
         }
 
-        /* 專案 B 的封面配色 */
+        /* 專案 2: PDF 工具 (藍紫色) */
         .cover-pdf {
             background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
         }
 
-        /* 未來擴充的封面配色 */
+        /* 專案 3: 學習單生成器 (橙紅色 - 新增) */
+        .cover-worksheet {
+            background: linear-gradient(45deg, #FF512F 0%, #DD2476 100%);
+        }
+
+        /* 開發中 (灰紫色) */
         .cover-coming {
             background: linear-gradient(45deg, #e0c3fc 0%, #8ec5fc 100%);
             opacity: 0.7;
@@ -196,11 +203,29 @@
                         專為教師設計的薪資試算 PWA。支援拖曳排課、鐘點費自動計算、Excel 報表匯出及雲端資料同步。
                     </div>
                     <div class="tags">
-                        <span class="tag">Web App</span>
-                        <span class="tag">Firebase</span>
                         <span class="tag">PWA</span>
+                        <span class="tag">Firebase</span>
+                        <span class="tag">Salary</span>
                     </div>
                     <div class="btn-arrow">進入系統 <i class="bi bi-arrow-right"></i></div>
+                </div>
+            </a>
+
+            <a href="./customize_worksheet/" class="project-card">
+                <div class="card-cover cover-worksheet">
+                    <i class="bi bi-file-earmark-word"></i>
+                </div>
+                <div class="card-body">
+                    <div class="card-title">AI 智慧學習單生成器</div>
+                    <div class="card-desc">
+                        結合 AI 文本解析技術，快速將文字轉換為學習單。支援題目編輯、自動排版、答案卷產出與 Word 匯出。
+                    </div>
+                    <div class="tags">
+                        <span class="tag">AI Parser</span>
+                        <span class="tag">Word Export</span>
+                        <span class="tag">Education</span>
+                    </div>
+                    <div class="btn-arrow">開始製作 <i class="bi bi-arrow-right"></i></div>
                 </div>
             </a>
 
@@ -216,26 +241,11 @@
                     <div class="tags">
                         <span class="tag">React</span>
                         <span class="tag">PDF-Lib</span>
-                        <span class="tag">工具</span>
+                        <span class="tag">Utility</span>
                     </div>
                     <div class="btn-arrow">開始使用 <i class="bi bi-arrow-right"></i></div>
                 </div>
             </a>
-
-            <div class="project-card" style="cursor: default; opacity: 0.8;">
-                <div class="card-cover cover-coming">
-                    <i class="bi bi-cone-striped"></i>
-                </div>
-                <div class="card-body">
-                    <div class="card-title">開發中專案...</div>
-                    <div class="card-desc">
-                        更多有趣的 Web 實驗與實用工具即將上線。
-                    </div>
-                    <div class="tags">
-                        <span class="tag">Coming Soon</span>
-                    </div>
-                </div>
-            </div>
 
         </div>
     </main>
