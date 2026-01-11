@@ -4,10 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考卷數位助教 V20 (Cloud Sync)</title>
+    <link rel="icon" type="image/png" href="assets/imgs/icon-512.png">
     
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/worksheetStyle.css">
     <link rel="stylesheet" href="assets/css/historyItem.css">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="assets/imgs/icon.svg">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -192,5 +199,17 @@
     <div id="modal-history" class="modal"><div class="modal-content" style="max-width: 600px;"><div class="modal-header"><h2>📜 出題歷史紀錄</h2><span class="close-modal" data-target="modal-history">&times;</span></div><div class="modal-body"><div id="history-list" class="history-list-container"><div style="text-align:center; color:#888;">暫無紀錄</div></div></div><div class="modal-footer"><button class="btn-secondary close-modal-btn">關閉</button></div></div></div>
 
     <script type="module" src="assets/js/main.js"></script>
+
+    <script>
+        // 註冊 PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('Service Worker 註冊成功:', reg.scope))
+                    .catch((err) => console.log('Service Worker 註冊失敗:', err));
+            });
+        }
+    </script>
+</body>
 </body>
 </html>
