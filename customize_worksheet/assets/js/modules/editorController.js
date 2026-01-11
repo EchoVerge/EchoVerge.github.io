@@ -17,6 +17,7 @@ import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory,
 import { createAnswerSheet } from './answerSheetRenderer.js';
 import { createTeacherKeySection } from './viewRenderer.js';
 import { exportToWord } from './wordExporter.js';
+import { showToast } from './toast.js';
 
 // [新增] 圖片壓縮工具函式
 function compressImage(file, maxWidth = 800, quality = 0.7) {
@@ -77,7 +78,7 @@ async function convertPdfToImages(file) {
     }
 
     if (totalPages > MAX_PAGES) {
-        alert(`提示：PDF 共有 ${totalPages} 頁，為了效能考量，僅處理前 ${MAX_PAGES} 頁。`);
+        showToast(`提示：PDF 共有 ${totalPages} 頁，為了效能考量，僅處理前 ${MAX_PAGES} 頁。`,"success");
     }
 
     return images;
@@ -110,6 +111,7 @@ export function initEditorController() {
         btnHistory: document.getElementById('btn-history'),
         modalHistory: document.getElementById('modal-history'),
         historyList: document.getElementById('history-list'),
+        historySearch: document.getElementById('history-search'),
 
         // Editor Modal Inputs
         modalEditor: document.getElementById('modal-question-editor'),
@@ -144,7 +146,7 @@ export function initEditorController() {
     // --- Vision 辨識流程 ---
     if (el.btnVisionParse) {
         el.btnVisionParse.addEventListener('click', () => {
-            if (!state.ai.available) return alert("請先設定 AI Key (需支援 Gemini 1.5 Flash)");
+            if (!state.ai.available) return showToast("請先設定 AI Key (需支援 Gemini 1.5 Flash)","error");
             el.fileVision.click();
         });
 
@@ -184,11 +186,11 @@ export function initEditorController() {
                 renderPreview(parsed, 'Vision');
                 
                 currentHistoryId = await saveHistory(parsed, file.name.split('.')[0] + " (辨識)");
-                alert(`辨識成功！共讀取 ${base64Images.length} 頁，生成 ${parsed.length} 題。`);
+                showToast(`辨識成功！共讀取 ${base64Images.length} 頁，生成 ${parsed.length} 題。`,"success");
 
             } catch (err) {
                 console.error(err);
-                alert("辨識失敗：" + err.message);
+                showToast("辨識失敗：" + err.message,"error");
             } finally {
                 el.btnVisionParse.textContent = originalText;
                 el.btnVisionParse.disabled = false;
@@ -265,7 +267,7 @@ export function initEditorController() {
     // [儲存]
     if(el.btnSaveQ) {
         el.btnSaveQ.addEventListener('click', async () => {
-            if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
+            if (!state.questions || state.questions.length === 0) return showToast("沒有題目可儲存！",'error');
             
             const title = el.infoTitle.value.trim() || "未命名試卷";
             
@@ -274,20 +276,20 @@ export function initEditorController() {
                     // 更新現有紀錄 (Await DB)
                     const success = await updateHistory(currentHistoryId, state.questions, title);
                     if (success) {
-                        alert(`已儲存變更至「${title}」`);
+                        showToast(`已儲存變更至「${title}」`,"success");
                     } else {
                         // 若 ID 不存在 (可能被刪除)，轉為新存檔
                         currentHistoryId = await saveHistory(state.questions, title);
-                        alert(`原紀錄已不存在，已另存為新紀錄「${title}」`);
+                        showToast(`原紀錄已不存在，已另存為新紀錄「${title}」`,"error");
                     }
                 } else {
                     // 尚未有 ID，建立新紀錄
                     currentHistoryId = await saveHistory(state.questions, title);
-                    alert(`已儲存為新紀錄「${title}」`);
+                    showToast(`已儲存為新紀錄「${title}」`,"success");
                 }
             } catch (e) {
                 console.error(e);
-                alert("儲存失敗：" + e.message);
+                showToast("儲存失敗：" + e.message,"error");
             }
         });
     }
@@ -295,7 +297,7 @@ export function initEditorController() {
     // [另存新檔]
     if(el.btnSaveAsQ) {
         el.btnSaveAsQ.addEventListener('click', async () => {
-            if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
+            if (!state.questions || state.questions.length === 0) return showToast("沒有題目可儲存！","error");
             
             const defaultTitle = el.infoTitle.value.trim() + " (副本)";
             const newTitle = prompt("另存新檔名稱：", defaultTitle);
@@ -305,10 +307,10 @@ export function initEditorController() {
                 try {
                     // 強制產生新 ID (Await DB)
                     currentHistoryId = await saveHistory(state.questions, newTitle);
-                    alert(`已另存為「${newTitle}」`);
+                    showToast(`已另存為「${newTitle}」`,"success");
                 } catch (e) {
                     console.error(e);
-                    alert("另存失敗：" + e.message);
+                    showToast("另存失敗：" + e.message,'error');
                 }
             }
         });
@@ -324,7 +326,7 @@ export function initEditorController() {
 
     function handleExport(type) {
         if (!state.questions || state.questions.length === 0) {
-            return alert("請先建立題庫！");
+            return showToast("請先建立題庫！",'error');
         }
 
         const currentTitle = el.infoTitle.value.trim() || "測驗卷";
@@ -391,11 +393,11 @@ export function initEditorController() {
                 el.txtRawQ.disabled = false;
                 state.sourceType = 'text';
                 updatePreview();
-                alert("文字已提取！建議使用 AI 分析整理格式。");
+                showToast("文字已提取！建議使用 AI 分析整理格式。","success");
             }
         } catch (err) {
             console.error(err);
-            alert(err.message);
+            showToast(err.message,'error');
             el.txtRawQ.disabled = false;
         }
         e.target.value = '';
@@ -403,9 +405,9 @@ export function initEditorController() {
 
     // 3. AI 分析
     el.btnAiParse.addEventListener('click', async () => {
-        if (!state.ai.available) return alert("請先設定 AI Key");
+        if (!state.ai.available) return showToast("請先設定 AI Key",'error');
         const text = el.txtRawQ.value;
-        if (text.length < 5) return alert("內容過短");
+        if (text.length < 5) return showToast("內容過短",'error');
 
         const originalText = el.btnAiParse.textContent;
         el.btnAiParse.textContent = "🧠 分析中...";
@@ -421,7 +423,7 @@ export function initEditorController() {
             currentHistoryId = await saveHistory(parsed, title);
             
         } catch (e) {
-            alert(e.message);
+            showToast(e.message,'error');
         } finally {
             el.btnAiParse.textContent = originalText;
             el.btnAiParse.disabled = false;
@@ -431,8 +433,8 @@ export function initEditorController() {
     // 3-1 AI 自動解題
     if (el.btnAiSolve) {
         el.btnAiSolve.addEventListener('click', async () => {
-            if (!state.ai.available) return alert("請先設定 AI Key");
-            if (!state.questions || state.questions.length === 0) return alert("請先建立題庫 (輸入文字並格式化，或匯入檔案)！");
+            if (!state.ai.available) return showToast("請先設定 AI Key",'error');
+            if (!state.questions || state.questions.length === 0) return showToast("請先建立題庫 (輸入文字並格式化，或匯入檔案)！",'error');
 
             if (!confirm(`即將為 ${state.questions.length} 道題目進行自動解題。\n這將覆蓋原本的答案與解析。確定嗎？`)) return;
 
@@ -477,11 +479,11 @@ export function initEditorController() {
                 if(currentHistoryId) await updateHistory(currentHistoryId, state.questions, title);
                 else currentHistoryId = await saveHistory(state.questions, title);
 
-                alert("🎉 自動解題完成！");
+                showToast("🎉 自動解題完成！","success");
 
             } catch (e) {
                 console.error(e);
-                alert("解題失敗：" + e.message);
+                showToast("解題失敗：" + e.message,'error');
             } finally {
                 el.btnAiSolve.disabled = false;
                 el.btnAiSolve.textContent = originalText;
@@ -513,8 +515,8 @@ export function initEditorController() {
     // 5. 類題生成 (巢狀結構)
     if (el.btnGenSimilar) {
         el.btnGenSimilar.addEventListener('click', async () => {
-            if (!state.ai.available) return alert("請先設定 AI Key");
-            if (!state.questions || state.questions.length === 0) return alert("請先建立題庫！");
+            if (!state.ai.available) return showToast("請先設定 AI Key",'error');
+            if (!state.questions || state.questions.length === 0) return showToast("請先建立題庫！",'error');
 
             if (!confirm(`即將為 ${state.questions.length} 道題目生成類題。\n這將歸入當前題庫作為子題。確定嗎？`)) return;
 
@@ -561,11 +563,11 @@ export function initEditorController() {
                 }
                 
                 renderPreview(state.questions, 'AI+類題');
-                alert("🎉 類題生成完畢！已歸入各題之下並自動儲存。");
+                showToast("🎉 類題生成完畢！已歸入各題之下並自動儲存。","success");
 
             } catch (e) {
                 console.error(e);
-                alert("生成過程中斷：" + e.message);
+                showToast("生成過程中斷：" + e.message,'error');
             } finally {
                 el.btnGenSimilar.disabled = false;
                 el.btnGenSimilar.textContent = originalBtnText;
@@ -577,12 +579,25 @@ export function initEditorController() {
     if (el.btnHistory) {
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
+            if(el.historySearch) el.historySearch.value = ''; 
             renderHistoryList();
         });
+
+        // 通用關閉 Modal 邏輯 (支援自動抓取父層 Modal)
         document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                // 1. 優先嘗試讀取 data-target
                 const targetId = btn.dataset.target;
-                if(targetId) document.getElementById(targetId).style.display = 'none';
+                if (targetId) {
+                    const target = document.getElementById(targetId);
+                    if (target) target.style.display = 'none';
+                } else {
+                    // 2. 如果沒有 target，就關閉自己所在的 .modal
+                    const parentModal = btn.closest('.modal');
+                    if (parentModal) {
+                        parentModal.style.display = 'none';
+                    }
+                }
             });
         });
     }
@@ -617,7 +632,7 @@ export function initEditorController() {
                 el.imgPlaceholder.style.display = 'none';
             } catch (err) {
                 console.error(err);
-                alert("圖片處理失敗");
+                showToast("圖片處理失敗",'error');
             }
         });
     }
@@ -728,18 +743,32 @@ export function initEditorController() {
         `).join('');
     }
 
-    // [核心修改] 渲染歷史紀錄列表 (包含改名按鈕，且全改為 async/await)
-    async function renderHistoryList() {
+    // 渲染歷史紀錄列表 (支援搜尋與 Async)
+    async function renderHistoryList(keyword = '') {
         el.historyList.innerHTML = '<div style="text-align:center; padding:20px;">讀取中...</div>';
         
         // Await DB
         const list = await getHistoryList();
-        
+
+        // 1. 搜尋過濾邏輯
+        const filteredList = keyword 
+            ? list.filter(item => item.title.toLowerCase().includes(keyword.toLowerCase()))
+            : list;
+
+        // 2. 處理「完全無紀錄」的情況 (DB 為空)
         if (list.length === 0) {
             el.historyList.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">尚無紀錄</div>';
             return;
         }
-        el.historyList.innerHTML = list.map(item => `
+
+        // 3. 處理「查無資料」的情況 (有紀錄但被過濾掉了)
+        if (filteredList.length === 0) {
+            el.historyList.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">查無符合「${keyword}」的資料</div>`;
+            return;
+        }
+
+        // 4. 渲染列表 (只渲染 filteredList)
+        el.historyList.innerHTML = filteredList.map(item => `
             <div class="history-item">
                 <div class="hist-info">
                     <span class="hist-title">${item.title}</span>
@@ -754,62 +783,73 @@ export function initEditorController() {
             </div>
         `).join('');
 
-        // 綁定載入按鈕
+        // 5. 綁定按鈕事件 (直接寫在這裡，確保針對新生成的元素綁定)
+        
+        // [載入]
         document.querySelectorAll('.btn-load-hist').forEach(b => {
             b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
-                const record = await loadHistory(id); // Await DB
+                const record = await loadHistory(id); 
                 if (record) {
                     if(confirm(`確定載入「${record.title}」？\n這將【覆蓋】目前的編輯內容。`)) {
                         state.questions = JSON.parse(JSON.stringify(record.data));
                         state.sourceType = 'history';
                         el.infoTitle.value = record.title; 
-                        currentHistoryId = id; // [重要] 設定當前 ID
+                        currentHistoryId = id; 
                         el.txtRawQ.value = `[歷史紀錄] ${record.title}\n時間：${record.dateStr}`;
                         el.txtRawQ.disabled = true;
                         renderPreview(state.questions, 'History');
                         el.modalHistory.style.display = 'none';
+                        // 使用 Toast (如果您已實作)
+                        if(typeof showToast === 'function') showToast("載入成功", "success");
                     }
                 }
             });
         });
 
-        // 綁定追加按鈕
+        // [追加]
         document.querySelectorAll('.btn-append-hist').forEach(b => {
             b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
-                const record = await loadHistory(id); // Await DB
+                const record = await loadHistory(id); 
                 if (record) {
                     const newQs = JSON.parse(JSON.stringify(record.data));
                     const startId = state.questions.length + 1;
                     newQs.forEach((q, idx) => { q.id = String(startId + idx); });
                     state.questions = state.questions.concat(newQs);
                     renderPreview(state.questions, 'Append');
-                    alert(`已追加 ${newQs.length} 題！`);
+                    
+                    if(typeof showToast === 'function') {
+                        showToast(`已追加 ${newQs.length} 題！`, "success");
+                    } else {
+                        alert(`已追加 ${newQs.length} 題！`);
+                    }
                     el.modalHistory.style.display = 'none';
                 }
             });
         });
 
-        // 綁定刪除按鈕
+        // [刪除]
         document.querySelectorAll('.btn-del-hist').forEach(b => {
             b.addEventListener('click', async (e) => {
                 if(confirm("確定刪除此紀錄？")) {
-                    await deleteHistory(e.target.dataset.id); // Await DB
-                    renderHistoryList();
+                    await deleteHistory(e.target.dataset.id); 
+                    // 刪除後重新渲染，並保留目前的搜尋關鍵字
+                    renderHistoryList(keyword);
                 }
             });
         });
 
-        // 綁定改名按鈕
+        // [改名]
         document.querySelectorAll('.btn-rename-hist').forEach(b => {
             b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
                 const oldTitle = e.target.dataset.title;
                 const newTitle = prompt("請輸入新名稱：", oldTitle);
                 if (newTitle && newTitle.trim() !== "") {
-                    await renameHistory(id, newTitle.trim()); // Await DB
-                    renderHistoryList();
+                    await renameHistory(id, newTitle.trim()); 
+                    // 改名後重新渲染，保留搜尋關鍵字
+                    renderHistoryList(keyword);
                 }
             });
         });

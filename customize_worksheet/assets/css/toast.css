@@ -1,0 +1,43 @@
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none; /* 讓點擊穿透 */
+}
+
+.toast {
+    background: white;
+    border-left: 5px solid #2196F3; /* 預設藍色 */
+    padding: 12px 20px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 250px;
+    font-size: 0.95rem;
+    color: #333;
+    animation: slideIn 0.3s ease-out forwards;
+    pointer-events: auto;
+}
+
+.toast.success { border-left-color: #4CAF50; }
+.toast.error { border-left-color: #F44336; }
+.toast.warning { border-left-color: #FF9800; }
+
+.toast.hide {
+    animation: fadeOut 0.3s ease-in forwards;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; transform: translateX(20px); }
+}
