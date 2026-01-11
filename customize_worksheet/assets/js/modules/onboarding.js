@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/onboarding.js
- * V2.0: 智慧切換分頁的引導系統
+ * V2.2: 修復按鈕選取錯誤 (使用 data-tab 取代 id)
  */
 
 let driverObj;
@@ -25,7 +25,9 @@ export function initOnboarding() {
 export function startTour() {
     if (!window.driver) return;
 
-    // 定義驅動器
+    // 預先抓取導航按鈕 (使用 data-tab 屬性，比 ID 更穩定)
+    const getNavBtn = (tabName) => document.querySelector(`button[data-tab="${tabName}"]`);
+
     driverObj = window.driver.js.driver({
         showProgress: true,
         allowClose: true,
@@ -55,11 +57,11 @@ export function startTour() {
                 popover: { title: '6. 存檔管理', description: '記得隨時儲存！「紀錄」按鈕可找回之前的試卷。' } 
             },
             { 
-                element: '#nav-export', // 這一步會觸發切換分頁
+                element: 'button[data-tab="tab-export"]', // 改用屬性選擇器
                 popover: { title: '7. 考前輸出', description: '切換到此頁籤，可匯出 Word 試卷 (含圖片) 或產生答案卡。' } 
             },
             { 
-                element: '#nav-grade', // 這一步會觸發切換分頁
+                element: 'button[data-tab="tab-grade"]', // 改用屬性選擇器
                 popover: { title: '8. 閱卷與補救', description: '考完試後，可用相機閱卷並生成學生的補救學習單。' } 
             },
             { 
@@ -67,21 +69,27 @@ export function startTour() {
                 popover: { title: '9. 雲端備份', description: '強烈建議登入 Google 帳號，將資料安全備份到雲端，避免遺失。' } 
             }
         ],
-        // [關鍵] 當引導步驟開始時，檢查是否需要切換分頁
         onHighlightStarted: (element) => {
             if (!element) return;
             
-            // 如果目標在「考前輸出」分頁，且當前不在該分頁
-            if (element === document.getElementById('nav-export')) {
-                document.getElementById('nav-export').click();
+            const navEdit = getNavBtn('tab-edit');
+            const navExport = getNavBtn('tab-export');
+            const navGrade = getNavBtn('tab-grade');
+
+            // 1. 如果目標是「考前輸出」按鈕 -> 點擊切換
+            if (element === navExport) {
+                navExport?.click();
             }
-            // 如果目標在「閱卷」分頁
-            else if (element === document.getElementById('nav-grade')) {
-                document.getElementById('nav-grade').click();
+            // 2. 如果目標是「閱卷」按鈕 -> 點擊切換
+            else if (element === navGrade) {
+                navGrade?.click();
             }
-            // 如果目標是編輯區的元件，切回「建立題庫」
-            else if (['#group-source', '#pane-input', '#group-manage'].some(sel => document.querySelector(sel) === element)) {
-                document.getElementById('nav-edit').click();
+            // 3. 如果目標位於「建立題庫 (#tab-edit)」區塊內 -> 切換回題庫分頁
+            else if (element.closest && element.closest('#tab-edit')) {
+                // 只有當按鈕存在且目前不是 active 狀態時才點擊
+                if (navEdit && !navEdit.classList.contains('active')) {
+                    navEdit.click();
+                }
             }
         }
     });
