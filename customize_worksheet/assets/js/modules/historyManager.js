@@ -1,83 +1,47 @@
 /**
  * assets/js/modules/historyManager.js
- * V2.1: 支援 updateHistory (儲存) 與 saveHistory 回傳 ID
+ * V3.0: 升級為 IndexedDB (Dexie) 存取，支援圖片儲存
  */
+import { saveHistoryToDB, getHistoryFromDB, loadHistoryFromDB, deleteHistoryFromDB, renameHistoryInDB, updateHistoryInDB } from './db.js';
 
-const HISTORY_KEY = 'worksheet_history';
+// 為了保持與 EditorController 的相容性，我們維持函式名稱不變
+// 但請注意：現在這些函式都是 async (非同步)，回傳的是 Promise
 
-// [修改] 儲存新紀錄 (回傳新 ID)
-export function saveHistory(questions, title) {
+// 1. 儲存新紀錄
+export async function saveHistory(questions, title) {
     if (!questions || !questions.length) return null;
-    
-    const newItem = {
-        id: Date.now().toString(),
-        title: title || '未命名試卷',
-        date: Date.now(),
-        dateStr: new Date().toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }),
-        count: questions.length,
-        data: questions
-    };
-
-    const list = getHistoryList();
-    list.unshift(newItem); // 最新在最前
-    
-    // 限制只存最近 20 筆
-    if (list.length > 20) list.pop();
-    
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-    return newItem.id; // [重要] 回傳 ID 供控制器追蹤
+    // 轉發給 db.js 處理
+    return await saveHistoryToDB(questions, title);
 }
 
-// [新增] 更新現有紀錄
-export function updateHistory(id, questions, title) {
-    let list = getHistoryList();
-    const index = list.findIndex(item => item.id === id);
-    
-    if (index !== -1) {
-        // 更新內容
-        list[index].data = questions;
-        list[index].title = title || list[index].title;
-        list[index].count = questions.length;
-        list[index].date = Date.now();
-        list[index].dateStr = new Date().toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
-        
-        // 將更新的項目移到最上方
-        const item = list.splice(index, 1)[0];
-        list.unshift(item);
-        
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-        return true;
-    }
-    return false; // 找不到 ID (可能已被刪除)
-}
-
-export function getHistoryList() {
+// 2. 更新現有紀錄
+export async function updateHistory(id, questions, title) {
+    if(!id) return false;
     try {
-        const str = localStorage.getItem(HISTORY_KEY);
-        return str ? JSON.parse(str) : [];
-    } catch (e) {
-        return [];
-    }
-}
-
-export function loadHistory(id) {
-    const list = getHistoryList();
-    return list.find(item => item.id === id);
-}
-
-export function deleteHistory(id) {
-    let list = getHistoryList();
-    list = list.filter(item => item.id !== id);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
-}
-
-export function renameHistory(id, newTitle) {
-    let list = getHistoryList();
-    const index = list.findIndex(item => item.id === id);
-    if (index !== -1) {
-        list[index].title = newTitle;
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+        await updateHistoryInDB(id, questions, title);
         return true;
+    } catch(e) {
+        console.error("Update failed:", e);
+        return false;
     }
-    return false;
+}
+
+// 3. 取得歷史列表
+export async function getHistoryList() {
+    return await getHistoryFromDB();
+}
+
+// 4. 讀取單一紀錄 (含完整資料/圖片)
+export async function loadHistory(id) {
+    return await loadHistoryFromDB(id);
+}
+
+// 5. 刪除紀錄
+export async function deleteHistory(id) {
+    return await deleteHistoryFromDB(id);
+}
+
+// 6. 重新命名
+export async function renameHistory(id, newTitle) {
+    return await renameHistoryInDB(id, newTitle);
 }

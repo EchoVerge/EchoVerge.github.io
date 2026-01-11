@@ -1,13 +1,12 @@
 /**
  * assets/js/modules/cloudManager.js
- * 整合 Firebase：共用 EchoVerge 會員系統，但獨立存取考卷資料
- * V2: 增加「已啟用則隱藏輸入框」功能
+ * V3.0: 支援 IndexedDB (Dexie) 資料庫備份與還原
  */
 import { state } from './state.js';
-import { saveHistory, getHistoryList } from './historyManager.js';
-import { getColumnConfig } from './columnManager.js';
+// [修改] 引入 db 實例，直接操作資料庫
+import { db } from './db.js';
 
-// Firebase Config
+// Firebase Config (維持不變)
 const firebaseConfig = {
   apiKey: "AIzaSyDIda8VOxiHP2okFRjOGl8bYPmlKjDc2lc",
   authDomain: "echoverge-tw.firebaseapp.com",
@@ -116,7 +115,7 @@ function updateUI(user) {
 // [核心權限檢查]
 async function checkRemoteStatus(uid) {
     const proStatus = document.getElementById('cloud-pro-status');
-    const redeemSection = document.getElementById('redeem-section'); // [新增] 取得區塊
+    const redeemSection = document.getElementById('redeem-section');
 
     try {
         const doc = await firestore.collection('users').doc(uid).collection('account').doc('info').get();
@@ -136,8 +135,6 @@ async function checkRemoteStatus(uid) {
                     proStatus.innerHTML = `✅ 專業版已啟用 (全站通用)<br><small>效期至 ${expiryDate.toLocaleDateString()}</small>`;
                     proStatus.style.color = "#2e7d32";
                 }
-
-                // [新增] 如果已啟用，隱藏輸入框
                 if(redeemSection) redeemSection.style.display = 'none';
 
             } else {
@@ -146,11 +143,9 @@ async function checkRemoteStatus(uid) {
                     proStatus.textContent = "❌ 權限已過期";
                     proStatus.style.color = "#d32f2f";
                 }
-                // [新增] 如果過期/無效，顯示輸入框
                 if(redeemSection) redeemSection.style.display = 'block';
             }
         } else {
-            // 無資料，顯示輸入框
             if(redeemSection) redeemSection.style.display = 'block';
         }
     } catch (e) {
@@ -171,7 +166,6 @@ async function redeemCode(inputCode) {
             if (!codeDoc.exists) throw "無效的序號";
 
             const codeData = codeDoc.data();
-            
             if (codeData.boundTo && codeData.boundTo !== currentUser.uid) throw "此序號已被其他人使用";
 
             if (codeData.boundTo !== currentUser.uid) {
@@ -194,15 +188,15 @@ async function redeemCode(inputCode) {
         });
 
         alert("🎉 啟用成功！您現在擁有全站完整權限。");
-        await checkRemoteStatus(currentUser.uid); // 重新檢查以更新介面
+        await checkRemoteStatus(currentUser.uid);
     } catch (e) {
         alert("啟用失敗：" + (typeof e === 'string' ? e : e.message));
     }
 }
 
-// --- 資料同步 ---
-const SYNC_KEYS = [
-    'worksheet_history',
+// --- 資料同步 (IndexedDB + LocalStorage) ---
+// LocalStorage 只存設定，題庫存 DB
+const LOCAL_STORAGE_KEYS = [
     'worksheet_generator_config', 
     'gemini_key',
     'gemini_model'
@@ -214,23 +208,40 @@ async function syncUpload() {
 
     if(!confirm("確定要將本機資料上傳備份嗎？\n(這會覆蓋雲端上舊的【考卷系統】備份)")) return;
 
+    // 1. 收集 LocalStorage 設定
     const backupData = {};
-    SYNC_KEYS.forEach(key => {
+    LOCAL_STORAGE_KEYS.forEach(key => {
         const val = localStorage.getItem(key);
         if(val) backupData[key] = val;
     });
+    
+    // 2. [新增] 收集 IndexedDB 題庫
+    try {
+        backupData.history = await db.history.toArray();
+    } catch(e) {
+        console.error("DB Export Error:", e);
+        return alert("資料庫匯出失敗，請重試");
+    }
+
     backupData.lastUpdated = new Date().toISOString();
-    backupData.system = "worksheet_system";
+    backupData.system = "worksheet_system_v2"; // 標記為 V2
 
     const backupRef = firestore.collection('users').doc(currentUser.uid)
         .collection('data').doc('worksheet_backup'); 
 
     try {
-        await backupRef.set({ backupData: JSON.stringify(backupData) });
+        // 因圖片可能很大，Firestore 單文件限制 1MB。
+        // 若備份失敗，提示使用者。(未來可優化為 Storage)
+        const jsonString = JSON.stringify(backupData);
+        if (jsonString.length > 900000) { // 保守估計 900KB
+             if(!confirm("⚠️ 您的題庫包含大量圖片，可能會超出雲端單檔限制。\n確定要嘗試上傳嗎？")) return;
+        }
+
+        await backupRef.set({ backupData: jsonString });
         alert("✅ 考卷資料備份成功！");
     } catch (e) {
         console.error(e);
-        alert("上傳失敗：" + e.message);
+        alert("上傳失敗：" + e.message + "\n(若檔案過大，請嘗試刪除部分圖片後重試)");
     }
 }
 
@@ -248,9 +259,16 @@ async function syncDownload() {
         if (doc.exists && doc.data().backupData) {
             const data = JSON.parse(doc.data().backupData);
             
-            SYNC_KEYS.forEach(key => {
+            // 1. 還原 LocalStorage
+            LOCAL_STORAGE_KEYS.forEach(key => {
                 if(data[key]) localStorage.setItem(key, data[key]);
             });
+
+            // 2. [新增] 還原 IndexedDB
+            if (data.history && Array.isArray(data.history)) {
+                await db.history.clear();
+                await db.history.bulkAdd(data.history);
+            }
 
             alert("✅ 還原成功！頁面將重新整理。");
             location.reload();

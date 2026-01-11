@@ -80,46 +80,65 @@ export function createStudentSection(studentData, questions, config) {
  * 生成教師解答總表 (包含所有題目的解析)
  */
 export function createTeacherKeySection(questions) {
-    // 將題目按題號排序 (若是數字則按數值排，否則按字串排)
-    const sorted = [...questions].sort((a,b) => {
-        return parseInt(a.id) - parseInt(b.id) || a.id.localeCompare(b.id);
-    });
+    if (!questions || questions.length === 0) return '<div class="no-data">無題目資料</div>';
 
-    let rows = '';
-    sorted.forEach(q => {
-        // [新增] 顯示標準答案
-        const ansBadge = q.ans ? `<span style="color:red; font-weight:bold;">[${q.ans}]</span>` : '';
-        
-        rows += `
-            <tr>
-                <td style="width:10%; text-align:center;">${q.id}</td>
-                <td style="width:50%;">
-                    ${q.text} <br>
-                    ${ansBadge} </td>
-                <td style="width:40%;">${q.expl}</td>
-            </tr>
+    let html = `
+    <div class="paper-sheet">
+        <div class="paper-header">
+            <h2>詳解卷 (Teacher's Key)</h2>
+            <p>包含完整題目、圖片、正確答案與解析。</p>
+        </div>
+        <div class="paper-content">
+    `;
+
+    questions.forEach((q, index) => {
+        html += `
+        <div class="q-item-full">
+            <div class="q-header">
+                <span class="q-id">${q.id}.</span>
+                <span class="q-ans-badge">答案：${q.ans || '無'}</span>
+            </div>
+            
+            ${q.img ? `<div class="q-img-container"><img src="${q.img}" class="q-img-display"></div>` : ''}
+            
+            <div class="q-text">${q.text}</div>
+            
+            ${q.expl ? `<div class="q-expl"><strong>解析：</strong>${q.expl}</div>` : ''}
+
+            ${q.similar ? `
+                <div class="q-similar-block">
+                    <div class="sim-label">★ 類題演練</div>
+                    <div class="sim-content">
+                        ${q.similar.text}
+                        <div class="sim-meta">
+                            <span>答案：${q.similar.ans}</span>
+                            ${q.similar.expl ? `<span>解析：${q.similar.expl}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
         `;
     });
 
-    return `
-        <div class="student-section page-break-active">
-            <div class="worksheet-header">
-                <h2 style="color: darkred;">教師解答總表</h2>
-            </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>題號</th>
-                        <th>題目</th>
-                        <th>解析/答案</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-        </div>
+    html += `</div></div>`;
+    
+    // 加入基本 CSS 讓圖片不跑版
+    html += `
+    <style>
+        .q-item-full { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; page-break-inside: avoid; }
+        .q-header { margin-bottom: 5px; font-weight: bold; color: #333; }
+        .q-ans-badge { background: #e8f5e9; color: #2e7d32; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; margin-left: 10px; }
+        .q-text { white-space: pre-wrap; line-height: 1.6; margin: 10px 0; }
+        .q-img-container { margin: 10px 0; text-align: center; }
+        .q-img-display { max-width: 100%; max-height: 300px; border: 1px solid #eee; border-radius: 4px; }
+        .q-expl { background: #fff8e1; padding: 10px; border-radius: 6px; font-size: 0.95em; color: #5d4037; }
+        .q-similar-block { margin-top: 10px; border-left: 3px solid #9c27b0; padding-left: 10px; background: #f3e5f5; padding: 8px; border-radius: 0 4px 4px 0; }
+        .sim-label { color: #7b1fa2; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; }
+    </style>
     `;
+
+    return html;
 }
 
 /**

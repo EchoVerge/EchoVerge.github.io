@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>考卷數位助教 V20 (Cloud Sync)</title>
+    <title>考卷數位助教</title>
     <link rel="icon" type="image/png" href="assets/imgs/icon-512.png">
     
     <link rel="stylesheet" href="assets/css/style.css">
@@ -15,6 +15,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="assets/imgs/icon.svg">
+
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
+
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -114,6 +120,15 @@
                     <p>包含完整題目、答案與解析</p>
                     <button id="btn-print-key-step1" class="btn-primary-action" style="background:#795548;">🖨️ 產生詳解卷</button>
                 </div>
+                <div class="export-card">
+                    <div class="card-icon">📝</div>
+                    <h3>Word 試卷</h3>
+                    <p>匯出 .docx 檔案 (支援圖片)</p>
+                    <div style="display:flex; gap:10px;">
+                        <button id="btn-export-word-student" class="btn-primary-action" style="background:#039be5; flex:1; padding:10px 5px; font-size:0.9em;">🧑‍🎓 學生卷</button>
+                        <button id="btn-export-word-teacher" class="btn-primary-action" style="background:#0277bd; flex:1; padding:10px 5px; font-size:0.9em;">👩‍🏫 詳解卷</button>
+                    </div>
+                </div>
             </div>
             <div style="text-align:center; margin-top:20px; color:#666;">
                 💡 提示：輸出的標題將使用上方資訊列中的名稱。
@@ -192,7 +207,78 @@
     </div>
 
     <div id="modal-print-preview" class="modal"><div class="modal-content" style="width: 210mm; max-width: 95vw; height: 90vh; padding: 0; display: flex; flex-direction: column;"><div class="modal-header"><h2>📄 列印預覽</h2><span class="close-modal" data-target="modal-print-preview">&times;</span></div><div class="modal-body" style="background: #e0e0e0; padding: 20px; flex: 1; overflow-y: auto;"><div id="output-area" class="paper-preview"></div></div><div class="modal-footer"><button class="btn-secondary close-modal-btn" data-target="modal-print-preview">關閉</button><button id="btn-print-action" class="btn-primary">🖨️ 確認列印</button></div></div></div>
-    <div id="modal-question-editor" class="modal"><div class="modal-content" style="max-width: 800px;"><div class="modal-header"><h2>✏️ 編輯題目</h2><span class="close-modal" data-target="modal-question-editor">&times;</span></div><div class="modal-body"><form id="form-edit-question"><input type="hidden" id="edit-q-index"> <div style="display:flex; gap:15px;"><div class="form-group" style="width:120px;"><label>題號 (ID)</label><input type="text" id="edit-q-id" class="input-field" style="font-weight:bold;"></div><div class="form-group" style="flex:1;"><label style="color:#2e7d32;">正確答案 (Answer)</label><input type="text" id="edit-q-ans" class="input-field" placeholder="例如: A 或 ABC (多選)"></div></div><div class="form-group"><label>題目內容 (Question)</label><textarea id="edit-q-text" class="input-field" rows="3"></textarea></div><div class="form-group"><label>題目解析 (Explanation)</label><textarea id="edit-q-expl" class="input-field" rows="2"></textarea></div><hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;"><div style="background:#f3e5f5; padding:15px; border-radius:8px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><label style="color: #9c27b0; font-weight:bold; margin:0;">★ AI 類題 (Similar Question)</label><input type="text" id="edit-q-sim-ans" class="input-field" style="width:150px;" placeholder="類題答案..."></div><div class="form-group"><textarea id="edit-q-sim-text" class="input-field" rows="3" placeholder="若無類題，此處留空即可"></textarea></div><div class="form-group"><textarea id="edit-q-sim-expl" class="input-field" rows="2" placeholder="類題解析..."></textarea></div></div></form></div><div class="modal-footer"><button class="btn-secondary close-modal-btn" data-target="modal-question-editor">取消</button><button id="btn-save-edit" class="btn-primary">💾 儲存修改</button></div></div></div>
+    
+    <div id="modal-question-editor" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>✏️ 編輯題目</h2>
+                <span class="close-modal" data-target="modal-question-editor">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit-question">
+                    <input type="hidden" id="edit-q-index"> 
+                    
+                    <div style="display:flex; gap:15px;">
+                        <div class="form-group" style="width:120px;">
+                            <label>題號 (ID)</label>
+                            <input type="text" id="edit-q-id" class="input-field" style="font-weight:bold;">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label style="color:#2e7d32;">正確答案 (Answer)</label>
+                            <input type="text" id="edit-q-ans" class="input-field" placeholder="例如: A 或 ABC (多選)">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>題目配圖 (Image)</label>
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <div style="flex:1;">
+                                <input type="file" id="edit-q-img-input" accept="image/*" class="input-field">
+                                <small style="color:#666;">支援 jpg, png (自動壓縮)</small>
+                            </div>
+                            <div style="width:100px; height:100px; border:1px dashed #ccc; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fafafa;">
+                                <img id="edit-q-img-preview" style="max-width:100%; max-height:100%; display:none;">
+                                <span id="edit-q-img-placeholder" style="font-size:12px; color:#aaa;">預覽</span>
+                            </div>
+                            <button type="button" id="btn-clear-img" class="btn-tool text-danger" style="height:38px;">❌</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>題目內容 (Question)</label>
+                        <textarea id="edit-q-text" class="input-field" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>題目解析 (Explanation)</label>
+                        <textarea id="edit-q-expl" class="input-field" rows="2"></textarea>
+                    </div>
+
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
+
+                    <div style="background:#f3e5f5; padding:15px; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <label style="color: #9c27b0; font-weight:bold; margin:0;">★ AI 類題 (Similar Question)</label>
+                            <input type="text" id="edit-q-sim-ans" class="input-field" style="width:150px;" placeholder="類題答案...">
+                        </div>
+                        
+                        <div class="form-group">
+                            <textarea id="edit-q-sim-text" class="input-field" rows="3" placeholder="若無類題，此處留空即可"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <textarea id="edit-q-sim-expl" class="input-field" rows="2" placeholder="類題解析..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary close-modal-btn" data-target="modal-question-editor">取消</button>
+                <button id="btn-save-edit" class="btn-primary">💾 儲存修改</button>
+            </div>
+        </div>
+    </div>
+
     <div id="settings-modal" class="modal"><div class="modal-content"><div class="modal-header"><h2>表格樣式設定</h2><span class="close-modal" data-target="settings-modal">&times;</span></div><div class="modal-body"><div class="settings-pane"><div id="modal-column-list"></div><div class="modal-actions"><button id="btn-add-col-modal" class="btn-small btn-green">+ 新增</button><button id="btn-reset-col-modal" class="btn-small btn-red">重置</button></div></div><div class="preview-pane"><div id="modal-preview-area" class="preview-box"></div></div></div><div class="modal-footer"><button id="btn-save-settings" class="btn-primary">儲存</button></div></div></div>
     <div id="modal-ai-settings" class="modal"><div class="modal-content" style="max-width: 500px;"><div class="modal-header"><h2>🤖 Google AI 設定</h2><span class="close-modal" data-target="modal-ai-settings">&times;</span></div><div class="modal-body"><label>API Key</label><input type="password" id="input-api-key" placeholder="貼上 Key..." style="width:100%; padding:8px; margin:5px 0 10px;"><button id="btn-check-models" class="btn-secondary">驗證</button><div id="model-select-area" style="display:none; margin-top:10px;"><label>模型</label><select id="select-model" style="width:100%; padding:8px;"></select></div></div><div class="modal-footer"><button id="btn-save-ai" class="btn-primary">儲存</button></div></div></div>
     <div id="modal-grade-result" class="modal"><div class="modal-content" style="max-width: 800px; height: 90vh;"><div class="modal-header"><h2>📷 AI 閱卷校對</h2><span class="close-modal" data-target="modal-grade-result">&times;</span></div><div class="modal-body" style="display: flex; gap: 20px; padding: 0;"><div style="flex: 1; background: #333; display: flex; align-items: center; justify-content: center;"><img id="grade-img-preview" style="max-width: 100%; max-height: 100%;"></div><div style="flex: 1; padding: 20px; overflow-y: auto;"><div style="background: #e3f2fd; padding: 10px; margin-bottom: 15px;"><label style="font-weight:bold; color:#1565c0;">🔑 標準答案</label><input type="text" id="input-answer-key" placeholder="A,B,C..." style="width:100%; padding:5px; font-family:monospace;"></div><div style="margin-bottom:10px;"><b>座號：</b><input type="text" id="grade-seat-val" style="width:60px; text-align:center; font-weight:bold;"></div><div id="grade-details-list" style="border:1px solid #eee; padding:10px; max-height:300px; overflow-y:auto;"></div><div style="margin-top: 15px; border-top: 2px dashed #ccc; padding-top:10px;"><b style="color: #d32f2f;">❌ 錯題：</b><span id="grade-error-ids" style="font-weight:bold;"></span></div></div></div><div class="modal-footer"><button id="btn-confirm-grade" class="btn-primary">確認並匯入</button></div></div></div>
@@ -201,7 +287,6 @@
     <script type="module" src="assets/js/main.js"></script>
 
     <script>
-        // 註冊 PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -210,6 +295,5 @@
             });
         }
     </script>
-</body>
 </body>
 </html>

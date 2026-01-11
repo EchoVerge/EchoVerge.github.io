@@ -1,10 +1,10 @@
 /**
  * assets/js/modules/editorController.js
- * V3.0: 增強版編輯器
+ * V4.0: 增強版編輯器 (Phase 1 完成版)
+ * - 支援圖片上傳、壓縮與預覽 (Base64)
+ * - 全面升級為 IndexedDB 非同步存取 (解決容量限制)
  * - 支援編輯正確答案 & 類題答案
- * - 支援多選題格式 (字串)
- * - 歷史紀錄支援「追加 (Append)」與「標題同步」
- * - 類題結構巢狀化優化
+ * - 支援多選題格式
  */
 
 import { state } from './state.js';
@@ -12,11 +12,45 @@ import { parseFile } from './fileHandler.js';
 import { extractTextFromFile } from './fileExtractor.js';
 import { parseQuestionMixed } from './textParser.js';
 import { parseWithGemini, generateSimilarQuestionsBatch } from './aiParser.js';
-import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory } from './historyManager.js';
+// [修改] 引入新的 async history manager (需配合 V3.0 historyManager.js 與 db.js)
+import { saveHistory, getHistoryList, loadHistory, deleteHistory, renameHistory, updateHistory } from './historyManager.js';
 import { createAnswerSheet } from './answerSheetRenderer.js';
 import { createTeacherKeySection } from './viewRenderer.js';
+import { exportToWord } from './wordExporter.js';
 
-// [新增] 用來追蹤目前正在編輯的歷史紀錄 ID
+// [新增] 圖片壓縮工具函式
+function compressImage(file, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // 等比例縮放
+                if (width > maxWidth) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                // 輸出壓縮後的 Base64
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
+// 用來追蹤目前正在編輯的歷史紀錄 ID
 let currentHistoryId = null;
 
 export function initEditorController() {
@@ -31,7 +65,7 @@ export function initEditorController() {
         btnDemoData: document.getElementById('btn-demo-data'),
         btnAiParse: document.getElementById('btn-ai-parse'),
         btnClearQ: document.getElementById('btn-clear-q'),
-
+        
         // 儲存按鈕
         btnSaveQ: document.getElementById('btn-save-q'),
         btnSaveAsQ: document.getElementById('btn-save-as-q'),
@@ -46,48 +80,103 @@ export function initEditorController() {
         btnSaveEdit: document.getElementById('btn-save-edit'),
         inpIndex: document.getElementById('edit-q-index'),
         inpId: document.getElementById('edit-q-id'),
-        inpAns: document.getElementById('edit-q-ans'), // [New]
+        inpAns: document.getElementById('edit-q-ans'),
         inpText: document.getElementById('edit-q-text'),
         inpExpl: document.getElementById('edit-q-expl'),
-        inpSimAns: document.getElementById('edit-q-sim-ans'), // [New]
+        inpSimAns: document.getElementById('edit-q-sim-ans'),
         inpSimText: document.getElementById('edit-q-sim-text'),
         inpSimExpl: document.getElementById('edit-q-sim-expl'),
 
+        // [新增] 圖片相關元件
+        inpImg: document.getElementById('edit-q-img-input'),
+        imgPreview: document.getElementById('edit-q-img-preview'),
+        imgPlaceholder: document.getElementById('edit-q-img-placeholder'),
+        btnClearImg: document.getElementById('btn-clear-img'),
+
         btnPrintSheet1: document.getElementById('btn-print-sheet-step1'),
         btnPrintKey1: document.getElementById('btn-print-key-step1'),
+        btnExportWordStudent: document.getElementById('btn-export-word-student'),
+        btnExportWordTeacher: document.getElementById('btn-export-word-teacher'),
+
         outputArea: document.getElementById('output-area'),
         modalPreview: document.getElementById('modal-print-preview')
     };
 
-    // --- 0. 儲存與另存功能 ---
+    // [暫存] 編輯時的圖片 DataURL
+    let tempEditingImg = null;
+
+    // --- 初始化拖曳排序 (SortableJS) ---
+    if (el.previewQ) {
+        new Sortable(el.previewQ, {
+            animation: 150,
+            handle: '.parsed-item', // 整個區塊都可拖曳，或指定 .parsed-header
+            ghostClass: 'sortable-ghost',
+            onEnd: function (evt) {
+                // 拖曳結束後，同步更新 state.questions 陣列順序
+                const movedItem = state.questions.splice(evt.oldIndex, 1)[0];
+                state.questions.splice(evt.newIndex, 0, movedItem);
+                
+                // 重新渲染以更新題號 (如果需要) 或保持 DOM 狀態
+                // 這裡我們選擇重新渲染，確保 index 屬性與陣列一致
+                renderPreview(state.questions, state.sourceType || 'Reordered');
+            }
+        });
+        
+        // 加入 CSS 樣式讓拖曳更明顯
+        const style = document.createElement('style');
+        style.innerHTML = `.sortable-ghost { opacity: 0.4; background: #e3f2fd; } .parsed-item { cursor: grab; } .parsed-item:active { cursor: grabbing; }`;
+        document.head.appendChild(style);
+    }
+
+    // --- Word 匯出功能 (分流) ---
+    if (el.btnExportWordStudent) {
+        el.btnExportWordStudent.addEventListener('click', () => {
+            const title = el.infoTitle.value.trim() || "測驗卷";
+            exportToWord(state.questions, title, 'student');
+        });
+    }
+
+    if (el.btnExportWordTeacher) {
+        el.btnExportWordTeacher.addEventListener('click', () => {
+            const title = el.infoTitle.value.trim() || "測驗卷";
+            exportToWord(state.questions, title, 'teacher');
+        });
+    }
+
+    // --- 0. 儲存與另存功能 (改為 async) ---
     // [儲存]
     if(el.btnSaveQ) {
-        el.btnSaveQ.addEventListener('click', () => {
+        el.btnSaveQ.addEventListener('click', async () => {
             if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
             
             const title = el.infoTitle.value.trim() || "未命名試卷";
             
-            if (currentHistoryId) {
-                // 更新現有紀錄
-                const success = updateHistory(currentHistoryId, state.questions, title);
-                if (success) {
-                    alert(`已儲存變更至「${title}」`);
+            try {
+                if (currentHistoryId) {
+                    // 更新現有紀錄 (Await DB)
+                    const success = await updateHistory(currentHistoryId, state.questions, title);
+                    if (success) {
+                        alert(`已儲存變更至「${title}」`);
+                    } else {
+                        // 若 ID 不存在 (可能被刪除)，轉為新存檔
+                        currentHistoryId = await saveHistory(state.questions, title);
+                        alert(`原紀錄已不存在，已另存為新紀錄「${title}」`);
+                    }
                 } else {
-                    // 若 ID 不存在 (可能被刪除)，轉為新存檔
-                    currentHistoryId = saveHistory(state.questions, title);
-                    alert(`原紀錄已不存在，已另存為新紀錄「${title}」`);
+                    // 尚未有 ID，建立新紀錄
+                    currentHistoryId = await saveHistory(state.questions, title);
+                    alert(`已儲存為新紀錄「${title}」`);
                 }
-            } else {
-                // 尚未有 ID，建立新紀錄
-                currentHistoryId = saveHistory(state.questions, title);
-                alert(`已儲存為新紀錄「${title}」`);
+            } catch (e) {
+                console.error(e);
+                alert("儲存失敗：" + e.message);
             }
         });
     }
 
     // [另存新檔]
     if(el.btnSaveAsQ) {
-        el.btnSaveAsQ.addEventListener('click', () => {
+        el.btnSaveAsQ.addEventListener('click', async () => {
             if (!state.questions || state.questions.length === 0) return alert("沒有題目可儲存！");
             
             const defaultTitle = el.infoTitle.value.trim() + " (副本)";
@@ -95,9 +184,14 @@ export function initEditorController() {
             
             if (newTitle) {
                 el.infoTitle.value = newTitle;
-                // 強制產生新 ID
-                currentHistoryId = saveHistory(state.questions, newTitle);
-                alert(`已另存為「${newTitle}」`);
+                try {
+                    // 強制產生新 ID (Await DB)
+                    currentHistoryId = await saveHistory(state.questions, newTitle);
+                    alert(`已另存為「${newTitle}」`);
+                } catch (e) {
+                    console.error(e);
+                    alert("另存失敗：" + e.message);
+                }
             }
         });
     }
@@ -153,6 +247,8 @@ export function initEditorController() {
         const file = e.target.files[0];
         if (!file) return;
         
+        currentHistoryId = null; // [重置 ID] 匯入新檔視為全新開始
+        
         const pureName = file.name.replace(/\.[^/.]+$/, "");
         el.infoTitle.value = pureName; // 自動填入檔名
 
@@ -202,8 +298,10 @@ export function initEditorController() {
             state.questions = parsed;
             renderPreview(parsed, 'AI');
             
-            // 儲存紀錄 (含標題)
-            saveHistory(parsed, el.infoTitle.value || "AI 分析結果");
+            // AI 分析後自動存一份 (Await DB)
+            const title = el.infoTitle.value || "AI 分析結果";
+            currentHistoryId = await saveHistory(parsed, title);
+            
         } catch (e) {
             alert(e.message);
         } finally {
@@ -220,6 +318,7 @@ export function initEditorController() {
             state.questions = [];
             state.sourceType = 'text';
             el.infoTitle.value = "未命名試卷";
+            currentHistoryId = null; // [重置 ID]
             updatePreview();
         }
     });
@@ -228,6 +327,7 @@ export function initEditorController() {
         el.txtRawQ.value = `1. 題目範例...\n(A)選項\n解析：答案(A)`;
         el.txtRawQ.disabled = false;
         el.infoTitle.value = "範例試卷";
+        currentHistoryId = null; // 範例視為新檔
         updatePreview();
     });
 
@@ -271,12 +371,18 @@ export function initEditorController() {
                     processed += batch.length;
                 }
 
-                // 備份到歷史紀錄 (不改變標題，只加上標記)
-                const newTitle = el.infoTitle.value;
-                saveHistory(state.questions, newTitle + " (含類題)");
+                const newTitle = el.infoTitle.value + " (含類題)";
+                el.infoTitle.value = newTitle;
+                
+                // 類題生成完畢後，視為一次「新存檔」或「更新」 (Await DB)
+                if(currentHistoryId) {
+                    await updateHistory(currentHistoryId, state.questions, newTitle);
+                } else {
+                    currentHistoryId = await saveHistory(state.questions, newTitle);
+                }
                 
                 renderPreview(state.questions, 'AI+類題');
-                alert("🎉 類題生成完畢！已歸入各題之下。");
+                alert("🎉 類題生成完畢！已歸入各題之下並自動儲存。");
 
             } catch (e) {
                 console.error(e);
@@ -288,7 +394,7 @@ export function initEditorController() {
         });
     }
 
-    // 6. 歷史紀錄 (支援追加與標題)
+    // 6. 歷史紀錄 (改為 Async 渲染)
     if (el.btnHistory) {
         el.btnHistory.addEventListener('click', () => {
             el.modalHistory.style.display = 'flex';
@@ -317,19 +423,62 @@ export function initEditorController() {
         }
     });
 
+    // --- 圖片處理邏輯 ---
+
+    // 監聽圖片上傳
+    if (el.inpImg) {
+        el.inpImg.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                // 壓縮圖片並轉為 Base64
+                tempEditingImg = await compressImage(file);
+                el.imgPreview.src = tempEditingImg;
+                el.imgPreview.style.display = 'block';
+                el.imgPlaceholder.style.display = 'none';
+            } catch (err) {
+                console.error(err);
+                alert("圖片處理失敗");
+            }
+        });
+    }
+
+    // 清除圖片
+    if (el.btnClearImg) {
+        el.btnClearImg.addEventListener('click', () => {
+            el.inpImg.value = '';
+            tempEditingImg = null;
+            el.imgPreview.src = '';
+            el.imgPreview.style.display = 'none';
+            el.imgPlaceholder.style.display = 'block';
+        });
+    }
+
     function openEditModal(index) {
         const q = state.questions[index];
         if (!q) return;
         el.inpIndex.value = index;
         el.inpId.value = q.id || '';
-        el.inpAns.value = q.ans || ''; // [New]
+        el.inpAns.value = q.ans || '';
         el.inpText.value = q.text || '';
         el.inpExpl.value = q.expl || '';
         
+        // 載入圖片 (若有)
+        tempEditingImg = q.img || null;
+        if (tempEditingImg) {
+            el.imgPreview.src = tempEditingImg;
+            el.imgPreview.style.display = 'block';
+            el.imgPlaceholder.style.display = 'none';
+        } else {
+            el.imgPreview.style.display = 'none';
+            el.imgPlaceholder.style.display = 'block';
+            el.inpImg.value = '';
+        }
+
         if (q.similar) {
             el.inpSimText.value = q.similar.text || '';
             el.inpSimExpl.value = q.similar.expl || '';
-            el.inpSimAns.value = q.similar.ans || ''; // [New]
+            el.inpSimAns.value = q.similar.ans || '';
         } else {
             el.inpSimText.value = '';
             el.inpSimExpl.value = '';
@@ -343,9 +492,10 @@ export function initEditorController() {
         if (isNaN(index) || index < 0 || index >= state.questions.length) return;
         const q = state.questions[index];
         q.id = el.inpId.value;
-        q.ans = el.inpAns.value.trim(); // [New]
+        q.ans = el.inpAns.value.trim();
         q.text = el.inpText.value;
         q.expl = el.inpExpl.value;
+        q.img = tempEditingImg; // 儲存圖片 DataURL
         
         const simText = el.inpSimText.value.trim();
         const simExpl = el.inpSimExpl.value.trim();
@@ -370,10 +520,8 @@ export function initEditorController() {
     function renderPreview(questions, source) {
         if (!Array.isArray(questions)) questions = [];
         el.infoCount.textContent = questions.length;
-        
         if (!questions.length) {
-            el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>';
-            return;
+            el.previewQ.innerHTML = '<div class="empty-state">等待輸入...</div>'; return;
         }
         el.previewQ.innerHTML = questions.map((q, i) => `
             <div class="parsed-item ${q.expl?'has-expl':''}">
@@ -385,15 +533,24 @@ export function initEditorController() {
                     <span class="parsed-id">#${q.id}</span> 
                     <span class="parsed-badge" style="background:${q.ans?'#e8f5e9':'#ffebee'}">${q.ans || '未填答'}</span>
                     <span class="parsed-badge">${source}</span>
+                    ${q.img ? '<span class="parsed-badge" style="background:#2196F3; color:white;">🖼️ 圖</span>' : ''}
                     ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0; color:white;">★類題</span>' : ''}
                 </div>
-                <div class="parsed-text">${q.text.substring(0,60)}...</div>
+                <div class="parsed-text">
+                    ${q.img ? `<img src="${q.img}" style="height:40px; vertical-align:middle; border:1px solid #ddd; margin-right:5px;">` : ''}
+                    ${q.text.substring(0,60)}...
+                </div>
             </div>
         `).join('');
     }
 
-    function renderHistoryList() {
-        const list = getHistoryList();
+    // [核心修改] 渲染歷史紀錄列表 (包含改名按鈕，且全改為 async/await)
+    async function renderHistoryList() {
+        el.historyList.innerHTML = '<div style="text-align:center; padding:20px;">讀取中...</div>';
+        
+        // Await DB
+        const list = await getHistoryList();
+        
         if (list.length === 0) {
             el.historyList.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">尚無紀錄</div>';
             return;
@@ -415,14 +572,15 @@ export function initEditorController() {
 
         // 綁定載入按鈕
         document.querySelectorAll('.btn-load-hist').forEach(b => {
-            b.addEventListener('click', (e) => {
+            b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
-                const record = loadHistory(id);
+                const record = await loadHistory(id); // Await DB
                 if (record) {
                     if(confirm(`確定載入「${record.title}」？\n這將【覆蓋】目前的編輯內容。`)) {
                         state.questions = JSON.parse(JSON.stringify(record.data));
                         state.sourceType = 'history';
                         el.infoTitle.value = record.title; 
+                        currentHistoryId = id; // [重要] 設定當前 ID
                         el.txtRawQ.value = `[歷史紀錄] ${record.title}\n時間：${record.dateStr}`;
                         el.txtRawQ.disabled = true;
                         renderPreview(state.questions, 'History');
@@ -434,9 +592,9 @@ export function initEditorController() {
 
         // 綁定追加按鈕
         document.querySelectorAll('.btn-append-hist').forEach(b => {
-            b.addEventListener('click', (e) => {
+            b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
-                const record = loadHistory(id);
+                const record = await loadHistory(id); // Await DB
                 if (record) {
                     const newQs = JSON.parse(JSON.stringify(record.data));
                     const startId = state.questions.length + 1;
@@ -451,23 +609,23 @@ export function initEditorController() {
 
         // 綁定刪除按鈕
         document.querySelectorAll('.btn-del-hist').forEach(b => {
-            b.addEventListener('click', (e) => {
+            b.addEventListener('click', async (e) => {
                 if(confirm("確定刪除此紀錄？")) {
-                    deleteHistory(e.target.dataset.id);
+                    await deleteHistory(e.target.dataset.id); // Await DB
                     renderHistoryList();
                 }
             });
         });
 
-        // [新增] 綁定改名按鈕
+        // 綁定改名按鈕
         document.querySelectorAll('.btn-rename-hist').forEach(b => {
-            b.addEventListener('click', (e) => {
+            b.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
                 const oldTitle = e.target.dataset.title;
                 const newTitle = prompt("請輸入新名稱：", oldTitle);
                 if (newTitle && newTitle.trim() !== "") {
-                    renameHistory(id, newTitle.trim());
-                    renderHistoryList(); // 重新渲染列表以更新顯示
+                    await renameHistory(id, newTitle.trim()); // Await DB
+                    renderHistoryList();
                 }
             });
         });
