@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/dbManager.js
- * 修正：標籤陣列化、Merge 初始化、監聽器優化
+ * 修正：標籤陣列化、Merge 初始化、監聽器優化、新增 getCategories
  */
 import { state } from './state.js';
 import { portfolioApi } from './portfolioApi.js';
@@ -102,13 +102,25 @@ export const dbManager = {
     },
 
     /**
-     * 獲取所有帳戶的初始設定 (用於計算餘額)
+     * 獲取所有帳戶的初始設定 (用於計算餘額與下拉選單)
      */
     async getAccounts() {
         if (!state.currentUser) return [];
         const doc = await this.db.collection('users').doc(state.currentUser.uid).get();
         if (doc.exists && doc.data().accounts) {
             return doc.data().accounts;
+        }
+        return [];
+    },
+
+    /**
+     * [新增] 獲取分類設定 (用於下拉選單)
+     */
+    async getCategories() {
+        if (!state.currentUser) return [];
+        const doc = await this.db.collection('users').doc(state.currentUser.uid).get();
+        if (doc.exists && doc.data().categories) {
+            return doc.data().categories;
         }
         return [];
     },
@@ -151,6 +163,7 @@ export const dbManager = {
                           callback(holdings, totalValue);
                       });
     },
+
     async updateHolding(ticker, quantity) {
         if (!state.currentUser) return { success: false, error: "未登入" };
         if (!ticker) return { success: false, error: "請輸入股票代號" };

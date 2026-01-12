@@ -1,58 +1,80 @@
 /**
  * assets/js/modules/portfolioApi.js
- * 負責獲取美股/台股即時報價，包含快取機制以節省 API 額度
+ * 改用 Yahoo Finance (透過 CORS Proxy)，免 API Key，支援度最高
  */
 export const portfolioApi = {
-    apiKey: 'ctua0qhr01qhc5mj2tRgctua0qhr01qhc5mj2th0', // 範例 Finnhub Key (建議換成您自己的)
-    cache: {}, // 簡單的記憶體快取
-    cacheDuration: 60 * 1000, // 快取有效時間：60 秒
+    cache: {}, 
+    cacheDuration: 5 * 60 * 1000, // Yahoo 報價快取 5 分鐘
 
     /**
-     * 獲取單一股票即時價格 (含快取)
+     * 獲取單一股票即時價格
      */
     async getPrice(ticker) {
         if (!ticker) return null;
         
+        const upperTicker = ticker.toUpperCase().trim();
         const now = Date.now();
-        const cached = this.cache[ticker];
+        const cached = this.cache[upperTicker];
 
-        // 1. 檢查快取是否有效
+        // 1. 檢查快取
         if (cached && (now - cached.timestamp < this.cacheDuration)) {
-            // console.log(`[Cache] 使用快取報價: ${ticker}`);
             return cached.data;
         }
 
-        // 2. 無快取或過期，請求 API
+        // 2. 格式智慧轉換 (Yahoo Finance 格式)
+        let symbol = upperTicker;
+        if (/^\d+$/.test(upperTicker)) {
+            // 純數字自動加 .TW (台股上市)
+            // 若是上櫃股票可能需要手動輸入代號.TWO，但通常 .TW 通吃
+            symbol = upperTicker + '.TW';
+        } else if (upperTicker.includes(':')) {
+            // 處理 TPE:2330
+            symbol = upperTicker.split(':')[1] + '.TW';
+        }
+
         try {
-            // 簡易處理台股後綴 (Finnhub 格式: 2330.TW)
-            const symbol = ticker.includes(':') ? ticker.split(':')[1] + '.TW' : ticker;
+            // 使用 AllOrigins Proxy 繞過 CORS 限制
+            // 目標 API: Yahoo Finance Chart API (輕量、免費)
+            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
             
-            // 注意：Finnhub 免費版限制每秒 30 次請求，請勿過度頻繁呼叫
-            const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${this.apiKey}`);
+            const response = await fetch(proxyUrl);
+            
+            if (!response.ok) throw new Error('Network response was not ok');
+            
             const data = await response.json();
-            
-            // Finnhub 回傳 0 可能代表查無此股
-            if (data.c === 0 && data.d === null) {
-                console.warn(`查無代號: ${ticker}`);
+            const resultData = data.chart.result?.[0];
+
+            if (!resultData) {
+                console.warn(`Yahoo Finance 查無代號: ${symbol}`);
                 return null;
             }
 
+            const meta = resultData.meta;
+            const currentPrice = meta.regularMarketPrice;
+            const prevClose = meta.previousClose;
+            
+            // 計算漲跌 (Yahoo有時不直接給漲跌額，需自行計算)
+            const change = currentPrice - prevClose;
+            const percent = (change / prevClose) * 100;
+
             const result = {
-                currentPrice: data.c, // Current price
-                change: data.d,       // Change
-                percent: data.dp      // Percent change
+                currentPrice: currentPrice,
+                change: change,
+                percent: percent
             };
 
             // 3. 寫入快取
-            this.cache[ticker] = {
+            this.cache[upperTicker] = {
                 timestamp: now,
                 data: result
             };
 
             return result;
         } catch (e) {
-            console.error(`${ticker} 報價獲取失敗`, e);
-            return cached ? cached.data : null; // 失敗時若有舊快取則回傳
+            console.error(`${symbol} 報價獲取失敗 (Yahoo)`, e);
+            // 失敗時若有舊快取則回傳，不管過期多久
+            return cached ? cached.data : null;
         }
     }
 };
