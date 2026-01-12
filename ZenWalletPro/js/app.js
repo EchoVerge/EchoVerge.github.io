@@ -222,6 +222,19 @@ function setupAuthUI() {
             if(btnDown) btnDown.classList.add("disabled");
         }
     });
+
+    const privacyBtn = document.getElementById("btn-privacy-toggle");
+    if (privacyBtn) {
+        privacyBtn.addEventListener("click", () => {
+            document.body.classList.toggle("privacy-active");
+            const icon = privacyBtn.querySelector("i");
+            if (document.body.classList.contains("privacy-active")) {
+                icon.classList.replace("bi-eye", "bi-eye-slash");
+            } else {
+                icon.classList.replace("bi-eye-slash", "bi-eye");
+            }
+        });
+    }
 }
 
 // --- Gridstack 相關邏輯 ---

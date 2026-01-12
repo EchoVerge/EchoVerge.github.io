@@ -184,3 +184,45 @@ body {
         padding-top: 8px;
     }
 }
+
+/* =========================================
+   8. 新功能樣式 (隱私 & 模版)
+   ========================================= */
+
+/* 隱私模式：模糊敏感數據 */
+body.privacy-active .sensitive {
+    filter: blur(6px);
+    transition: filter 0.3s ease;
+    user-select: none; /* 防止被選取複製 */
+    cursor: default;
+}
+
+/* 快速記帳按鈕區 */
+.quick-actions-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+
+.btn-template {
+    white-space: nowrap;
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-size: 0.9rem;
+    border: 1px solid #dee2e6;
+    background: white;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.btn-template:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.btn-template i {
+    margin-right: 5px;
+    color: #0d6efd;
+}

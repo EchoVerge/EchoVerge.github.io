@@ -351,7 +351,7 @@ async function renderTransactionList(useFilter = false) {
                                 <div class="text-muted small">${tx.dateStr} | ${tx.category} | ${tx.account}</div>
                             </div>
                             <div class="text-end flex-shrink-0 ms-2">
-                                <div class="${amountClass} fw-bold mb-1">${isExpense?'-':'+'} $${parseFloat(tx.amount).toLocaleString()}</div>
+                                <div class="${amountClass} fw-bold mb-1 sensitive">${isExpense?'-':'+'} $${parseFloat(tx.amount).toLocaleString()}</div>
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-outline-secondary py-0" onclick="window.handleOpenEdit('${tx.id}')"><i class="bi bi-pencil"></i></button>
                                     <button class="btn btn-outline-danger py-0" onclick="window.handleDeleteTx('${tx.id}')"><i class="bi bi-trash"></i></button>
