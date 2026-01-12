@@ -1,22 +1,22 @@
 /**
  * assets/js/modules/dbManager.js
- * 負責 Firestore 財務資料操作 (取代原本的 Code.gs 邏輯)
+ * 修正：標籤陣列化、Merge 初始化、監聽器優化
  */
 import { state } from './state.js';
 import { portfolioApi } from './portfolioApi.js';
 
 export const dbManager = {
     db: null,
+    unsubscribeTx: null,
+    unsubscribePf: null,
 
     init() {
+        // 使用 compat 語法，因為 index.html 引入的是 compat SDK
         this.db = firebase.firestore();
     },
 
-    // --- 1. 交易紀錄 (Transactions) ---
+    // --- 交易紀錄 ---
 
-    /**
-     * 新增交易紀錄 (取代 addTransaction)
-     */
     async addTransaction(formData) {
         if (!state.currentUser) return { success: false, error: "未登入" };
         
@@ -24,15 +24,20 @@ export const dbManager = {
                              .collection('transactions');
         
         try {
+            // [修正] 標籤字串轉陣列
+            const tagArray = formData.tags 
+                ? formData.tags.split(/[,，]/).map(t => t.trim()).filter(t => t) 
+                : [];
+
             await txRef.add({
                 date: formData.date,
-                type: formData.type,        // 支出 / 收入
+                type: formData.type,
                 category: formData.category,
                 account: formData.account,
                 item: formData.item,
                 amount: parseFloat(formData.amount),
                 notes: formData.notes || "",
-                tags: formData.tags || "",
+                tags: tagArray, // 存為 Array 以利 Firestore 查詢
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             return { success: true };
@@ -42,9 +47,6 @@ export const dbManager = {
         }
     },
 
-    /**
-     * 刪除交易紀錄
-     */
     async deleteTransaction(id) {
         if (!state.currentUser) return;
         try {
@@ -56,12 +58,9 @@ export const dbManager = {
         }
     },
 
-    /**
-     * 實時監聽交易紀錄 (取代 getTransactions)
-     * 會根據篩選條件自動執行回呼
-     */
     listenTransactions(filters, callback) {
         if (!state.currentUser) return;
+        if (this.unsubscribeTx) this.unsubscribeTx(); // 取消舊監聽
 
         let query = this.db.collection('users').doc(state.currentUser.uid)
                            .collection('transactions')
@@ -70,7 +69,7 @@ export const dbManager = {
         if (filters.startDate) query = query.where('date', '>=', filters.startDate);
         if (filters.endDate) query = query.where('date', '<=', filters.endDate);
 
-        return query.onSnapshot(snapshot => {
+        this.unsubscribeTx = query.onSnapshot(snapshot => {
             const transactions = [];
             snapshot.forEach(doc => {
                 transactions.push({ id: doc.id, ...doc.data() });
@@ -81,60 +80,74 @@ export const dbManager = {
         });
     },
 
-    // --- 2. 帳戶與資產管理 ---
+    // --- 帳戶與投資 ---
 
-    /**
-     * 初始化使用者設定 (預設類別與帳戶)
-     */
     async initDefaultSettings() {
         if (!state.currentUser) return;
         const userRef = this.db.collection('users').doc(state.currentUser.uid);
         
-        const settings = await userRef.get();
-        if (!settings.exists) {
+        const doc = await userRef.get();
+        if (!doc.exists) {
+            // [修正] 使用 merge: true 防止意外覆蓋
             await userRef.set({
                 initialized: true,
-                categories: [
-                    { name: "餐飲", type: "支出" },
-                    { name: "交通", type: "支出" },
-                    { name: "薪資", type: "收入" },
-                    { name: "轉帳", type: "支出" },
-                    { name: "帳目調整", type: "支出" }
-                ],
+                categories: ["餐飲", "交通", "薪資", "轉帳", "帳目調整", "投資支出", "投資收入"],
                 accounts: [
                     { name: "現金", initial: 0 },
-                    { name: "銀行轉帳", initial: 10000 },
+                    { name: "銀行轉帳", initial: 0 },
                     { name: "投資帳戶 (Portfolio)", initial: 0 }
                 ]
-            });
+            }, { merge: true });
         }
     },
 
     /**
-     * 監聽持股並計算價值 (取代 getPortfolio)
+     * 獲取所有帳戶的初始設定 (用於計算餘額)
      */
+    async getAccounts() {
+        if (!state.currentUser) return [];
+        const doc = await this.db.collection('users').doc(state.currentUser.uid).get();
+        if (doc.exists && doc.data().accounts) {
+            return doc.data().accounts;
+        }
+        return [];
+    },
+
     listenPortfolio(callback) {
         if (!state.currentUser) return;
+        if (this.unsubscribePf) this.unsubscribePf();
 
-        return this.db.collection('users').doc(state.currentUser.uid)
+        this.unsubscribePf = this.db.collection('users').doc(state.currentUser.uid)
                       .collection('portfolio')
                       .onSnapshot(async snapshot => {
                           const holdings = [];
                           let totalValue = 0;
 
-                          for (const doc of snapshot.docs) {
+                          // 注意：這裡使用 Promise.all 並行處理 API 請求
+                          const promises = snapshot.docs.map(async doc => {
                               const data = doc.data();
+                              // [修正] 使用帶有快取的 API 方法
                               const priceInfo = await portfolioApi.getPrice(data.ticker);
-                              const value = priceInfo ? priceInfo.currentPrice * data.quantity : 0;
+                              const currentPrice = priceInfo ? priceInfo.currentPrice : 0;
+                              const value = currentPrice * (parseFloat(data.quantity) || 0);
                               
-                              holdings.push({
-                                  ticker: doc.id,
+                              return {
+                                  id: doc.id,
+                                  ticker: data.ticker, // 假設 ticker 存在 data 中，或直接用 doc.id
                                   quantity: data.quantity,
-                                  price: priceInfo?.currentPrice || 0,
+                                  price: currentPrice,
+                                  change: priceInfo ? priceInfo.change : 0,
+                                  percent: priceInfo ? priceInfo.percent : 0,
                                   value: value
-                              });
-                              totalValue += value;
-                          }
+                              };
+                          });
+
+                          const results = await Promise.all(promises);
+                          results.forEach(h => {
+                              holdings.push(h);
+                              totalValue += h.value;
+                          });
+                          
                           callback(holdings, totalValue);
                       });
     }
