@@ -1,16 +1,17 @@
 // js/app.js
-import { db } from "./config.js";
 import { showLoader, hideLoader, showApp } from "./utils/ui.js";
-import { collection, getDocs, limit, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { initSettings } from "./settingsController.js";
 import { initTransactionModule } from "./transactionController.js"; 
 import { initDashboard } from "./dashboardController.js";
 import { initPortfolioModule } from "./portfolioController.js";
 import { processDueRecurringTransactions } from "./services/recurring.js";
+import { initAuthListener, loginWithGoogle, logout, AuthState } from "./services/auth.js";
+import { syncUp, syncDown } from "./services/repository.js";
 
 let grid = null;
 let saveLayoutModal = null;
-let isRestoringLayout = false; // 防止還原時觸發自動儲存
+let licenseModal = null;
+let isRestoringLayout = false; 
 
 const LAYOUT_STORAGE_KEY = 'dashboard_current_layout';
 const CUSTOM_LAYOUTS_KEY = 'dashboard_custom_layouts';
@@ -57,18 +58,25 @@ const SYSTEM_TEMPLATES = {
 
 document.addEventListener("DOMContentLoaded", async () => {
     showLoader();
-    console.log("應用程式啟動中 (Local Mode)...");
+    console.log("應用程式啟動中 (Local First Mode)...");
 
-    saveLayoutModal = new bootstrap.Modal(document.getElementById('saveLayoutModal'));
+    // 初始化 Modals
+    if(document.getElementById('saveLayoutModal')) 
+        saveLayoutModal = new bootstrap.Modal(document.getElementById('saveLayoutModal'));
+    
+    if(document.getElementById('licenseModal'))
+        licenseModal = new bootstrap.Modal(document.getElementById('licenseModal'));
 
-    // 不需要連網檢查了，直接初始化
-    // 1. 定期交易檢查
+    // 1. 初始化 Auth UI 與監聽器
+    setupAuthUI();
+
+    // 2. 檢查定期交易 (離線也能跑)
     const result = await processDueRecurringTransactions();
     if (result.processed) {
         console.log(`已自動執行 ${result.count} 筆定期交易`);
     }
 
-    // 2. 初始化模組
+    // 3. 初始化各個模組
     await Promise.all([
         initSettings(),
         initTransactionModule(),
@@ -78,44 +86,157 @@ document.addEventListener("DOMContentLoaded", async () => {
     ]);
     
     renderLayoutMenu();
+    
+    // 4. 恢復上次同步時間顯示
+    updateLastSyncTime();
 
     hideLoader();
     showApp();
 });
 
-async function testConnection() {
-    const statusEl = document.getElementById("system-status");
-    if (!db) {
-        if(statusEl) statusEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle-fill"></i> Firebase 設定錯誤</span>';
-        return false;
-    }
-    try {
-        const q = query(collection(db, "test_connection"), limit(1));
-        await getDocs(q);
-        return true;
-    } catch (error) {
-        console.error("Firebase 連線測試失敗:", error);
-        if(statusEl) statusEl.innerHTML = `<span class="text-danger"><i class="bi bi-wifi-off"></i> 連線失敗: ${error.message}</span>`;
-        return false;
-    }
+// 更新同步時間顯示
+function updateLastSyncTime() {
+    const time = localStorage.getItem('last_sync_time');
+    const el = document.getElementById('sync-status-text');
+    if(el && time) el.textContent = `上次同步：${time}`;
 }
 
-// 🔥 Gridstack 初始化 (修正版)
+// Auth 與 UI 綁定邏輯
+function setupAuthUI() {
+    const loginBtn = document.getElementById("btn-login");
+    const logoutBtn = document.getElementById("btn-logout"); // 這是給下拉選單用的，Modal 內的直接 onclick="logout()"
+    const userInfo = document.getElementById("user-info");
+    const userAvatar = document.getElementById("user-avatar");
+    const userBadge = document.getElementById("user-badge");
+    // const userEmail = document.getElementById("user-email"); // 如果導覽列有 Email 顯示
+
+    // 綁定同步按鈕 (設定頁)
+    const btnUp = document.getElementById("btn-cloud-up");
+    const btnDown = document.getElementById("btn-cloud-down");
+
+    // 登入按鈕
+    if(loginBtn) {
+        loginBtn.addEventListener("click", async () => {
+            try { await loginWithGoogle(); } catch(e) { alert("登入失敗"); }
+        });
+    }
+
+    // 全域登出函式 (給 HTML onclick 使用)
+    window.logout = logout;
+
+    // 🔥 開啟授權視窗 (核心邏輯)
+    window.openLicenseModal = () => {
+        if (!AuthState.user) return;
+        
+        // 填入資料
+        const modalAvatar = document.getElementById('license-user-avatar');
+        const modalName = document.getElementById('license-user-name');
+        const modalEmail = document.getElementById('license-user-email');
+        const modalType = document.getElementById('license-type');
+        const modalExpiry = document.getElementById('license-expiry');
+
+        if(modalAvatar) modalAvatar.src = AuthState.user.photoURL;
+        if(modalName) modalName.textContent = AuthState.user.displayName || "使用者";
+        if(modalEmail) modalEmail.textContent = AuthState.user.email;
+        
+        if(modalType) modalType.textContent = AuthState.subscription?.type || "Free";
+        if(modalExpiry) modalExpiry.textContent = AuthState.subscription?.expiry || "N/A";
+
+        // 切換顯示升級按鈕或 PRO 標示
+        const upgradeArea = document.getElementById('license-upgrade-area');
+        const proArea = document.getElementById('license-pro-area');
+        
+        if(AuthState.isPremium) {
+            if(upgradeArea) upgradeArea.classList.add('d-none');
+            if(proArea) proArea.classList.remove('d-none');
+        } else {
+            if(upgradeArea) upgradeArea.classList.remove('d-none');
+            if(proArea) proArea.classList.add('d-none');
+        }
+
+        if(licenseModal) licenseModal.show();
+    };
+
+    // 🔥 綁定同步功能
+    if(btnUp) {
+        btnUp.addEventListener("click", async () => {
+            if(!confirm("確定要將本地資料「覆蓋」到雲端嗎？")) return;
+            showLoader();
+            try {
+                await syncUp();
+                updateLastSyncTime();
+                alert("上傳成功！");
+            } catch(e) { alert(e.message); } finally { hideLoader(); }
+        });
+    }
+
+    if(btnDown) {
+        btnDown.addEventListener("click", async () => {
+            if(!confirm("⚠️ 警告：這將會清除本地所有資料，並從雲端下載還原。\n確定要繼續嗎？")) return;
+            showLoader();
+            try {
+                await syncDown();
+                updateLastSyncTime();
+                alert("下載成功！頁面將重新整理。");
+                location.reload();
+            } catch(e) { alert(e.message); } finally { hideLoader(); }
+        });
+    }
+
+    // 啟動 Auth 狀態監聽
+    initAuthListener((state) => {
+        if (state.user) {
+            // 已登入
+            if(loginBtn) loginBtn.classList.add("d-none");
+            if(userInfo) {
+                userInfo.classList.remove("d-none");
+                userInfo.classList.add("d-flex");
+            }
+            
+            if(userAvatar) userAvatar.src = state.user.photoURL;
+            
+            // 更新 UI 狀態 (Sync Buttons & Badge)
+            if (state.isPremium) {
+                if(userBadge) {
+                    userBadge.textContent = "PRO";
+                    userBadge.className = "badge bg-warning text-dark rounded-pill";
+                }
+                if(btnUp) btnUp.classList.remove("disabled");
+                if(btnDown) btnDown.classList.remove("disabled");
+            } else {
+                if(userBadge) {
+                    userBadge.textContent = "Free";
+                    userBadge.className = "badge bg-secondary rounded-pill";
+                }
+                if(btnUp) btnUp.classList.add("disabled");
+                if(btnDown) btnDown.classList.add("disabled");
+            }
+        } else {
+            // 未登入
+            if(loginBtn) loginBtn.classList.remove("d-none");
+            if(userInfo) {
+                userInfo.classList.add("d-none");
+                userInfo.classList.remove("d-flex");
+            }
+            if(btnUp) btnUp.classList.add("disabled");
+            if(btnDown) btnDown.classList.add("disabled");
+        }
+    });
+}
+
+// --- Gridstack 相關邏輯 ---
+
 function initLayout() {
     const gridEl = document.querySelector('.grid-stack');
     if (!gridEl) return;
 
-    // 1. 在啟動 Gridstack 之前，先將儲存的位置寫入 DOM
-    // 這一步至關重要！它避免了初始化後的動畫碰撞
     const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
     if (saved) {
         try {
             const layout = JSON.parse(saved);
-            console.log("正在預先載入版面配置...");
             layout.forEach(node => {
                 const el = document.querySelector(`[gs-id="${node.id}"]`);
                 if (el) {
-                    // 直接設定 DOM 屬性，Gridstack 啟動時會讀取這些
                     el.setAttribute('gs-x', node.x);
                     el.setAttribute('gs-y', node.y);
                     el.setAttribute('gs-w', node.w);
@@ -123,11 +244,10 @@ function initLayout() {
                 }
             });
         } catch (e) {
-            console.error("版面讀取失敗，將使用預設值", e);
+            console.error("版面讀取失敗", e);
         }
     }
 
-    // 2. 設定選項
     const options = {
         column: 12,        
         cellHeight: 80,    
@@ -140,11 +260,9 @@ function initLayout() {
         alwaysShowResizeHandle: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? true : false
     };
 
-    // 3. 正式啟動 Gridstack
     grid = GridStack.init(options);
     console.log("Gridstack initialized");
 
-    // 4. 監聽變更事件 (拖曳或縮放時自動儲存)
     grid.on('change', function(event, items) {
         if (!isRestoringLayout) {
             saveCurrentState();
@@ -152,7 +270,6 @@ function initLayout() {
     });
 }
 
-// 儲存當前狀態
 function saveCurrentState() {
     if (!grid) return;
     const layout = [];
@@ -166,12 +283,9 @@ function saveCurrentState() {
     localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
 }
 
-// 套用版面數據 (用於執行期間切換模板)
 function applyLayoutData(layoutData) {
     if (!grid) return;
-    
-    isRestoringLayout = true; // 鎖定儲存
-
+    isRestoringLayout = true;
     grid.batchUpdate();
     layoutData.forEach(node => {
         const el = document.querySelector(`[gs-id="${node.id}"]`);
@@ -180,22 +294,17 @@ function applyLayoutData(layoutData) {
         }
     });
     grid.commit();
-
-    // 延遲解鎖並手動儲存一次，確保狀態同步
     setTimeout(() => {
         isRestoringLayout = false;
         saveCurrentState();
     }, 300);
 }
 
-// 🔥 渲染版面選單
 function renderLayoutMenu() {
     const menu = document.getElementById('layout-menu-items');
     if (!menu) return;
-    
     menu.innerHTML = '';
-
-    // 1. 系統預設
+    
     menu.innerHTML += `<li><h6 class="dropdown-header">系統預設</h6></li>`;
     for (const [key, tpl] of Object.entries(SYSTEM_TEMPLATES)) {
         menu.innerHTML += `
@@ -204,7 +313,6 @@ function renderLayoutMenu() {
             </button></li>`;
     }
 
-    // 2. 用戶自訂
     const customLayouts = JSON.parse(localStorage.getItem(CUSTOM_LAYOUTS_KEY) || '{}');
     const customKeys = Object.keys(customLayouts);
     
@@ -224,7 +332,6 @@ function renderLayoutMenu() {
         });
     }
 
-    // 3. 操作區
     menu.innerHTML += `<li><hr class="dropdown-divider"></li>`;
     menu.innerHTML += `
         <li><button class="dropdown-item fw-bold text-primary" onclick="window.openSaveLayoutModal()">
@@ -236,8 +343,7 @@ function renderLayoutMenu() {
     `;
 }
 
-// --- 全域函式 ---
-
+// 全域函式 (HTML 呼叫用)
 window.applySystemLayout = function(key) {
     if (SYSTEM_TEMPLATES[key]) {
         if(confirm(`確定要切換到「${SYSTEM_TEMPLATES[key].name}」嗎？`)) {
@@ -258,7 +364,7 @@ window.applyCustomLayout = function(name) {
 window.openSaveLayoutModal = function() {
     const input = document.getElementById('layout-name-input');
     if(input) input.value = '';
-    saveLayoutModal.show();
+    if(saveLayoutModal) saveLayoutModal.show();
 }
 
 window.confirmSaveLayout = function() {
@@ -269,17 +375,18 @@ window.confirmSaveLayout = function() {
 
     const customLayouts = JSON.parse(localStorage.getItem(CUSTOM_LAYOUTS_KEY) || '{}');
     
-    // 取得當前完整狀態
     const currentLayout = [];
-    grid.engine.nodes.forEach(node => {
-        const id = node.el.getAttribute('gs-id');
-        if(id) currentLayout.push({ id, x: node.x, y: node.y, w: node.w, h: node.h });
-    });
+    if(grid) {
+        grid.engine.nodes.forEach(node => {
+            const id = node.el.getAttribute('gs-id');
+            if(id) currentLayout.push({ id, x: node.x, y: node.y, w: node.w, h: node.h });
+        });
+    }
 
     customLayouts[name] = currentLayout;
     localStorage.setItem(CUSTOM_LAYOUTS_KEY, JSON.stringify(customLayouts));
     
-    saveLayoutModal.hide();
+    if(saveLayoutModal) saveLayoutModal.hide();
     renderLayoutMenu(); 
     alert(`版面「${name}」已儲存！`);
 }
@@ -297,7 +404,6 @@ window.deleteCustomLayout = function(name) {
 window.resetLayout = function() {
     if(confirm("確定要重置為預設狀態嗎？")) {
         localStorage.removeItem(LAYOUT_STORAGE_KEY);
-        // 直接重新整理頁面最乾淨
         location.reload(); 
     }
 }
