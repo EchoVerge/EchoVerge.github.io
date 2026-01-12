@@ -223,6 +223,37 @@
                             </div>
                         </div>
                     </div>
+                    <div class="grid-stack-item" gs-id="widget-tags" gs-x="0" gs-y="17" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
+                        <div class="grid-stack-item-content dashboard-module" id="module-tags">
+                            <h4 class="module-title"><i class="bi bi-tags-fill"></i> 標籤支出排行</h4>
+                            <div id="tag-analytics-list" class="list-group list-group-flush flex-grow-1 overflow-auto small">
+                                <div class="text-center text-muted py-3">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade" id="tagTrendModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="bi bi-graph-up"></i> <span id="tag-trend-title">標籤趨勢</span></h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <span class="text-muted">歷史總支出</span>
+                                        <strong class="text-expense fs-5" id="tag-trend-total">$ 0</strong>
+                                    </div>
+                                    <div style="height: 300px; position: relative;">
+                                        <canvas id="tagTrendChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
             </div>

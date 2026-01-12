@@ -226,3 +226,36 @@ body.privacy-active .sensitive {
     margin-right: 5px;
     color: #0d6efd;
 }
+
+/* =========================================
+   9. 標籤分析樣式
+   ========================================= */
+.tag-stat-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.tag-stat-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: #0d6efd;
+}
+
+.tag-stat-item .badge {
+    font-weight: normal;
+    background-color: #e7f0ff;
+    color: #0d6efd;
+}
+
+.tag-rank-num {
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+    color: #adb5bd;
+    font-size: 0.8rem;
+    margin-right: 8px;
+}
+
+.tag-stat-item:nth-child(1) .tag-rank-num { color: #ffc107; font-weight: bold; } /* 金 */
+.tag-stat-item:nth-child(2) .tag-rank-num { color: #adb5bd; font-weight: bold; } /* 銀 */
+.tag-stat-item:nth-child(3) .tag-rank-num { color: #fd7e14; font-weight: bold; } /* 銅 */
