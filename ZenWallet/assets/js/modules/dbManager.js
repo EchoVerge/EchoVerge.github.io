@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/dbManager.js
- * 修正：標籤陣列化、Merge 初始化、監聽器優化、新增 getCategories
+ * 負責 Firestore 資料庫操作：交易增刪改查、投資組合、帳戶設定
  */
 import { state } from './state.js';
 import { portfolioApi } from './portfolioApi.js';
@@ -11,11 +11,11 @@ export const dbManager = {
     unsubscribePf: null,
 
     init() {
-        // 使用 compat 語法，因為 index.html 引入的是 compat SDK
+        // 使用 compat 語法 (因為 index.html 引入的是 compat SDK)
         this.db = firebase.firestore();
     },
 
-    // --- 交易紀錄 ---
+    // --- 交易紀錄 (Transactions) ---
 
     async addTransaction(formData) {
         if (!state.currentUser) return { success: false, error: "未登入" };
@@ -24,7 +24,7 @@ export const dbManager = {
                              .collection('transactions');
         
         try {
-            // [修正] 標籤字串轉陣列
+            // 標籤處理：逗號分隔字串轉陣列
             const tagArray = formData.tags 
                 ? formData.tags.split(/[,，]/).map(t => t.trim()).filter(t => t) 
                 : [];
@@ -37,12 +37,42 @@ export const dbManager = {
                 item: formData.item,
                 amount: parseFloat(formData.amount),
                 notes: formData.notes || "",
-                tags: tagArray, // 存為 Array 以利 Firestore 查詢
+                tags: tagArray,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             return { success: true };
         } catch (e) {
             console.error("新增失敗", e);
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * [新增] 更新交易紀錄
+     */
+    async updateTransaction(id, updatedData) {
+        if (!state.currentUser) return { success: false, error: "未登入" };
+        
+        try {
+            const tagArray = updatedData.tags 
+                ? (Array.isArray(updatedData.tags) ? updatedData.tags : updatedData.tags.split(/[,，]/).map(t => t.trim()).filter(t => t))
+                : [];
+
+            await this.db.collection('users').doc(state.currentUser.uid)
+                         .collection('transactions').doc(id).update({
+                date: updatedData.date,
+                type: updatedData.type,
+                category: updatedData.category,
+                account: updatedData.account,
+                item: updatedData.item,
+                amount: parseFloat(updatedData.amount),
+                notes: updatedData.notes || "",
+                tags: tagArray,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return { success: true };
+        } catch (e) {
+            console.error("更新失敗", e);
             return { success: false, error: e.message };
         }
     },
@@ -58,16 +88,18 @@ export const dbManager = {
         }
     },
 
+    /**
+     * 監聽交易紀錄
+     * 策略：抓取全部 (或最近一年)，篩選交給前端做，以確保總資產計算正確
+     */
     listenTransactions(filters, callback) {
         if (!state.currentUser) return;
-        if (this.unsubscribeTx) this.unsubscribeTx(); // 取消舊監聽
+        if (this.unsubscribeTx) this.unsubscribeTx();
 
+        // 預設抓取全部並按日期排序
         let query = this.db.collection('users').doc(state.currentUser.uid)
                            .collection('transactions')
                            .orderBy('date', 'desc');
-
-        if (filters.startDate) query = query.where('date', '>=', filters.startDate);
-        if (filters.endDate) query = query.where('date', '<=', filters.endDate);
 
         this.unsubscribeTx = query.onSnapshot(snapshot => {
             const transactions = [];
@@ -80,7 +112,7 @@ export const dbManager = {
         });
     },
 
-    // --- 帳戶與投資 ---
+    // --- 帳戶與設定 ---
 
     async initDefaultSettings() {
         if (!state.currentUser) return;
@@ -88,7 +120,6 @@ export const dbManager = {
         
         const doc = await userRef.get();
         if (!doc.exists) {
-            // [修正] 使用 merge: true 防止意外覆蓋
             await userRef.set({
                 initialized: true,
                 categories: ["餐飲", "交通", "薪資", "轉帳", "帳目調整", "投資支出", "投資收入"],
@@ -101,9 +132,6 @@ export const dbManager = {
         }
     },
 
-    /**
-     * 獲取所有帳戶的初始設定 (用於計算餘額與下拉選單)
-     */
     async getAccounts() {
         if (!state.currentUser) return [];
         const doc = await this.db.collection('users').doc(state.currentUser.uid).get();
@@ -113,9 +141,6 @@ export const dbManager = {
         return [];
     },
 
-    /**
-     * [新增] 獲取分類設定 (用於下拉選單)
-     */
     async getCategories() {
         if (!state.currentUser) return [];
         const doc = await this.db.collection('users').doc(state.currentUser.uid).get();
@@ -124,6 +149,8 @@ export const dbManager = {
         }
         return [];
     },
+
+    // --- 投資組合 ---
 
     listenPortfolio(callback) {
         if (!state.currentUser) return;
@@ -135,17 +162,15 @@ export const dbManager = {
                           const holdings = [];
                           let totalValue = 0;
 
-                          // 注意：這裡使用 Promise.all 並行處理 API 請求
                           const promises = snapshot.docs.map(async doc => {
                               const data = doc.data();
-                              // [修正] 使用帶有快取的 API 方法
                               const priceInfo = await portfolioApi.getPrice(data.ticker);
                               const currentPrice = priceInfo ? priceInfo.currentPrice : 0;
                               const value = currentPrice * (parseFloat(data.quantity) || 0);
                               
                               return {
                                   id: doc.id,
-                                  ticker: data.ticker, // 假設 ticker 存在 data 中，或直接用 doc.id
+                                  ticker: data.ticker,
                                   quantity: data.quantity,
                                   price: currentPrice,
                                   change: priceInfo ? priceInfo.change : 0,
@@ -174,7 +199,7 @@ export const dbManager = {
         try {
             const qty = parseFloat(quantity);
             if (qty === 0) {
-                await ref.delete(); // 數量設為 0 即為刪除
+                await ref.delete();
             } else {
                 await ref.set({
                     ticker: ticker,
