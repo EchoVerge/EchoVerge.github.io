@@ -1,126 +1,13 @@
-/* css/style.css */
+/* =========================================
+   1. 全域設定 (Global & Utilities)
+   ========================================= */
 body {
     background-color: #f8f9fa;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.text-expense {
-    color: #dc3545;
-}
-
-.text-income {
-    color: #198754;
-}
-
-#loader {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    border: 8px solid #f3f3f3;
-    border-top: 8px solid #3498db;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1s linear infinite;
-    z-index: 1050;
-}
-
-@keyframes spin {
-    0% {
-        transform: translate(-50%, -50%) rotate(0deg);
-    }
-
-    100% {
-        transform: translate(-50%, -50%) rotate(360deg);
-    }
-}
-
-.modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1040;
-}
-
-body {
-    background-color: #f8f9fa;
-}
-
-.text-expense {
-    color: #dc3545;
-}
-
-.text-income {
-    color: #198754;
-}
-
-.dashboard-module {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
-    margin-bottom: 24px;
-}
-
-.module-title {
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.module-title i {
-    color: #0d6efd;
-}
-
-.stat-card {
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 16px;
-}
-
-.stat-card .stat-label {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-bottom: 4px;
-}
-
-.stat-card .stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-}
-
-#transactionsList {
-    max-height: 800px;
-    overflow-y: auto;
-    margin-top: 16px;
-}
-
-.list-group-flush .list-group-item {
-    border-width: 0 0 1px;
-}
-
-.list-group-flush .list-group-item:last-child {
-    border-bottom-width: 0;
-}
-
-.notes-display {
-    font-size: 0.9rem;
-    color: #6c757d;
-    white-space: pre-wrap;
-    word-break: break-all;
-    background-color: #f8f9fa;
-    padding: 8px;
-    border-radius: 6px;
-    margin-top: 8px;
-}
+.text-expense { color: #dc3545; }
+.text-income { color: #198754; }
 
 .tag-badge {
     display: inline-block;
@@ -135,120 +22,11 @@ body {
     margin-top: 5px;
 }
 
-.settings-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 24px;
-}
-
-#account-balance-list .list-group-item,
-#portfolio-holdings-list .list-group-item {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #eee;
-}
-
-#account-balance-list .list-group-item:last-child,
-#portfolio-holdings-list .list-group-item:last-child {
-    border-bottom: 0;
-}
-
-.filter-accordion-button {
-    padding: 0.75rem 0;
-    font-size: 1rem;
-    font-weight: 500;
-    color: #0d6efd;
-    text-decoration: none;
-    background: none;
-    border: none;
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-}
-
-.filter-accordion-button:not(.collapsed)::after {
-    background-image: var(--bs-accordion-btn-active-icon);
-    transform: var(--bs-accordion-btn-icon-transform);
-}
-
-.filter-accordion-button::after {
-    content: "";
-    background-image: var(--bs-accordion-btn-icon);
-    background-repeat: no-repeat;
-    background-size: var(--bs-accordion-btn-icon-width);
-    width: var(--bs-accordion-btn-icon-width);
-    height: var(--bs-accordion-btn-icon-width);
-    margin-left: auto;
-    transition: var(--bs-accordion-btn-icon-transition);
-}
-
-/* 1. 讓 Split.js 的容器 (我們將建立的 #dashboard-split-container) 
-          成為 flex 佈局 */
-#dashboard-split-container {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    min-height: 80vh;
-    /* 給一個最小高度 */
-}
-
-/* 2. 讓左右欄在寬度縮小時，內容可以各自滾動 */
-#dashboard-col-left,
-#dashboard-col-right {
-    /* 恢復 Bootstrap .col 提供的 12px 左右內距 */
-    padding: 0 12px;
-    overflow: auto !important;
-    /* 強制允許滾動 */
-}
-
-/* 3. 分隔欄 (gutter) 本身的樣式 */
-.gutter {
-    background-color: #e9ecef;
-    /* 淺灰色背景 */
-    background-repeat: no-repeat;
-    background-position: center;
-    /* 加上垂直點點圖示，增加可拖曳的視覺提示 */
-    background-image: url('data:image/svg+xml;charset=utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="30"><path d="M2 0v30M5 0v30M8 0v30" stroke-width="1.5" stroke="%236c757d" fill="none"/></svg>');
-}
-
-/* 4. 水平分隔欄 (我們要用的) 的寬度和鼠標樣式 */
-.gutter.gutter-horizontal {
-    width: 10px;
-    /* 拖曳條的寬度 */
-    cursor: col-resize;
-    /* 顯示左右拖曳的鼠標 */
-}
-
-/* Bootstrap 的 'lg' 斷點是 992px。
-       當螢幕小於 992px 時 (例如平板或手機)，套用以下樣式 */
-@media (max-width: 991.98px) {
-
-    /* 1. 將 flex 容器變回 block 堆疊 */
-    #dashboard-split-container {
-        display: block;
-        /* 從 flex 改為 block */
-        min-height: auto;
-        /* 取消最小高度 */
-    }
-
-    /* 2. 讓左右欄恢復 100% 寬度，並覆蓋 Split.js 可能加上的 inline style */
-    #dashboard-col-left,
-    #dashboard-col-right {
-        width: 100% !important;
-        overflow: visible !important;
-        /* 恢復瀏覽器預設滾動 */
-    }
-
-    /* 3. 隱藏分隔欄 (gutter) */
-    .gutter.gutter-horizontal {
-        display: none !important;
-    }
-}
-
-/* css/style.css */
-
-/* 載入動畫 (Loader) */
+/* =========================================
+   2. 載入動畫 (Loader)
+   ========================================= */
 #loader {
-    display: block;
+    display: none;
     position: fixed;
     top: 50%;
     left: 50%;
@@ -267,125 +45,134 @@ body {
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
-/* Modal 背景與通用樣式 */
-.modal-backdrop.show-custom {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1040;
-}
-
-body {
-    background-color: #f8f9fa;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-/* 顏色定義 */
-.text-expense { color: #dc3545; }
-.text-income { color: #198754; }
-
-/* 儀表板模組卡片 */
+/* =========================================
+   3. 儀表板模組 (Dashboard Modules)
+   ========================================= */
 .dashboard-module {
     background: #ffffff;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
-    margin-bottom: 24px;
-    height: 100%;
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    
+    /* 讓內容自動撐滿與伸縮 */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 防止內容溢出顯示捲動條 */
+    transition: box-shadow 0.3s ease;
+}
+
+/* 拖曳時的效果 */
+.grid-stack-item.ui-draggable-dragging .dashboard-module {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.grid-stack-item-content {
+    border-radius: 16px; 
 }
 
 .module-title {
     font-weight: 600;
     color: #333;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    cursor: move;
+    flex-shrink: 0; /* 防止標題被壓縮 */
 }
 
 .module-title i {
     color: #0d6efd;
 }
 
-/* 統計數據卡片 */
 .stat-card {
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
 }
 
 .stat-card .stat-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #6c757d;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .stat-card .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
 }
 
-/* 列表樣式 */
-#transactionsList {
-    max-height: 800px;
+/* =========================================
+   4. Gridstack 調整
+   ========================================= */
+.grid-stack-placeholder > .placeholder-content {
+    background-color: rgba(13, 110, 253, 0.05) !important;
+    border: 2px dashed rgba(13, 110, 253, 0.4) !important;
+    border-radius: 16px;
+}
+
+.ui-resizable-handle {
+    filter: opacity(0.5);
+}
+
+/* =========================================
+   5. 內容區域樣式 (Lists & Charts)
+   ========================================= */
+/* 列表區域：自動填滿剩餘高度，內部滾動 */
+#transactionsList, #account-balance-list {
+    flex-grow: 1;
     overflow-y: auto;
-    margin-top: 16px;
+    min-height: 0; /* Firefox flex fix */
 }
 
-.list-group-flush .list-group-item {
-    border-width: 0 0 1px;
+/* 🔥 新增：圖表響應式容器 */
+/* 取代原本寫死的 height: 250px */
+.chart-responsive-container {
+    position: relative;
+    flex-grow: 1; /* 自動填滿剩餘空間 */
+    min-height: 0; /* 允許縮小到比內容還小 */
+    width: 100%;
 }
 
-.list-group-flush .list-group-item:last-child {
-    border-bottom-width: 0;
-}
-
-.notes-display {
-    font-size: 0.9rem;
-    color: #6c757d;
-    white-space: pre-wrap;
-    word-break: break-all;
-    background-color: #f8f9fa;
-    padding: 8px;
-    border-radius: 6px;
-    margin-top: 8px;
-}
-
-/* 標籤樣式 */
-.tag-badge {
-    display: inline-block;
-    padding: 0.25em 0.6em;
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1;
-    color: #0d6efd;
-    background-color: #e7f0ff;
-    border-radius: 0.375rem;
-    margin-right: 5px;
-    margin-top: 5px;
-}
-
-/* 設定頁面網格 */
 .settings-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 24px;
 }
 
-/* 篩選器樣式 */
-.filter-accordion-button {
-    padding: 0.75rem 0;
-    font-size: 1rem;
-    font-weight: 500;
-    color: #0d6efd;
-    text-decoration: none;
-    background: none;
-    border: none;
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
+/* =========================================
+   6. 其他
+   ========================================= */
+.modal { z-index: 1060; }
+.modal-backdrop { z-index: 1050; }
+
+/* =========================================
+   7. 響應式設計 (RWD - 手機版)
+   ========================================= */
+/* 當螢幕小於 992px (Bootstrap lg) 時 */
+@media (max-width: 991.98px) {
+    
+    /* 強制取消 Split.js 的 Flex 佈局，改回區塊堆疊 */
+    #dashboard-split-container {
+        display: block !important;
+        height: auto !important;
+        min-height: auto !important;
+    }
+
+    /* 強制寬度 100%，覆蓋 Split.js 的 inline styles */
+    #dashboard-col-left,
+    #dashboard-col-right {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important; /* 手機上直接顯示所有內容，不產生內部捲軸 */
+        margin-bottom: 24px;
+    }
+
+    /* 隱藏拖曳條 */
+    .gutter.gutter-horizontal {
+        display: none !important;
+    }
 }

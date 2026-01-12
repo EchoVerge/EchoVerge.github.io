@@ -6,7 +6,7 @@ export const DEFAULT_CATEGORIES = [
     { name: "薪資", type: "收入" },
     { name: "轉帳支出", type: "支出" }, // 系統必要
     { name: "轉帳收入", type: "收入" }, // 系統必要
-    { name: "帳目調整", type: "支出" }, // 系統必要 (其實可雙向，暫定支出或動態判斷)
+    { name: "帳目調整", type: "支出" }, // 系統必要
     { name: "投資支出", type: "支出" }, // 系統必要
     { name: "投資收入", type: "收入" }  // 系統必要
 ];
