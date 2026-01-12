@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 初始化與載入資料
             await dbManager.initDefaultSettings();
             currentAccounts = await dbManager.getAccounts(); // 載入帳戶初始值
+            populateDropdowns(currentAccounts);
             startDataListeners();
         } else {
             document.getElementById('app-container').style.display = 'none';
@@ -54,30 +55,71 @@ function bindEvents() {
     document.getElementById('addTransactionForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button[type="submit"]');
+        const originalBtnText = btn.innerHTML;
         btn.disabled = true;
-        btn.textContent = "儲存中...";
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 儲存中...';
 
+        // 1. 收集表單資料
         const formData = {
             date: document.getElementById('add-date').value,
             type: document.getElementById('add-type').value,
-            // 暫時寫死或從 accounts 下拉選單取得
-            category: "未分類", 
-            account: "現金", 
+            account: document.getElementById('add-account').value,   // [新增] 抓取帳戶
+            category: document.getElementById('add-category').value, // [新增] 抓取類別
             item: document.getElementById('add-item').value,
             amount: document.getElementById('add-amount').value,
-            tags: "" // 可增加 tags 輸入欄位
+            tags: document.getElementById('add-tags').value,         // [新增] 抓取標籤
+            notes: document.getElementById('add-notes').value        // [新增] 抓取備註
         };
 
+        // 2. 傳送給 dbManager
         const result = await dbManager.addTransaction(formData);
+
         if (result.success) {
+            // 3. 成功後重設表單 (保留日期與帳戶，方便連續記帳)
+            const lastDate = formData.date;
+            const lastAccount = formData.account;
+            
             e.target.reset();
-            // 重設日期為今天
-            document.getElementById('add-date').valueAsDate = new Date();
+            
+            // 恢復使用者習慣的設定
+            document.getElementById('add-date').value = lastDate;
+            document.getElementById('add-account').value = lastAccount;
+            
+            // 顯示成功提示 (可選)
+            console.log("新增成功！");
         } else {
             alert("新增失敗: " + result.error);
         }
+
         btn.disabled = false;
-        btn.textContent = "新增紀錄";
+        btn.innerHTML = originalBtnText;
+    });
+    document.getElementById('portfolioForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "更新中...";
+
+        const ticker = document.getElementById('pf-ticker').value.toUpperCase().trim();
+        const qty = document.getElementById('pf-qty').value;
+
+        const result = await dbManager.updateHolding(ticker, qty);
+        
+        if (result.success) {
+            // 關閉 Modal
+            const modalEl = document.getElementById('portfolioModal');
+            const modal = bootstrap.Modal.getInstance(modalEl); // 取得 Bootstrap Modal 實例
+            modal.hide();
+            
+            e.target.reset();
+            // 提示成功 (可選)
+        } else {
+            alert("更新失敗: " + result.error);
+        }
+
+        btn.disabled = false;
+        btn.textContent = originalText;
     });
 }
 
@@ -143,4 +185,14 @@ function recalculateTotalAssets() {
     if (breakdownEl) {
         breakdownEl.textContent = `現金: $${cashBalance.toLocaleString()} | 投資: $${portfolioValue.toLocaleString()}`;
     }
+}
+
+function populateDropdowns(accounts) {
+    const accountSelect = document.getElementById('add-account');
+    if (accountSelect && accounts.length > 0) {
+        accountSelect.innerHTML = accounts.map(acc => 
+            `<option value="${acc.name}">${acc.name}</option>`
+        ).join('');
+    }
+    // 類別部分未來也可以從 dbManager.getCategories() 取得並動態填充
 }

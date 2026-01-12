@@ -150,5 +150,29 @@ export const dbManager = {
                           
                           callback(holdings, totalValue);
                       });
-    }
+    },
+    async updateHolding(ticker, quantity) {
+        if (!state.currentUser) return { success: false, error: "未登入" };
+        if (!ticker) return { success: false, error: "請輸入股票代號" };
+
+        const ref = this.db.collection('users').doc(state.currentUser.uid)
+                           .collection('portfolio').doc(ticker);
+
+        try {
+            const qty = parseFloat(quantity);
+            if (qty === 0) {
+                await ref.delete(); // 數量設為 0 即為刪除
+            } else {
+                await ref.set({
+                    ticker: ticker,
+                    quantity: qty,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            }
+            return { success: true };
+        } catch (e) {
+            console.error("更新持股失敗", e);
+            return { success: false, error: e.message };
+        }
+    },
 };

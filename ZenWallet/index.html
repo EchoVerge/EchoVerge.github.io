@@ -1,89 +1,233 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZenWallet - 現代化個人財務管理</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/dashboard.css">
-</head>
-<body>
-    <div id="loader" style="display: none;"></div>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ZenWallet - 現代化個人財務管理</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+            rel="stylesheet">
+        <link rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+        <link rel="stylesheet" href="assets/css/style.css">
+        <link rel="stylesheet" href="assets/css/dashboard.css">
+    </head>
+    <body>
+        <div id="loader" style="display: none;"></div>
 
-    <div id="login-section" class="container text-center" style="margin-top: 20vh;">
-        <h1 class="mb-4">💰 ZenWallet</h1>
-        <p class="text-muted">請登入 Google 帳號以開始同步您的財務數據</p>
-        <button id="btn-login" class="btn btn-primary btn-lg">
-            <i class="bi bi-google"></i> Google 一鍵登入
-        </button>
-        <button class="btn btn-outline-danger btn-sm">登出</button>
-    </div>
+        <div id="login-section" class="container text-center"
+            style="margin-top: 20vh;">
+            <h1 class="mb-4">💰 ZenWallet</h1>
+            <p class="text-muted">請登入 Google 帳號以開始同步您的財務數據</p>
+            <button id="btn-login" class="btn btn-primary btn-lg">
+                <i class="bi bi-google"></i> Google 一鍵登入
+            </button>
+            <button class="btn btn-outline-danger btn-sm">登出</button>
+        </div>
 
-    <div id="app-container" class="container-fluid py-4" style="display: none;">
-        <header class="d-flex justify-content-between align-items-center mb-4 px-3">
-            <h2 class="fw-bold">ZenWallet <span id="pro-status-badge" class="badge rounded-pill bg-light text-dark fs-6 ms-2"></span></h2>
-            <div class="user-controls">
-                <button id="btn-cloud-sync" class="btn btn-outline-primary btn-sm me-2">
-                    <i class="bi bi-cloud-arrow-up"></i> 雲端備份
-                </button>
-                <button class="btn btn-outline-danger btn-sm">登出</button>
-            </div>
-        </header>
+        <div id="app-container" class="container-fluid py-4"
+            style="display: none;">
+            <header
+                class="d-flex justify-content-between align-items-center mb-4 px-3">
+                <h2 class="fw-bold">ZenWallet <span id="pro-status-badge"
+                        class="badge rounded-pill bg-light text-dark fs-6 ms-2"></span></h2>
+                <div class="user-controls">
+                    <button id="btn-cloud-sync"
+                        class="btn btn-outline-primary btn-sm me-2">
+                        <i class="bi bi-cloud-arrow-up"></i> 雲端備份
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm">登出</button>
+                </div>
+            </header>
 
-        <div id="dashboard-split-container">
-            <div id="dashboard-col-left">
-                <div class="dashboard-module" id="module-total-assets">
-                    <h4 class="module-title drag-handle"><i class="bi bi-shield-check"></i> 總資產淨值</h4>
-                    <div class="stat-card text-center">
-                        <div class="stat-value" id="total-assets-display">$ 0.00</div>
-                        <div class="stat-label" id="total-assets-breakdown">載入中...</div>
+            <div id="dashboard-split-container">
+                <div id="dashboard-col-left">
+                    <div class="dashboard-module" id="module-total-assets">
+                        <h4 class="module-title drag-handle"><i
+                                class="bi bi-shield-check"></i> 總資產淨值</h4>
+                        <div class="stat-card text-center">
+                            <div class="stat-value" id="total-assets-display">$
+                                0.00</div>
+                            <div class="stat-label"
+                                id="total-assets-breakdown">載入中...</div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-module" id="module-pie-chart">
+                        <h4 class="module-title drag-handle"><i
+                                class="bi bi-pie-chart-fill"></i> 支出類別</h4>
+                        <div style="height: 300px;"><canvas
+                                id="categoryPieChart"></canvas></div>
                     </div>
                 </div>
 
-                <div class="dashboard-module" id="module-pie-chart">
-                    <h4 class="module-title drag-handle"><i class="bi bi-pie-chart-fill"></i> 支出類別</h4>
-                    <div style="height: 300px;"><canvas id="categoryPieChart"></canvas></div>
-                </div>
-            </div>
+                <div id="dashboard-col-right">
+                    <div class="dashboard-module" id="module-add-tx">
+                        <h4 class="module-title drag-handle"><i
+                                class="bi bi-pencil-square"></i> 新增紀錄</h4>
+                        <form id="addTransactionForm" class="row g-2">
+                            <div class="col-6">
+                                <label
+                                    class="form-label small text-muted mb-0">日期</label>
+                                <input type="date" class="form-control"
+                                    id="add-date" required>
+                            </div>
+                            <div class="col-6">
+                                <label
+                                    class="form-label small text-muted mb-0">類型</label>
+                                <select class="form-select" id="add-type"
+                                    required>
+                                    <option value="支出">支出</option>
+                                    <option value="收入">收入</option>
+                                    <option value="轉帳">轉帳</option>
+                                </select>
+                            </div>
 
-            <div id="dashboard-col-right">
-                <div class="dashboard-module" id="module-add-tx">
-                    <h4 class="module-title drag-handle"><i class="bi bi-pencil-square"></i> 新增紀錄</h4>
-                    <form id="addTransactionForm" class="row g-2">
-                        <div class="col-6"><input type="date" class="form-control" id="add-date" required></div>
-                        <div class="col-6">
-                            <select class="form-select" id="add-type" required>
-                                <option value="支出">支出</option>
-                                <option value="收入">收入</option>
-                            </select>
-                        </div>
-                        <div class="col-12"><input type="text" class="form-control" id="add-item" placeholder="項目內容" required></div>
-                        <div class="col-12"><input type="number" class="form-control" id="add-amount" placeholder="金額" required></div>
-                        <button type="submit" class="btn btn-primary w-100 mt-2">新增紀錄</button>
-                    </form>
-                </div>
+                            <div class="col-6">
+                                <label
+                                    class="form-label small text-muted mb-0">帳戶</label>
+                                <select class="form-select" id="add-account"
+                                    required>
+                                    <option value="現金" selected>現金</option>
+                                    <option value="銀行轉帳">銀行轉帳</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label
+                                    class="form-label small text-muted mb-0">類別</label>
+                                <select class="form-select" id="add-category"
+                                    required>
+                                    <option value="餐飲" selected>餐飲</option>
+                                    <option value="交通">交通</option>
+                                    <option value="購物">購物</option>
+                                    <option value="薪資">薪資</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
 
-                <div class="dashboard-module" id="module-tx-list">
-                    <h4 class="module-title drag-handle"><i class="bi bi-list-ul"></i> 最近交易</h4>
-                    <div id="transactionsList" class="list-group list-group-flush mt-3">
+                            <div class="col-12">
+                                <input type="text" class="form-control"
+                                    id="add-item" placeholder="項目內容 (如：午餐)"
+                                    required>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control"
+                                        id="add-amount" placeholder="金額"
+                                        required min="0" step="0.01">
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <input type="text" class="form-control"
+                                    id="add-tags"
+                                    placeholder="標籤 (以逗號分隔，如：#出差, #報帳)">
+                            </div>
+
+                            <div class="col-12">
+                                <textarea class="form-control" id="add-notes"
+                                    rows="2" placeholder="備註..."></textarea>
+                            </div>
+
+                            <button type="submit"
+                                class="btn btn-primary w-100 mt-2">
+                                <i class="bi bi-plus-lg"></i> 新增紀錄
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="dashboard-module" id="module-tx-list">
+                        <h4 class="module-title drag-handle"><i
+                                class="bi bi-list-ul"></i> 最近交易</h4>
+                        <div id="transactionsList"
+                            class="list-group list-group-flush mt-3">
                         </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-    
-    <script src="assets/js/firebase-config.js"></script>
+        <div class="dashboard-module" id="module-portfolio">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="module-title drag-handle mb-0"><i
+                        class="bi bi-graph-up-arrow"></i> 投資組合</h4>
+                <button class="btn btn-sm btn-outline-primary"
+                    data-bs-toggle="modal" data-bs-target="#portfolioModal">
+                    <i class="bi bi-plus-lg"></i> 管理
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover"
+                    style="font-size: 0.9rem;">
+                    <thead>
+                        <tr class="text-muted">
+                            <th>代號</th>
+                            <th class="text-end">現價</th>
+                            <th class="text-end">市值</th>
+                        </tr>
+                    </thead>
+                    <tbody id="portfolioList">
+                        <tr><td colspan="3"
+                                class="text-center text-muted">載入中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+        <div class="modal fade" id="portfolioModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">管理持股</h5>
+                        <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="portfolioForm">
+                            <div class="mb-3">
+                                <label class="form-label">股票代號 (Ticker)</label>
+                                <input type="text" class="form-control"
+                                    id="pf-ticker"
+                                    placeholder="如: AAPL, 2330, TSLA" required
+                                    style="text-transform: uppercase;">
+                                <div class="form-text">台股請直接輸入代號 (如 2330)，美股輸入代號
+                                    (如 AAPL)</div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">持有數量
+                                    (Quantity)</label>
+                                <input type="number" class="form-control"
+                                    id="pf-qty" step="0.001"
+                                    placeholder="輸入 0 可刪除該持股" required>
+                            </div>
+                            <button type="submit"
+                                class="btn btn-primary w-100">儲存 / 更新</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <script type="module" src="assets/js/main.js"></script>
-</body>
+        <script
+            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+        <script
+            src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+        <script
+            src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+        <script
+            src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+        <script src="assets/js/firebase-config.js"></script>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script
+            src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+
+        <script type="module" src="assets/js/main.js"></script>
+    </body>
 </html>

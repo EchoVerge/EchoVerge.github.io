@@ -151,5 +151,46 @@ export const uiController = {
         } else {
             localStorage.setItem('zenwallet_layout', JSON.stringify(layout));
         }
-    }
+    },
+    renderPortfolioList(holdings) {
+        const listEl = document.getElementById('portfolioList');
+        if (!listEl) return;
+
+        listEl.innerHTML = '';
+        if (holdings.length === 0) {
+            listEl.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">尚無持股</td></tr>';
+            return;
+        }
+
+        holdings.forEach(h => {
+            // 計算漲跌顏色
+            const colorClass = h.change >= 0 ? 'text-income' : 'text-expense';
+            const priceStr = h.price ? `$${h.price.toLocaleString()}` : '-';
+            const valueStr = h.value ? `$${Math.round(h.value).toLocaleString()}` : '-';
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <div class="fw-bold">${h.ticker}</div>
+                    <div class="small text-muted">${h.quantity} 股</div>
+                </td>
+                <td class="text-end">
+                    <div>${priceStr}</div>
+                    <div class="small ${colorClass}">${h.percent ? h.percent.toFixed(2) + '%' : ''}</div>
+                </td>
+                <td class="text-end fw-bold">${valueStr}</td>
+            `;
+            
+            // 點擊列自動填入 Modal (方便修改)
+            row.style.cursor = 'pointer';
+            row.onclick = () => {
+                document.getElementById('pf-ticker').value = h.ticker;
+                document.getElementById('pf-qty').value = h.quantity;
+                const modal = new bootstrap.Modal(document.getElementById('portfolioModal'));
+                modal.show();
+            };
+            
+            listEl.appendChild(row);
+        });
+    },
 };
