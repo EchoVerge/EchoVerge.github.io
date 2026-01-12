@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenWalletPro Excel 轉換工具</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+        h2 { margin-top: 0; color: #333; text-align: center; }
+        .description { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; text-align: center; }
+        .upload-box { border: 2px dashed #dee2e6; border-radius: 8px; padding: 2rem; text-align: center; margin-bottom: 1.5rem; transition: border-color 0.3s; cursor: pointer; position: relative; }
+        .upload-box:hover { border-color: #0d6efd; background-color: #f8faff; }
+        .upload-box input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .btn { display: block; width: 100%; padding: 0.75rem; background-color: #0d6efd; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+        .btn:hover { background-color: #0b5ed7; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        #log { margin-top: 1.5rem; font-size: 0.85rem; color: #555; border-top: 1px solid #eee; padding-top: 1rem; white-space: pre-wrap; }
+        .success { color: #198754; }
+        .error { color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>📊 Excel 轉 JSON 工具</h2>
+    <p class="description">請上傳您的記帳本 Excel 檔 (.xlsx)，系統將自動抓取分頁並轉換為 ZenWalletPro 備份格式。</p>
+
+    <div class="upload-box">
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📂</div>
+        <div>點擊選擇或拖曳檔案至此</div>
+    </div>
+
+    <button id="convertBtn" class="btn" disabled>開始轉換並下載</button>
+    
+    <div id="log">等待檔案...</div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const convertBtn = document.getElementById('convertBtn');
+    const logDiv = document.getElementById('log');
+    let selectedFile = null;
+
+    // 輔助：UUID 生成
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // 輔助：日期解析
+    function parseExcelDate(dateVal) {
+        if (!dateVal) return new Date().toISOString();
+        // 處理 Excel 序列號日期 (例如 45325)
+        if (typeof dateVal === 'number') {
+            const date = new Date((dateVal - (25567 + 2)) * 86400 * 1000);
+            return date.toISOString();
+        }
+        // 處理字串日期
+        try {
+            return new Date(dateVal).toISOString();
+        } catch (e) {
+            return new Date().toISOString();
+        }
+    }
+
+    // 監聽檔案選擇
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            selectedFile = e.target.files[0];
+            convertBtn.disabled = false;
+            logDiv.innerHTML = `已選擇檔案：<strong>${selectedFile.name}</strong>`;
+        }
+    });
+
+    // 監聽轉換按鈕
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                const db = {
+                    transactions: [],
+                    accounts: [],
+                    categories: [],
+                    tags: [],
+                    portfolio: [],
+                    recurring_rules: [],
+                    templates: [],
+                    asset_history: [],
+                    meta: {
+                        version: 2,
+                        exportedAt: new Date().toISOString(),
+                        platform: 'ZenWalletPro_ExcelTool'
+                    }
+                };
+
+                let logs = [];
+
+                // Helper: 讀取 Sheet
+                const getSheetData = (sheetName) => {
+                    const sheet = workbook.Sheets[sheetName];
+                    return sheet ? XLSX.utils.sheet_to_json(sheet) : null;
+                };
+
+                // 1. 交易紀錄
+                const transData = getSheetData('交易紀錄');
+                if (transData) {
+                    db.transactions = transData.map(row => ({
+                        id: row['ID'] || generateUUID(),
+                        date: parseExcelDate(row['日期']),
+                        type: row['類型'] || '支出',
+                        category: row['類別'] || '未分類',
+                        account: row['帳戶'] || '現金',
+                        item: row['項目'] || '未命名',
+                        amount: parseFloat(row['金額']) || 0,
+                        notes: row['備註'] || '',
+                        tags: row['標籤'] ? [row['標籤']] : [],
+                        createdAt: new Date().toISOString()
+                    }));
+                    logs.push(`✅ 交易紀錄: ${db.transactions.length} 筆`);
+                } else {
+                    logs.push(`⚠️ 找不到分頁: [交易紀錄]`);
+                }
+
+                // 2. 帳戶設定
+                const accData = getSheetData('帳戶設定');
+                if (accData) {
+                    db.accounts = accData.map(row => ({
+                        id: generateUUID(),
+                        name: row['帳戶名稱'],
+                        initial: 0,
+                        createdAt: new Date().toISOString()
+                    }));
+                    logs.push(`✅ 帳戶設定: ${db.accounts.length} 筆`);
+                }
+
+                // 3. 類別設定
+                const catData = getSheetData('類別設定');
+                if (catData) {
+                    db.categories = catData.map(row => ({
+                        id: generateUUID(),
+                        name: row['類別名稱'],
+                        type: row['類型'],
+                        createdAt: new Date().toISOString()
+                    }));
+                    logs.push(`✅ 類別設定: ${db.categories.length} 筆`);
+                }
+
+                // 4. 標籤設定
+                const tagData = getSheetData('標籤設定');
+                if (tagData) {
+                    db.tags = tagData.map(row => ({
+                        id: generateUUID(),
+                        name: row['標籤名稱'],
+                        createdAt: new Date().toISOString()
+                    }));
+                    logs.push(`✅ 標籤設定: ${db.tags.length} 筆`);
+                }
+
+                // 5. 投資組合
+                const pfData = getSheetData('投資組合');
+                if (pfData) {
+                    db.portfolio = pfData.map(row => {
+                        let ticker = row['股票代號'] || '';
+                        // 轉換 Yahoo Finance 格式
+                        if (ticker.startsWith('TPE:')) ticker = ticker.replace('TPE:', '') + '.TW';
+                        return {
+                            id: generateUUID(),
+                            ticker: ticker,
+                            quantity: parseFloat(row['數量']) || 0,
+                            currentPrice: parseFloat(row['單價']) || 0,
+                            updatedAt: new Date().toISOString()
+                        };
+                    });
+                    logs.push(`✅ 投資組合: ${db.portfolio.length} 筆`);
+                }
+
+                // 更新 Log
+                logDiv.innerHTML = `<span class="success">轉換成功！</span><br>` + logs.join('<br>');
+
+                // 下載檔案
+                const jsonString = JSON.stringify(db, null, 2);
+                const blob = new Blob([jsonString], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `zenwallet_import_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+            } catch (err) {
+                console.error(err);
+                logDiv.innerHTML = `<span class="error">❌ 錯誤: ${err.message}</span>`;
+            }
+        };
+        reader.readAsArrayBuffer(selectedFile);
+    });
+</script>
+
+</body>
+</html>

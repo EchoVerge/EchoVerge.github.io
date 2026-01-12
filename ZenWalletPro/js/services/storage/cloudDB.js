@@ -3,20 +3,28 @@ import { db } from "../../config.js";
 import { collection, doc, getDocs, writeBatch, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 export const CloudDB = {
-    // 取得某個集合的所有資料
-    async getAll(uid, storeName) {
-        if (!uid) throw new Error("User not authenticated");
-        const q = query(collection(db, "users", uid, storeName));
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => doc.data());
-    },
-
-    // 批量覆蓋上傳 (Sync Up)
-    // 策略：直接用 Local 資料覆蓋 Cloud 資料 (簡單且避免衝突)
-    async overwriteStore(uid, storeName, items) {
+    // 取得資料 (支援動態主鍵)
+    async getAll(uid, storeName, keyField = 'id') {
         if (!uid) throw new Error("User not authenticated");
         
-        // Firestore Batch 最多 500 筆，需分批處理
+        // 🔥 修改路徑：users -> uid -> data -> ZenWalletPro -> storeName
+        const q = query(collection(db, "users", uid, "data", "ZenWalletPro", storeName));
+        const snapshot = await getDocs(q);
+        
+        // 確保回傳的資料一定包含主鍵
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                ...data,
+                [keyField]: doc.id
+            };
+        });
+    },
+
+    // 批量覆蓋上傳 (支援動態主鍵)
+    async overwriteStore(uid, storeName, items, keyField = 'id') {
+        if (!uid) throw new Error("User not authenticated");
+        
         const BATCH_SIZE = 450; 
         const chunks = [];
         
@@ -27,7 +35,11 @@ export const CloudDB = {
         for (const chunk of chunks) {
             const batch = writeBatch(db);
             chunk.forEach(item => {
-                const docRef = doc(db, "users", uid, storeName, item.id);
+                const docId = item[keyField];
+                if (!docId) return;
+
+                // 🔥 修改路徑：users -> uid -> data -> ZenWalletPro -> storeName -> docId
+                const docRef = doc(db, "users", uid, "data", "ZenWalletPro", storeName, String(docId));
                 batch.set(docRef, item);
             });
             await batch.commit();
