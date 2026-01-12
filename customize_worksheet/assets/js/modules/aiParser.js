@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/aiParser.js
- * V2.5: 更新類題生成 Prompt，加入「類題答案 (similarAns)」
+ * V2.7: 更新閱卷 Prompt，適應四欄式佈局 (左一為座號)
  */
 
 import { recordRequest, handleApiError } from './usageMonitor.js';
@@ -64,16 +64,29 @@ export async function parseWithGemini(apiKey, model, text) {
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 2. 批次閱卷
+// 2. 批次閱卷 (更新版)
 export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCount) {
     const promptText = `
     你將收到 ${base64Images.length} 張答案卡圖片。
-    請依序辨識每一張圖片的：
-    1. 座號 (seat): 若無法辨識回傳 "unknown"。
-    2. 作答 (answers): 第 1-${qCount} 題。
     
-    回傳一個 JSON 陣列 (Array)。
-    範例格式：
+    [版面結構]
+    試卷主體分為「四個直欄」：
+    1. 最左側第一欄：【座號劃記區】。包含「十」、「個」兩行，下方為 0-9 的圓圈。
+    2. 右側三欄：【題目作答區】。包含第 1-15、16-30、31-45 題的選項。
+
+    [任務目標]
+    請依序辨識每一張圖片：
+    1. 座號 (seat): 
+       - 請聚焦於圖片【最左側】的座號區。
+       - 辨識「十位」與「個位」哪兩個圓圈被塗黑。
+       - 例如：十位塗0、個位塗5，則座號為 "05"。
+       - 若無法辨識劃記，回傳 "unknown"。
+       
+    2. 作答 (answers): 
+       - 忽略最左側的座號區，辨識右側題目區的塗黑選項 (A-E)。
+       - 題號範圍：1 到 ${qCount}。
+    
+    回傳 JSON 陣列：
     [
         {"seat": "01", "answers": {"1":"A", "2":"B"}},
         {"seat": "05", "answers": {"1":"C", "2":"D"}}
@@ -90,13 +103,13 @@ export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCoun
     return await callGemini(apiKey, model, [{ parts: parts }]);
 }
 
-// 3. 單張閱卷 (相容性)
+// 3. 單張閱卷
 export async function analyzeAnswerSheet(base64Image, model, apiKey, qCount) {
     const result = await analyzeAnswerSheetBatch([base64Image], model, apiKey, qCount);
     return result[0];
 }
 
-// 4. 批次生成類題 (加入 similarAns)
+// 4. 批次生成類題
 export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     const simpleList = questions.map(q => ({ id: q.id, text: q.text, ans: q.ans }));
     
@@ -116,16 +129,13 @@ export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 5. 支援多張圖片分析 (Vision)
+// 5. Vision 解析題目
 export async function parseImageWithGemini(apiKey, model, base64Images) {
-    // 如果傳入的是單張字串，轉為陣列，保持相容性
     const images = Array.isArray(base64Images) ? base64Images : [base64Images];
     
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     
-    // 建立 Image Parts
     const imageParts = images.map(img => {
-        // 移除 DataURL 前綴
         const cleanBase64 = img.split(',')[1];
         return {
             inline_data: {
@@ -150,12 +160,11 @@ export async function parseImageWithGemini(apiKey, model, base64Images) {
     ]
     `;
 
-    // 組合 Payload: Prompt 文字 + 所有圖片
     const payload = {
         contents: [{
             parts: [
                 { text: prompt },
-                ...imageParts // 展開所有圖片物件
+                ...imageParts 
             ]
         }]
     };
@@ -182,9 +191,8 @@ export async function parseImageWithGemini(apiKey, model, base64Images) {
     }
 }
 
-// 6. 批次自動解題 (補全 ans 與 expl)
+// 6. 批次自動解題
 export async function autoSolveQuestionsBatch(questions, model, apiKey) {
-    // 只傳送題目文字與ID，節省 Token
     const simpleList = questions.map(q => ({ id: q.id, text: q.text }));
     
     const prompt = `

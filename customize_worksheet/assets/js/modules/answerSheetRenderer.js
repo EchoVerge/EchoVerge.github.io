@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/answerSheetRenderer.js
- * V2.4: 修正 Grid 排版垂直對齊問題 (強制靠上)
+ * V2.8: 恢復座號區外框，並強制所有內容靠左上對齊
  */
 
 export function createAnswerSheet(title, qCount) {
@@ -32,15 +32,55 @@ export function createAnswerSheet(title, qCount) {
 }
 
 function generateSingleTable(title, qCount, isCompact) {
-    // 每欄 15 題
+    // --- 1. 建構座號劃記區 (Grid 左側第一欄) ---
+    // 這裡加回了您喜歡的外框樣式
+    let seatRows = '';
+    for (let i = 0; i < 10; i++) {
+        seatRows += `
+            <tr>
+                <td style="font-weight:bold; width:20px; text-align:right; padding-right:4px;">${i}</td>
+                <td style="padding:1px 2px;"><div class="bubble seat-bubble" style="width:20px; height:20px; line-height:18px; font-size:12px;">${i}</div></td>
+                <td style="padding:1px 2px;"><div class="bubble seat-bubble" style="width:20px; height:20px; line-height:18px; font-size:12px;">${i}</div></td>
+            </tr>
+        `;
+    }
+    
+    // 座號表格 HTML (含外框樣式)
+    const seatTableHtml = `
+        <div style="
+            justify-self: start; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            border: 2px solid #333; 
+            padding: 5px; 
+            border-radius: 8px; 
+            background: #fff;
+        ">
+            <div style="font-weight:bold; margin-bottom:5px; border-bottom:1px solid #000; width:100%; text-align:center;">座號</div>
+            <table class="ans-table seat-table" style="width: auto;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th style="font-size:12px; text-align:center;">十</th>
+                        <th style="font-size:12px; text-align:center;">個</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${seatRows}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // --- 2. 建構題目區 (Grid 右側欄位) ---
     const rowsPerCol = 15; 
-    const colCount = Math.ceil(qCount / rowsPerCol);
+    const questionColCount = Math.ceil(qCount / rowsPerCol);
     
-    // [修正重點] 加入 align-items: start 與 align-content: start
-    // 這會強制表格內容「靠上對齊」，不會被垂直拉伸或分散
-    let gridHtml = '<div style="display: grid; grid-template-columns: 1fr 1fr 1fr; width: 100%; gap: 10px; align-items: start; align-content: start;">';
-    
-    for (let c = 0; c < colCount; c++) {
+    // gridItems 陣列：第一個是座號區
+    let gridItems = [seatTableHtml];
+
+    for (let c = 0; c < questionColCount; c++) {
         let tableRows = '';
         for (let r = 0; r < rowsPerCol; r++) {
             const qNum = c * rowsPerCol + r + 1;
@@ -58,23 +98,36 @@ function generateSingleTable(title, qCount, isCompact) {
             `;
         }
         
-        // 根據欄位索引決定水平對齊
-        let alignStyle = 'justify-self: start;'; // 第1欄 (1-15) 靠左
-        
-        if (c % 3 === 1) {
-            alignStyle = 'justify-self: center;'; // 第2欄 (16-30) 置中
-        } else if (c % 3 === 2) {
-            alignStyle = 'justify-self: end;';    // 第3欄 (31-45) 靠右
-        }
-        
-        gridHtml += `
-            <table class="ans-table" style="width: auto; ${alignStyle}">
+        // 題號表格 HTML (強制靠左 justify-self: start)
+        gridItems.push(`
+            <table class="ans-table" style="width: auto; justify-self: start;">
                 ${tableRows}
             </table>
-        `;
+        `);
     }
-    gridHtml += '</div>';
 
+    // --- 3. 設定 Grid 樣式 ---
+    // [修正] align-items: start (靠上), justify-items: start (靠左)
+    let gridTemplate = `max-content`; 
+    for(let i=0; i<questionColCount; i++) {
+        gridTemplate += ` 1fr`;
+    }
+
+    const gridHtml = `
+        <div style="
+            display: grid; 
+            grid-template-columns: ${gridTemplate}; 
+            width: 100%; 
+            gap: 15px; 
+            align-items: start; 
+            justify-items: start; 
+            margin-top: 10px;
+        ">
+            ${gridItems.join('')}
+        </div>
+    `;
+
+    // --- 4. 組合最終 HTML ---
     return `
         <div class="ans-header">
             <div class="ans-header-title">${title} 答案卡</div>
