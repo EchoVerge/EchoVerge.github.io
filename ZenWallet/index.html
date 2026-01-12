@@ -15,10 +15,10 @@
     <div id="login-section" class="container text-center" style="margin-top: 20vh;">
         <h1 class="mb-4">💰 ZenWallet</h1>
         <p class="text-muted">請登入 Google 帳號以開始同步您的財務數據</p>
-        <button id="btn-logout" class="btn btn-outline-danger btn-sm">登出</button>
         <button id="btn-login" class="btn btn-primary btn-lg">
             <i class="bi bi-google"></i> Google 一鍵登入
         </button>
+        <button class="btn btn-outline-danger btn-sm">登出</button>
     </div>
 
     <div id="app-container" class="container-fluid py-4" style="display: none;">
@@ -28,7 +28,7 @@
                 <button id="btn-cloud-sync" class="btn btn-outline-primary btn-sm me-2">
                     <i class="bi bi-cloud-arrow-up"></i> 雲端備份
                 </button>
-                <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()">登出</button>
+                <button class="btn btn-outline-danger btn-sm">登出</button>
             </div>
         </header>
 
@@ -77,11 +77,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    
+    <script src="assets/js/firebase-config.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
 
-    
     <script type="module" src="assets/js/main.js"></script>
 </body>
 </html>

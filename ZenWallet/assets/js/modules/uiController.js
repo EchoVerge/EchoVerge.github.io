@@ -1,6 +1,5 @@
 /**
  * assets/js/modules/uiController.js
- * 負責處理介面互動、圖表與響應式組件
  */
 import { state } from './state.js';
 import { dbManager } from './dbManager.js';
@@ -13,17 +12,13 @@ export const uiController = {
         this.initWidgets();
     },
 
-    // 1. 初始化頁面事件
     initEventListeners() {
-        // 監聽權限變更，更新全站 UI
         window.addEventListener('auth-status-changed', (e) => {
             this.updatePremiumUI(state.isPro);
         });
     },
 
-    // 2. 初始化 Split.js 與 SortableJS (參考原本 Wallet.json 邏輯)
     initWidgets() {
-        // 分隔欄功能
         if (typeof Split !== 'undefined') {
             Split(['#dashboard-col-left', '#dashboard-col-right'], {
                 sizes: [42, 58],
@@ -32,7 +27,6 @@ export const uiController = {
             });
         }
 
-        // 拖拽佈局功能
         const leftCol = document.getElementById('dashboard-col-left');
         const rightCol = document.getElementById('dashboard-col-right');
         if (leftCol && rightCol && typeof Sortable !== 'undefined') {
@@ -47,18 +41,75 @@ export const uiController = {
         }
     },
 
-    // 3. 繪製支出圓餅圖 (重構原本 drawCategoryPieChart 邏輯)
+    // [新增] 渲染交易列表 (修復 Missing Function Error)
+    renderTransactionList(transactions) {
+        const listEl = document.getElementById('transactionsList');
+        if (!listEl) return;
+
+        listEl.innerHTML = ''; // 清空舊資料
+
+        if (transactions.length === 0) {
+            listEl.innerHTML = '<div class="text-center text-muted p-3">尚無交易紀錄</div>';
+            return;
+        }
+
+        transactions.forEach(tx => {
+            // 處理日期格式
+            const dateStr = tx.date; // 假設存的是 YYYY-MM-DD
+            
+            // 處理標籤顯示
+            let tagsHtml = '';
+            if (Array.isArray(tx.tags) && tx.tags.length > 0) {
+                tagsHtml = tx.tags.map(tag => 
+                    `<span class="badge bg-light text-dark border me-1">${tag}</span>`
+                ).join('');
+            }
+
+            const item = document.createElement('div');
+            item.className = 'list-group-item d-flex justify-content-between align-items-center';
+            item.innerHTML = `
+                <div>
+                    <div class="fw-bold">${tx.item} <small class="text-muted ms-2">${dateStr}</small></div>
+                    <div class="small text-muted">
+                        <span class="badge bg-secondary me-1">${tx.category}</span>
+                        ${tagsHtml}
+                        ${tx.account ? `<span class="text-info ms-1"><i class="bi bi-wallet2"></i> ${tx.account}</span>` : ''}
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold ${tx.type === '收入' ? 'text-income' : 'text-expense'}">
+                        ${tx.type === '收入' ? '+' : '-'} $${parseFloat(tx.amount).toLocaleString()}
+                    </div>
+                    <button class="btn btn-sm btn-link text-danger p-0 delete-btn" data-id="${tx.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            // 綁定刪除按鈕事件
+            item.querySelector('.delete-btn').addEventListener('click', async (e) => {
+                if(confirm('確定要刪除這筆紀錄嗎？')) {
+                    const id = e.currentTarget.dataset.id;
+                    await dbManager.deleteTransaction(id);
+                }
+            });
+
+            listEl.appendChild(item);
+        });
+    },
+
     renderCategoryChart(transactions) {
         const ctx = document.getElementById('categoryPieChart')?.getContext('2d');
         if (!ctx) return;
 
         if (this.charts.pie) this.charts.pie.destroy();
 
-        // 統計邏輯：排除 #不納入統計 標籤
         const dataMap = {};
         transactions.forEach(tx => {
-            if (tx.tags?.includes('#不納入統計') || tx.type !== '支出') return;
-            dataMap[tx.category] = (dataMap[tx.category] || 0) + tx.amount;
+            // 安全檢查 tx.tags 是否為陣列
+            const tags = Array.isArray(tx.tags) ? tx.tags : [];
+            if (tags.includes('#不納入統計') || tx.type !== '支出') return;
+            dataMap[tx.category] = (dataMap[tx.category] || 0) + parseFloat(tx.amount);
         });
 
         this.charts.pie = new Chart(ctx, {
@@ -67,14 +118,13 @@ export const uiController = {
                 labels: Object.keys(dataMap),
                 datasets: [{
                     data: Object.values(dataMap),
-                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc1c2', '#9966ff']
+                    backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#4bc1c2', '#9966ff', '#ff9f40']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
         });
     },
 
-    // 4. 更新權限介面 (EchoVerge 專用)
     updatePremiumUI(isPro) {
         const proBadge = document.getElementById('pro-status-badge');
         const cloudBtn = document.getElementById('btn-cloud-sync');
@@ -84,14 +134,12 @@ export const uiController = {
             proBadge.style.color = isPro ? '#2e7d32' : '#666';
         }
 
-        // 若非專業版，禁用雲端備份按鈕 (參考 cloudManager.js 邏輯)
         if (cloudBtn) {
             cloudBtn.disabled = !isPro;
             cloudBtn.title = isPro ? "雲端備份" : "專業版專屬功能";
         }
     },
 
-    // 保存佈局 (若為 Pro 則存至雲端，否則存至 LocalStorage)
     saveLayout() {
         const layout = {
             left: Array.from(document.querySelectorAll('#dashboard-col-left .dashboard-module')).map(el => el.id),
@@ -99,7 +147,6 @@ export const uiController = {
         };
         
         if (state.isPro && state.currentUser) {
-            // 專業版功能：佈局雲端同步
             dbManager.db.collection('users').doc(state.currentUser.uid).update({ layout });
         } else {
             localStorage.setItem('zenwallet_layout', JSON.stringify(layout));
