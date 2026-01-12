@@ -53,15 +53,12 @@ body {
     border-radius: 16px;
     padding: 16px 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    
-    /* 讓內容自動撐滿與伸縮 */
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* 防止內容溢出顯示捲動條 */
+    overflow: hidden; 
     transition: box-shadow 0.3s ease;
 }
 
-/* 拖曳時的效果 */
 .grid-stack-item.ui-draggable-dragging .dashboard-module {
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
@@ -79,7 +76,7 @@ body {
     align-items: center;
     gap: 8px;
     cursor: move;
-    flex-shrink: 0; /* 防止標題被壓縮 */
+    flex-shrink: 0;
 }
 
 .module-title i {
@@ -119,28 +116,31 @@ body {
 }
 
 /* =========================================
-   5. 內容區域樣式 (Lists & Charts)
+   5. 列表樣式
    ========================================= */
-/* 列表區域：自動填滿剩餘高度，內部滾動 */
-#transactionsList, #account-balance-list {
+#transactionsList {
     flex-grow: 1;
     overflow-y: auto;
-    min-height: 0; /* Firefox flex fix */
+    min-height: 0; 
 }
 
-/* 🔥 新增：圖表響應式容器 */
-/* 取代原本寫死的 height: 250px */
-.chart-responsive-container {
-    position: relative;
-    flex-grow: 1; /* 自動填滿剩餘空間 */
-    min-height: 0; /* 允許縮小到比內容還小 */
-    width: 100%;
-}
-
+/* 設定頁面的 Grid 佈局 */
 .settings-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    .settings-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 1600px) {
+    .settings-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
 }
 
 /* =========================================
@@ -150,29 +150,37 @@ body {
 .modal-backdrop { z-index: 1050; }
 
 /* =========================================
-   7. 響應式設計 (RWD - 手機版)
+   🔥 7. 手機版優化 (Mobile Card View)
    ========================================= */
-/* 當螢幕小於 992px (Bootstrap lg) 時 */
-@media (max-width: 991.98px) {
-    
-    /* 強制取消 Split.js 的 Flex 佈局，改回區塊堆疊 */
-    #dashboard-split-container {
-        display: block !important;
-        height: auto !important;
-        min-height: auto !important;
+@media (max-width: 768px) {
+    /* 將交易列表項目改為卡片式 */
+    #transactionsList .list-group-item {
+        border: 1px solid #eee;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        padding: 12px;
+        background-color: #fff;
     }
 
-    /* 強制寬度 100%，覆蓋 Split.js 的 inline styles */
-    #dashboard-col-left,
-    #dashboard-col-right {
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important; /* 手機上直接顯示所有內容，不產生內部捲軸 */
-        margin-bottom: 24px;
+    #transactionsList .list-group-item .d-flex {
+        /* 在極窄螢幕允許換行 */
+        flex-wrap: wrap; 
     }
 
-    /* 隱藏拖曳條 */
-    .gutter.gutter-horizontal {
-        display: none !important;
+    /* 調整內容間距 */
+    #transactionsList .list-group-item > div:first-child {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    /* 金額與按鈕區塊 */
+    #transactionsList .list-group-item .text-end {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-left: 0 !important; /* 覆蓋 inline style */
+        border-top: 1px dashed #eee;
+        padding-top: 8px;
     }
 }

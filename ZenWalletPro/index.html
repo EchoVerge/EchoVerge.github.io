@@ -9,8 +9,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
     <link href="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack.min.css" rel="stylesheet"/>
     <script src="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack-all.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
     
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -23,7 +26,14 @@
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="fw-bold mb-0">💰 財務儀表板 <small class="text-muted fs-6">(Pro Grid)</small></h2>
-            <div class="text-muted small">自由排列版</div>
+            
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-layout-text-window-reverse"></i> 版面配置
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow" id="layout-menu-items" style="min-width: 200px;">
+                    </ul>
+            </div>
         </div>
 
         <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
@@ -47,10 +57,9 @@
         <div class="tab-content" id="mainTabsContent">
 
             <div class="tab-pane fade show active" id="dashboard-tab" role="tabpanel">
-                
                 <div class="grid-stack">
                     
-                    <div class="grid-stack-item" gs-x="0" gs-y="0" gs-w="5" gs-h="2" gs-min-w="3" gs-min-h="2">
+                    <div class="grid-stack-item" gs-id="widget-total-assets" gs-x="0" gs-y="0" gs-w="5" gs-h="2" gs-min-w="3" gs-min-h="3">
                         <div class="grid-stack-item-content dashboard-module" id="module-total-assets">
                             <h4 class="module-title"><i class="bi bi-shield-check"></i> 總資產</h4>
                             <div class="text-center py-3 flex-grow-1 d-flex flex-column justify-content-center">
@@ -60,7 +69,7 @@
                         </div>
                     </div>
 
-                    <div class="grid-stack-item" gs-x="5" gs-y="0" gs-w="7" gs-h="2" gs-min-w="4" gs-min-h="2">
+                    <div class="grid-stack-item" gs-id="widget-stats" gs-x="5" gs-y="0" gs-w="7" gs-h="2" gs-min-w="3" gs-min-h="3">
                         <div class="grid-stack-item-content dashboard-module" id="module-stats">
                             <h4 class="module-title"><i class="bi bi-calculator"></i> 期間統計</h4>
                             <div class="row g-3 h-100 align-items-center">
@@ -80,40 +89,40 @@
                         </div>
                     </div>
 
-                    <div class="grid-stack-item" gs-x="0" gs-y="2" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
+                    <div class="grid-stack-item" gs-id="widget-cash-overview" gs-x="0" gs-y="2" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
                         <div class="grid-stack-item-content dashboard-module" id="module-cash-overview">
                             <h4 class="module-title"><i class="bi bi-wallet-fill"></i> 現金帳戶</h4>
-                            <ul class="list-group list-group-flush small" id="account-balance-list">
+                            <ul class="list-group list-group-flush small flex-grow-1 overflow-auto" id="account-balance-list">
                                 <li class="list-group-item text-muted text-center">計算中...</li>
                             </ul>
-                            <button class="btn btn-info w-100 text-white mt-2 flex-shrink-0" onclick="window.showTransferModal()">
+                            <button class="btn btn-info w-100 text-white mt-2" onclick="window.showTransferModal()">
                                 <i class="bi bi-arrow-left-right"></i> 資金移轉
                             </button>
                         </div>
                     </div>
 
-                    <div class="grid-stack-item" gs-x="5" gs-y="2" gs-w="7" gs-h="4" gs-min-w="4" gs-min-h="3">
+                    <div class="grid-stack-item" gs-id="widget-trend" gs-x="5" gs-y="2" gs-w="7" gs-h="4" gs-min-w="4" gs-min-h="4">
                         <div class="grid-stack-item-content dashboard-module" id="module-trend">
                             <h4 class="module-title"><i class="bi bi-bar-chart-line-fill"></i> 收支趨勢</h4>
-                            <div class="chart-responsive-container">
+                            <div style="position: relative; flex-grow: 1; min-height: 0;">
                                 <canvas id="trendChart"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid-stack-item" gs-x="0" gs-y="7" gs-w="5" gs-h="4" gs-min-w="3" gs-min-h="3">
+                    <div class="grid-stack-item" gs-id="widget-pie-chart" gs-x="0" gs-y="7" gs-w="5" gs-h="4" gs-min-w="3" gs-min-h="4">
                         <div class="grid-stack-item-content dashboard-module" id="module-pie-chart">
                             <h4 class="module-title"><i class="bi bi-pie-chart-fill"></i> 支出類別</h4>
-                            <div class="chart-responsive-container">
+                            <div style="position: relative; flex-grow: 1; min-height: 0;">
                                 <canvas id="categoryPieChart"></canvas>
                             </div>
                             <p id="pie-chart-no-data" class="text-center text-muted small mt-3 d-none">無支出資料</p>
                         </div>
                     </div>
 
-                    <div class="grid-stack-item" gs-x="5" gs-y="6" gs-w="7" gs-h="7" gs-min-w="5" gs-min-h="5">
+                    <div class="grid-stack-item" gs-id="widget-transactions" gs-x="5" gs-y="6" gs-w="7" gs-h="7" gs-min-w="5" gs-min-h="6">
                         <div class="grid-stack-item-content dashboard-module" id="module-transactions">
-                            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h4 class="module-title mb-0"><i class="bi bi-list-ul"></i> 近期交易</h4>
                                 <div class="d-flex gap-2">
                                     <div class="btn-group btn-group-sm">
@@ -127,7 +136,7 @@
                                 </div>
                             </div>
                             
-                            <div class="d-flex justify-content-end mb-2 flex-shrink-0">
+                            <div class="d-flex justify-content-end mb-2">
                                 <div class="btn-group btn-group-sm" role="group">
                                     <input type="radio" class="btn-check" name="viewUnit" id="unit-year" autocomplete="off">
                                     <label class="btn btn-outline-primary" for="unit-year">年</label>
@@ -140,7 +149,7 @@
                                 </div>
                             </div>
 
-                            <div class="collapse mb-2 flex-shrink-0" id="collapseAddForm">
+                            <div class="collapse mb-2" id="collapseAddForm">
                                 <div class="card card-body bg-light border-0 p-2">
                                     <form id="addTransactionForm">
                                         <div class="row g-2">
@@ -170,10 +179,16 @@
                                 </div>
                             </div>
 
-                            <input type="hidden" id="filter-start-date"><input type="hidden" id="filter-end-date"><input type="hidden" id="filter-type"><input type="hidden" id="filter-category"><input type="hidden" id="filter-account"><input type="hidden" id="filter-tag">
-                            <button id="filter-btn" class="d-none"></button><button id="filter-clear-btn" class="d-none"></button>
+                            <div class="mb-2">
+                                <div class="input-group input-group-sm mb-2">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="search-keyword" placeholder="搜尋項目或備註...">
+                                </div>
+                                <input type="hidden" id="filter-start-date"><input type="hidden" id="filter-end-date"><input type="hidden" id="filter-type"><input type="hidden" id="filter-category"><input type="hidden" id="filter-account"><input type="hidden" id="filter-tag">
+                                <button id="filter-btn" class="d-none"></button><button id="filter-clear-btn" class="d-none"></button>
+                            </div>
                             
-                            <div id="transactionsList" class="list-group list-group-flush">
+                            <div id="transactionsList" class="list-group list-group-flush flex-grow-1 overflow-auto" style="min-height: 0;">
                                 <div class="text-center text-muted py-4">載入中...</div>
                             </div>
                         </div>
@@ -234,11 +249,29 @@
             </div>
 
             <div class="tab-pane fade" id="settings-tab" role="tabpanel">
-                <div class="dashboard-module mb-4 border-start border-4 border-warning">
-                    <h5 class="module-title"><i class="bi bi-database-fill-gear"></i> 資料庫初始化</h5>
-                    <p class="text-muted small">如果您是第一次使用，請點擊下方按鈕來寫入預設的類別與帳戶。</p>
-                    <button id="btn-init-data" class="btn btn-warning btn-sm"><i class="bi bi-magic"></i> 寫入預設資料</button>
+                
+                <div class="row mb-4">
+                    <div class="col-lg-6 mb-3 mb-lg-0">
+                        <div class="dashboard-module border-start border-4 border-info h-100">
+                            <h5 class="module-title"><i class="bi bi-arrow-down-up"></i> 資料備份與還原</h5>
+                            <p class="text-muted small">將您的所有資料匯出為 JSON 檔案，或從備份檔還原。</p>
+                            <div class="d-flex gap-2 mt-auto">
+                                <button id="btn-export-data" class="btn btn-outline-primary btn-sm flex-grow-1"><i class="bi bi-download"></i> 匯出資料</button>
+                                <button id="btn-import-data" class="btn btn-outline-success btn-sm flex-grow-1"><i class="bi bi-upload"></i> 匯入備份</button>
+                                <input type="file" id="file-input-import" class="d-none" accept=".json">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="dashboard-module border-start border-4 border-warning h-100">
+                            <h5 class="module-title"><i class="bi bi-database-fill-gear"></i> 資料庫初始化</h5>
+                            <p class="text-muted small">如果您是第一次使用，請點擊下方按鈕來寫入預設的類別與帳戶。</p>
+                            <button id="btn-init-data" class="btn btn-warning btn-sm w-100 mt-2"><i class="bi bi-magic"></i> 寫入預設資料</button>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="settings-grid">
                     <div class="dashboard-module">
                         <h4 class="module-title"><i class="bi bi-tags-fill"></i> 類別管理</h4>
@@ -247,8 +280,9 @@
                             <div class="col-4"><label class="form-label small">類型</label><select id="new-category-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
                             <div class="col-3"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
                         </form>
-                        <hr><ul class="list-group list-group-flush" id="settings-category-list"><li class="list-group-item text-muted small">載入中...</li></ul>
+                        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-category-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
                     </div>
+
                     <div class="dashboard-module">
                         <h4 class="module-title"><i class="bi bi-wallet2"></i> 帳戶管理</h4>
                         <form id="addAccountForm" class="row g-2 align-items-end mb-3">
@@ -256,16 +290,42 @@
                             <div class="col-5"><label class="form-label small">初始金額</label><input type="number" step="any" class="form-control form-control-sm" id="new-account-initial" value="0" required></div>
                             <div class="col-12 mt-2"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增帳戶</button></div>
                         </form>
-                        <hr><ul class="list-group list-group-flush" id="settings-account-list"><li class="list-group-item text-muted small">載入中...</li></ul>
+                        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-account-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
                     </div>
+
                     <div class="dashboard-module">
                         <h4 class="module-title"><i class="bi bi-bookmark-plus-fill"></i> 標籤管理</h4>
                         <form id="addTagForm" class="row g-2 align-items-end mb-3">
                             <div class="col-8"><label class="form-label small">標籤名稱</label><input type="text" class="form-control form-control-sm" id="new-tag-name" placeholder="#名稱" required></div>
                             <div class="col-4"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
                         </form>
-                        <hr><ul class="list-group list-group-flush" id="settings-tag-list"><li class="list-group-item text-muted small">載入中...</li></ul>
+                        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-tag-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
                     </div>
+
+                    <div class="dashboard-module">
+                        <h4 class="module-title"><i class="bi bi-calendar-check-fill"></i> 定期交易設定</h4>
+                        <form id="addRecurringForm" class="row g-2 align-items-end mb-3">
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="rec-name" placeholder="名稱 (如: 房租)" required></div>
+                            <div class="col-4"><input type="number" class="form-control form-control-sm" id="rec-amount" placeholder="$" required></div>
+                            <div class="col-4"><select id="rec-freq" class="form-select form-select-sm"><option value="monthly">每月</option><option value="weekly">每週</option><option value="yearly">每年</option></select></div>
+                            <div class="col-4"><input type="date" class="form-control form-control-sm" id="rec-date" required title="首次執行日"></div>
+                            
+                            <div class="col-6"><select id="rec-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
+                            <div class="col-6"><select id="rec-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
+                            <div class="col-6"><select id="rec-category" class="form-select form-select-sm" required><option value="">類別</option></select></div>
+                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="rec-tags" placeholder="標籤"></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="rec-notes" placeholder="備註"></div>
+
+                            <div class="col-12 mt-2">
+                                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增規則</button>
+                            </div>
+                        </form>
+                        <hr>
+                        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="recurring-rules-list" style="max-height: 200px;">
+                            <li class="list-group-item text-muted small">載入中...</li>
+                        </ul>
+                    </div>
+
                 </div>
             </div>
 
@@ -349,6 +409,25 @@
                     <div id="categoryDetailsList" class="list-group list-group-flush"></div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="saveLayoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">儲存自訂版面</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="layout-name-input" class="form-label">版面名稱</label>
+                    <input type="text" class="form-control" id="layout-name-input" placeholder="例如: 我的最愛配置">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="window.confirmSaveLayout()">儲存</button>
+                </div>
             </div>
         </div>
     </div>
