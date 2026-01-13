@@ -3,6 +3,7 @@ import { LocalDB } from "./storage/localDB.js";
 import { CloudDB } from "./storage/cloudDB.js";
 import { AuthState } from "./auth.js";
 
+// 🔥 新增 'budgets'
 const STORE_CONFIG = {
     'transactions': 'id',
     'accounts': 'id',
@@ -11,7 +12,8 @@ const STORE_CONFIG = {
     'portfolio': 'id',
     'recurring_rules': 'id',
     'templates': 'id',
-    'asset_history': 'date'
+    'asset_history': 'date',
+    'budgets': 'id' 
 };
 
 const LAYOUT_KEYS = ['dashboard_current_layout', 'dashboard_custom_layouts'];
@@ -52,7 +54,6 @@ export async function syncDown() {
         const keyField = STORE_CONFIG[store];
         const cloudData = await CloudDB.getAll(user.uid, store, keyField);
         
-        // 🔥 關鍵修正：強制清空本地資料，實現「覆蓋」效果
         await LocalDB.clearStore(store);
         
         if (cloudData.length > 0) {

@@ -2,19 +2,20 @@
 import { uuidv4 } from '../../utils/helpers.js';
 
 const DB_NAME = 'ZenWalletDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3; // 🔥 升級版本號以觸發 upgrade
 
 const dbPromise = idb.openDB(DB_NAME, DB_VERSION, {
     upgrade(db, oldVersion, newVersion, transaction) {
         const stores = [
             'transactions', 'accounts', 'categories', 'tags', 'portfolio', 'recurring_rules',
             'templates',
-            'asset_history'
+            'asset_history',
+            'budgets' // 🔥 新增預算資料表
         ];
         
         stores.forEach(name => {
             if (!db.objectStoreNames.contains(name)) {
-                // 🔥 確保 asset_history 使用 date 作為主鍵
+                // 確保 asset_history 使用 date 作為主鍵
                 if (name === 'asset_history') {
                     db.createObjectStore(name, { keyPath: 'date' });
                 } else {

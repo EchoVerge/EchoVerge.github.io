@@ -249,3 +249,35 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="budgetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-speedometer2"></i> 新增預算</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBudgetForm">
+                    <div class="mb-3">
+                        <label class="form-label">預算名稱</label>
+                        <input type="text" class="form-control" id="budget-name" placeholder="例如：餐飲控制" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">監控目標</label>
+                        <select class="form-select" id="budget-category" required>
+                            </select>
+                        <div class="form-text">選擇「總支出」將監控所有消費。</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">每月限額</label>
+                        <input type="number" class="form-control" id="budget-amount" placeholder="$" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">儲存設定</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
