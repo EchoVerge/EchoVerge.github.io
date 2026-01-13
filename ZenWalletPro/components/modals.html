@@ -1,3 +1,67 @@
+<div class="modal fade" id="stockPurchaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-graph-up-arrow"></i> 股票交易</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="stockPurchaseForm">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label small">日期</label>
+                            <input type="date" class="form-control" id="sp-date" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small">扣款帳戶</label>
+                            <select class="form-select" id="sp-account" required></select>
+                        </div>
+                        
+                        <div class="col-4">
+                            <label class="form-label small">代號</label>
+                            <input type="text" class="form-control" id="sp-ticker" placeholder="2330.TW" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small">股數</label>
+                            <input type="number" class="form-control" id="sp-qty" placeholder="數量" step="any">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small">單價</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="sp-price" step="any">
+                                <button type="button" class="btn btn-outline-secondary px-2" id="btn-sp-fetch" title="抓取股價">
+                                    <i class="bi bi-cloud-download"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-6">
+                            <label class="form-label small">手續費</label>
+                            <input type="number" class="form-control" id="sp-fee" value="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-success">總金額 (自動試算)</label>
+                            <input type="number" class="form-control border-success" id="sp-total" required>
+                        </div>
+
+                        <div class="col-12 d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="sp-continuous">
+                                <label class="form-check-label small" for="sp-continuous">連續輸入模式</label>
+                            </div>
+                            <small class="text-muted" id="sp-msg"></small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="document.getElementById('stockPurchaseForm').dispatchEvent(new Event('submit'))">新增交易</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="editTransactionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -13,13 +77,30 @@
                         <div class="col-6"><label class="form-label small">項目</label><input type="text" class="form-control" id="edit-item" required></div>
                         
                         <div id="edit-stock-fields" class="col-12 bg-white border rounded p-2 d-none">
-                            <div class="row g-2">
+                            <div class="row g-2 align-items-end">
                                 <div class="col-12"><small class="text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> 股票交易資訊</small></div>
-                                <div class="col-4"><input type="text" class="form-control form-control-sm" id="edit-stock-ticker" placeholder="代號 (2330.TW)"></div>
-                                <div class="col-4"><input type="number" class="form-control form-control-sm" id="edit-stock-qty" placeholder="股數"></div>
-                                <div class="col-4"><input type="number" class="form-control form-control-sm" id="edit-stock-price" step="any" placeholder="單價"></div>
-                                <div class="col-6"><input type="number" class="form-control form-control-sm" id="edit-stock-fee" value="0" placeholder="手續費"></div>
-                                <div class="col-6 d-flex align-items-center justify-content-end"><small class="text-muted" id="edit-stock-total-display">總計: 0</small></div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">代號</label>
+                                    <input type="text" class="form-control form-control-sm" id="edit-stock-ticker" placeholder="2330.TW">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">股數</label>
+                                    <input type="number" class="form-control form-control-sm" id="edit-stock-qty" placeholder="數量">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small mb-0">單價</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="edit-stock-price" step="any" placeholder="$">
+                                        <button class="btn btn-outline-secondary" type="button" id="btn-fetch-stock-price-edit" title="抓取股價"><i class="bi bi-cloud-download"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small mb-0">手續費</label>
+                                    <input type="number" class="form-control form-control-sm" id="edit-stock-fee" value="0">
+                                </div>
+                                <div class="col-6 text-end">
+                                    <small class="text-muted" id="edit-stock-total-display">總計: 0</small>
+                                </div>
                             </div>
                         </div>
 
@@ -34,25 +115,31 @@
     </div>
 </div>
 
+<div class="modal fade" id="stockDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-list-task"></i> <span id="stock-detail-title">個股明細</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0 text-center small align-middle">
+                        <thead class="table-light"><tr><th>日期</th><th>類型</th><th>單價</th><th>股數</th><th>手續費</th><th>總金額</th></tr></thead>
+                        <tbody id="stock-detail-list"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">帳戶間資金移轉</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <form id="addTransferForm">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">從</label><select id="transfer-from-account" class="form-select" required></select></div>
-                        <div class="col-md-6"><label class="form-label">至</label><select id="transfer-to-account" class="form-select" required></select></div>
-                        <div class="col-md-6"><label class="form-label">金額</label><input type="number" id="transfer-amount" class="form-control" min="0" step="any" required></div>
-                        <div class="col-md-6"><label class="form-label">日期</label><input type="date" class="form-control" id="transfer-date" required></div>
-                        <div class="col-12"><label class="form-label">備註</label><input type="text" id="transfer-notes" class="form-control" placeholder="(選填)"></div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-info text-white" onclick="document.getElementById('addTransferForm').dispatchEvent(new Event('submit'))">確認移轉</button>
-            </div>
+            <div class="modal-body"><form id="addTransferForm"><div class="row g-3"><div class="col-md-6"><label class="form-label">從</label><select id="transfer-from-account" class="form-select" required></select></div><div class="col-md-6"><label class="form-label">至</label><select id="transfer-to-account" class="form-select" required></select></div><div class="col-md-6"><label class="form-label">金額</label><input type="number" id="transfer-amount" class="form-control" min="0" step="any" required></div><div class="col-md-6"><label class="form-label">日期</label><input type="date" class="form-control" id="transfer-date" required></div><div class="col-12"><label class="form-label">備註</label><input type="text" id="transfer-notes" class="form-control" placeholder="(選填)"></div></div></form></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-info text-white" onclick="document.getElementById('addTransferForm').dispatchEvent(new Event('submit'))">確認移轉</button></div>
         </div>
     </div>
 </div>
@@ -61,17 +148,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header"><h5 class="modal-title">帳目核對</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <p>您正在核對帳戶：<strong id="adjust-account-name"></strong></p>
-                <input type="hidden" id="adjust-account-name-hidden">
-                <div class="mb-3"><label class="form-label">目前系統餘額</label><input type="text" id="adjust-calculated-balance" class="form-control" disabled readonly></div>
-                <div class="mb-3"><label class="form-label">實際餘額</label><input type="number" step="any" id="adjust-actual-balance" class="form-control" required placeholder="請輸入當下實際金額"></div>
-                <p class="text-muted small">系統將自動新增一筆「帳目調整」交易，以補足差額。</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary">確認調整</button>
-            </div>
+            <div class="modal-body"><p>您正在核對帳戶：<strong id="adjust-account-name"></strong></p><input type="hidden" id="adjust-account-name-hidden"><div class="mb-3"><label class="form-label">目前系統餘額</label><input type="text" id="adjust-calculated-balance" class="form-control" disabled readonly></div><div class="mb-3"><label class="form-label">實際餘額</label><input type="number" step="any" id="adjust-actual-balance" class="form-control" required placeholder="請輸入當下實際金額"></div><p class="text-muted small">系統將自動新增一筆「帳目調整」交易，以補足差額。</p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary">確認調整</button></div>
         </div>
     </div>
 </div>
@@ -79,14 +156,7 @@
 <div class="modal fade" id="categoryDetailsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="categoryDetailsTitle">類別明細</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="categoryDetailsList" class="list-group list-group-flush"></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
+            <div class="modal-header"><h5 class="modal-title" id="categoryDetailsTitle">類別明細</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="categoryDetailsList" class="list-group list-group-flush"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
         </div>
     </div>
 </div>
@@ -94,18 +164,7 @@
 <div class="modal fade" id="saveLayoutModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">儲存自訂版面</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <label for="layout-name-input" class="form-label">版面名稱</label>
-                <input type="text" class="form-control" id="layout-name-input" placeholder="例如: 我的最愛配置">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-primary" onclick="window.confirmSaveLayout()">儲存</button>
-            </div>
+            <div class="modal-header"><h5 class="modal-title">儲存自訂版面</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label for="layout-name-input" class="form-label">版面名稱</label><input type="text" class="form-control" id="layout-name-input" placeholder="例如: 我的最愛配置"></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="window.confirmSaveLayout()">儲存</button></div>
         </div>
     </div>
 </div>
@@ -113,22 +172,7 @@
 <div class="modal fade" id="tagTrendModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-graph-up"></i> <span id="tag-trend-title">標籤趨勢</span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="d-flex justify-content-between mb-3">
-                    <span class="text-muted">歷史總支出</span>
-                    <strong class="text-expense fs-5" id="tag-trend-total">$ 0</strong>
-                </div>
-                <div style="height: 300px; position: relative;">
-                    <canvas id="tagTrendChart"></canvas>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-            </div>
+            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-graph-up"></i> <span id="tag-trend-title">標籤趨勢</span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="d-flex justify-content-between mb-3"><span class="text-muted">歷史總支出</span><strong class="text-expense fs-5" id="tag-trend-total">$ 0</strong></div><div style="height: 300px; position: relative;"><canvas id="tagTrendChart"></canvas></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button></div>
         </div>
     </div>
 </div>
@@ -136,46 +180,7 @@
 <div class="modal fade" id="licenseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">會員授權狀態</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center pt-4">
-                <div class="mb-3">
-                    <img id="license-user-avatar" src="" class="rounded-circle border" width="80" height="80">
-                </div>
-                <h5 id="license-user-name" class="fw-bold mb-1"></h5>
-                <p id="license-user-email" class="text-muted small mb-3"></p>
-                
-                <div class="card bg-light border-0 mb-3">
-                    <div class="card-body py-2">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-muted small">目前方案</span>
-                            <span id="license-type" class="fw-bold text-primary">Free</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-muted small">到期日</span>
-                            <span id="license-expiry" class="fw-bold">N/A</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="license-upgrade-area">
-                    <p class="small text-muted mb-2">升級 PRO 即可啟用雲端同步功能！</p>
-                    <a href="https://payment.example.com" target="_blank" class="btn btn-warning w-100 fw-bold">
-                        <i class="bi bi-star-fill"></i> 立即升級 PRO
-                    </a>
-                </div>
-                
-                <div id="license-pro-area" class="d-none">
-                    <div class="alert alert-success small mb-0">
-                        <i class="bi bi-check-circle-fill"></i> 您已擁有完整存取權限
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer border-0 justify-content-center pt-0">
-                <button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" onclick="window.logout()">登出帳號</button>
-            </div>
+            <div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">會員授權狀態</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center pt-4"><div class="mb-3"><img id="license-user-avatar" src="" class="rounded-circle border" width="80" height="80"></div><h5 id="license-user-name" class="fw-bold mb-1"></h5><p id="license-user-email" class="text-muted small mb-3"></p><div class="card bg-light border-0 mb-3"><div class="card-body py-2"><div class="d-flex justify-content-between mb-1"><span class="text-muted small">目前方案</span><span id="license-type" class="fw-bold text-primary">Free</span></div><div class="d-flex justify-content-between"><span class="text-muted small">到期日</span><span id="license-expiry" class="fw-bold">N/A</span></div></div></div><div id="license-upgrade-area"><p class="small text-muted mb-2">升級 PRO 即可啟用雲端同步功能！</p><a href="https://payment.example.com" target="_blank" class="btn btn-warning w-100 fw-bold"><i class="bi bi-star-fill"></i> 立即升級 PRO</a></div><div id="license-pro-area" class="d-none"><div class="alert alert-success small mb-0"><i class="bi bi-check-circle-fill"></i> 您已擁有完整存取權限</div></div></div><div class="modal-footer border-0 justify-content-center pt-0"><button type="button" class="btn btn-link text-muted btn-sm text-decoration-none" onclick="window.logout()">登出帳號</button></div>
         </div>
     </div>
 </div>

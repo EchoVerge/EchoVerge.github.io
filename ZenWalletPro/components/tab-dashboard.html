@@ -73,6 +73,15 @@
         </div>
     </div>
 
+    <div class="grid-stack-item" gs-id="widget-tags" gs-x="0" gs-y="17" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
+        <div class="grid-stack-item-content dashboard-module" id="module-tags">
+            <h4 class="module-title"><i class="bi bi-tags-fill"></i> 標籤支出排行</h4>
+            <div id="tag-analytics-list" class="list-group list-group-flush flex-grow-1 overflow-auto small">
+                <div class="text-center text-muted py-3">載入中...</div>
+            </div>
+        </div>
+    </div>
+
     <div class="grid-stack-item" gs-id="widget-transactions" gs-x="5" gs-y="6" gs-w="7" gs-h="7" gs-min-w="5" gs-min-h="6">
         <div class="grid-stack-item-content dashboard-module" id="module-transactions">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -83,6 +92,9 @@
                         <button class="btn btn-outline-secondary px-2" id="current-view-display" disabled>本月</button>
                         <button class="btn btn-outline-secondary" id="nav-next"><i class="bi bi-chevron-right"></i></button>
                     </div>
+                    <button class="btn btn-sm btn-success" id="btn-open-stock-modal" title="購買股票">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </button>
                     <button class="btn btn-sm btn-primary" onclick="document.getElementById('add-date').valueAsDate=new Date();" data-bs-toggle="collapse" data-bs-target="#collapseAddForm">
                         <i class="bi bi-plus-lg"></i>
                     </button>
@@ -120,21 +132,12 @@
                                 </select>
                             </div>
                             <div class="col-6">
-                                <select id="add-account" class="form-select form-select-sm" required><option value="">帳戶</option></select>
+                                <select id="add-account" class="form-select form-select-sm" required>
+                                    <option value="">帳戶</option>
+                                </select>
                             </div>
                             <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-item" placeholder="項目" required></div>
                             
-                            <div id="stock-fields" class="col-12 bg-white border rounded p-2 d-none">
-                                <div class="row g-2">
-                                    <div class="col-12"><small class="text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> 股票交易資訊</small></div>
-                                    <div class="col-4"><input type="text" class="form-control form-control-sm" id="stock-ticker" placeholder="代號 (2330.TW)"></div>
-                                    <div class="col-4"><input type="number" class="form-control form-control-sm" id="stock-qty" placeholder="股數"></div>
-                                    <div class="col-4"><input type="number" class="form-control form-control-sm" id="stock-price" step="any" placeholder="單價"></div>
-                                    <div class="col-6"><input type="number" class="form-control form-control-sm" id="stock-fee" value="0" placeholder="手續費"></div>
-                                    <div class="col-6 d-flex align-items-center justify-content-end"><small class="text-muted" id="stock-total-display">總計: 0</small></div>
-                                </div>
-                            </div>
-
                             <div class="col-12">
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">$</span>
@@ -143,7 +146,7 @@
                             </div>
                             
                             <div class="col-12">
-                                <input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤 (輸入 #股票 觸發連動)">
+                                <input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤">
                             </div>
                             
                             <div class="col-12"><textarea class="form-control form-control-sm" id="add-notes" rows="1" placeholder="備註"></textarea></div>
@@ -164,15 +167,6 @@
             
             <div id="transactionsList" class="list-group list-group-flush flex-grow-1 overflow-auto" style="min-height: 0;">
                 <div class="text-center text-muted py-4">載入中...</div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="grid-stack-item" gs-id="widget-tags" gs-x="0" gs-y="17" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
-        <div class="grid-stack-item-content dashboard-module" id="module-tags">
-            <h4 class="module-title"><i class="bi bi-tags-fill"></i> 標籤支出排行</h4>
-            <div id="tag-analytics-list" class="list-group list-group-flush flex-grow-1 overflow-auto small">
-                <div class="text-center text-muted py-3">載入中...</div>
             </div>
         </div>
     </div>

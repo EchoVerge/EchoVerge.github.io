@@ -7,9 +7,8 @@ export async function initializeDefaultData() {
     // 1. 預設帳戶
     const defaultAccounts = [
         { name: "現金", initial: 0 },
-        { name: "銀行存款", initial: 0 },
-        { name: "信用卡", initial: 0 },
-        { name: "投資帳戶 (Portfolio)", initial: 0 }
+        { name: "銀行", initial: 0 },
+        { name: "信用卡", initial: 0 }
     ];
 
     // 2. 預設類別
@@ -19,7 +18,7 @@ export async function initializeDefaultData() {
         { name: "交通", type: "支出" },
         { name: "購物", type: "支出" },
         { name: "娛樂", type: "支出" },
-        { name: "居住", type: "支出" },
+        { name: "居家", type: "支出" },
         { name: "醫療", type: "支出" },
         { name: "教育", type: "支出" },
         { name: "投資支出", type: "支出" }, // 系統必要
@@ -37,11 +36,10 @@ export async function initializeDefaultData() {
 
     // 3. 預設標籤
     const defaultTags = [
-        { name: "#早餐" },
-        { name: "#午餐" },
-        { name: "#晚餐" },
+        { name: "#三餐" },
         { name: "#飲料" },
-        { name: "#必需品" }
+        { name: "#生活" },
+        { name: "#不納入統計" }
     ];
 
     console.log("開始寫入預設資料...");

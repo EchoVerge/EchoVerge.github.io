@@ -20,7 +20,7 @@ export async function updatePortfolioByTransaction(txData) {
     // 取得現有持股
     const allHoldings = await LocalDB.getAll(STORE);
     let holding = allHoldings.find(h => h.ticker === ticker);
-    let isNew = false; // 🔥 關鍵修正：明確標記是否為新持股
+    let isNew = false; // 🔥 關鍵修正：標記是否為新持股
 
     if (!holding) {
         // 如果是賣出且沒庫存，拋出錯誤
@@ -30,7 +30,7 @@ export async function updatePortfolioByTransaction(txData) {
         isNew = true; // 標記為新
         // 初始化新持股
         holding = {
-            id: uuidv4(), // 雖然這裡給了 ID，但因為標記為 isNew，我們會用 add 而不是 update
+            id: uuidv4(),
             ticker: ticker,
             quantity: 0,
             averageCost: 0,
@@ -60,7 +60,7 @@ export async function updatePortfolioByTransaction(txData) {
 
     holding.updatedAt = new Date().toISOString();
 
-    // 🔥 修正：根據 isNew 決定操作，解決 "Item not found"
+    // 🔥 根據 isNew 決定操作，避免對不存在的 ID 呼叫 update
     if (isNew) {
         await LocalDB.add(STORE, holding);
     } else {
