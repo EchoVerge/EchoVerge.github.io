@@ -243,7 +243,7 @@ body.privacy-active .sensitive {
 
 .tag-stat-item .badge {
     font-weight: normal;
-    background-color: #e7f0ff;
+    background-color: #e7f0ff !important;
     color: #0d6efd;
 }
 
