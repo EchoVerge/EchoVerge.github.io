@@ -84,6 +84,7 @@
 
     <div class="grid-stack-item" gs-id="widget-transactions" gs-x="5" gs-y="6" gs-w="7" gs-h="7" gs-min-w="5" gs-min-h="6">
         <div class="grid-stack-item-content dashboard-module" id="module-transactions">
+            
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h4 class="module-title mb-0"><i class="bi bi-list-ul"></i> 近期交易</h4>
                 <div class="d-flex gap-2">
@@ -103,14 +104,10 @@
             
             <div class="d-flex justify-content-end mb-2">
                 <div class="btn-group btn-group-sm" role="group">
-                    <input type="radio" class="btn-check" name="viewUnit" id="unit-year" autocomplete="off">
-                    <label class="btn btn-outline-primary" for="unit-year">年</label>
-                    <input type="radio" class="btn-check" name="viewUnit" id="unit-month" autocomplete="off" checked>
-                    <label class="btn btn-outline-primary" for="unit-month">月</label>
-                    <input type="radio" class="btn-check" name="viewUnit" id="unit-week" autocomplete="off">
-                    <label class="btn btn-outline-primary" for="unit-week">週</label>
-                    <input type="radio" class="btn-check" name="viewUnit" id="unit-day" autocomplete="off">
-                    <label class="btn btn-outline-primary" for="unit-day">日</label>
+                    <input type="radio" class="btn-check" name="viewUnit" id="unit-year" autocomplete="off"><label class="btn btn-outline-primary" for="unit-year">年</label>
+                    <input type="radio" class="btn-check" name="viewUnit" id="unit-month" autocomplete="off" checked><label class="btn btn-outline-primary" for="unit-month">月</label>
+                    <input type="radio" class="btn-check" name="viewUnit" id="unit-week" autocomplete="off"><label class="btn btn-outline-primary" for="unit-week">週</label>
+                    <input type="radio" class="btn-check" name="viewUnit" id="unit-day" autocomplete="off"><label class="btn btn-outline-primary" for="unit-day">日</label>
                 </div>
             </div>
 
@@ -119,36 +116,12 @@
                     <form id="addTransactionForm">
                         <div class="row g-2">
                             <div class="col-6"><input type="date" class="form-control form-control-sm" id="add-date" required></div>
-                            <div class="col-6">
-                                <select id="add-type" class="form-select form-select-sm" required>
-                                    <option value="" disabled selected>類型</option>
-                                    <option value="支出">支出</option>
-                                    <option value="收入">收入</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <select id="add-category" class="form-select form-select-sm" disabled required>
-                                    <option value="">類別</option>
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <select id="add-account" class="form-select form-select-sm" required>
-                                    <option value="">帳戶</option>
-                                </select>
-                            </div>
+                            <div class="col-6"><select id="add-type" class="form-select form-select-sm" required><option value="" disabled selected>類型</option><option value="支出">支出</option><option value="收入">收入</option></select></div>
+                            <div class="col-6"><select id="add-category" class="form-select form-select-sm" disabled required><option value="">類別</option></select></div>
+                            <div class="col-6"><select id="add-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
                             <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-item" placeholder="項目" required></div>
-                            
-                            <div class="col-12">
-                                <div class="input-group input-group-sm">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="add-amount" placeholder="總金額" step="any" required>
-                                </div>
-                            </div>
-                            
-                            <div class="col-12">
-                                <input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤">
-                            </div>
-                            
+                            <div class="col-12"><div class="input-group input-group-sm"><span class="input-group-text">$</span><input type="number" class="form-control" id="add-amount" placeholder="總金額" step="any" required></div></div>
+                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤"></div>
                             <div class="col-12"><textarea class="form-control form-control-sm" id="add-notes" rows="1" placeholder="備註"></textarea></div>
                             <div class="col-12"><button type="submit" class="btn btn-primary btn-sm w-100">新增</button></div>
                         </div>
@@ -157,17 +130,48 @@
             </div>
 
             <div class="mb-2">
-                <div class="input-group input-group-sm mb-2">
+                <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="search-keyword" placeholder="搜尋項目或備註...">
+                    <input type="text" class="form-control" id="search-keyword" placeholder="搜尋項目、類別、帳戶...">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filter-panel" title="進階篩選">
+                        <i class="bi bi-funnel"></i>
+                    </button>
                 </div>
-                <input type="hidden" id="filter-start-date"><input type="hidden" id="filter-end-date"><input type="hidden" id="filter-type"><input type="hidden" id="filter-category"><input type="hidden" id="filter-account"><input type="hidden" id="filter-tag">
-                <button id="filter-btn" class="d-none"></button><button id="filter-clear-btn" class="d-none"></button>
+                
+                <div class="collapse mt-2" id="filter-panel">
+                    <div class="card card-body bg-light border-0 p-2">
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <select class="form-select form-select-sm" id="filter-type">
+                                    <option value="">所有類型</option>
+                                    <option value="支出">支出</option>
+                                    <option value="收入">收入</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select class="form-select form-select-sm" id="filter-account">
+                                    <option value="">所有帳戶</option>
+                                    </select>
+                            </div>
+                            <div class="col-4">
+                                <select class="form-select form-select-sm" id="filter-category">
+                                    <option value="">所有類別</option>
+                                    </select>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button class="btn btn-sm btn-link text-decoration-none text-muted" id="btn-clear-filter">
+                                    <i class="bi bi-x-circle"></i> 清除篩選
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="filter-start-date">
+                <input type="hidden" id="filter-end-date">
             </div>
             
-            <div id="transactionsList" class="list-group list-group-flush flex-grow-1 overflow-auto" style="min-height: 0;">
-                <div class="text-center text-muted py-4">載入中...</div>
-            </div>
+            <div id="transactionsList" class="list-group list-group-flush flex-grow-1 overflow-auto" style="min-height: 0;"><div class="text-center text-muted py-4">載入中...</div></div>
         </div>
     </div>
 
