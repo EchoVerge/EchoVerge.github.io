@@ -259,3 +259,120 @@ body.privacy-active .sensitive {
 .tag-stat-item:nth-child(1) .tag-rank-num { color: #ffc107; font-weight: bold; } /* 金 */
 .tag-stat-item:nth-child(2) .tag-rank-num { color: #adb5bd; font-weight: bold; } /* 銀 */
 .tag-stat-item:nth-child(3) .tag-rank-num { color: #fd7e14; font-weight: bold; } /* 銅 */
+
+/* =========================================
+   10. FullCalendar 行事曆美化 (🔥 修正版)
+   ========================================= */
+#calendar {
+    --fc-border-color: #f0f0f0;
+    --fc-daygrid-event-dot-width: 8px;
+    font-size: 0.85rem;
+}
+
+/* 標頭工具列 */
+.fc-header-toolbar {
+    margin-bottom: 1rem !important;
+}
+
+.fc-toolbar-title {
+    font-size: 1.25rem !important;
+    font-weight: 700;
+    color: #333;
+}
+
+/* 按鈕樣式 */
+.fc-button {
+    background-color: #fff !important;
+    border: 1px solid #dee2e6 !important;
+    color: #555 !important;
+    font-weight: 600 !important;
+    text-transform: capitalize;
+    box-shadow: none !important;
+    padding: 0.25rem 0.5rem !important;
+}
+
+.fc-button:hover, .fc-button-active {
+    background-color: #e9ecef !important;
+    color: #0d6efd !important;
+    border-color: #dee2e6 !important;
+}
+
+.fc-button-primary:not(:disabled):active, 
+.fc-button-primary:not(:disabled).fc-button-active {
+    background-color: #e7f0ff !important;
+    color: #0d6efd !important;
+}
+
+/* 表格邊框 */
+.fc-theme-standard th, .fc-theme-standard td, .fc-theme-standard .fc-scrollgrid {
+    border-color: #f8f9fa !important;
+}
+
+.fc-col-header-cell-cushion {
+    color: #6c757d;
+    font-weight: 600;
+    padding: 8px 0 !important;
+}
+
+.fc-daygrid-day-number {
+    color: #555;
+    font-weight: 500;
+    padding: 8px !important;
+    position: relative;
+    z-index: 2; /* 確保數字在背景之上 */
+}
+
+/* 當天 (Today) 樣式 */
+.fc-day-today .fc-daygrid-day-number {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px;
+}
+
+/* 事件樣式 */
+.fc-event {
+    cursor: pointer;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 1px 2px;
+}
+
+.fc-event-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+/* 隱藏捲軸 */
+.fc-scroller {
+    overflow-y: hidden !important; 
+}
+
+/* 預設背景 (本月日期) */
+.fc-day {
+    background-color: #ffffff !important;
+    transition: background-color 0.2s ease;
+}
+
+/* 非本月背景 (淺灰) */
+.fc-day-other {
+    background-color: #f9f9f9 !important;
+    opacity: 0.8;
+}
+
+/* 懸停效果  */
+.fc-daygrid-day:hover {
+    background-color: #f0f8ff !important; /* AliceBlue，比 #f8faff 更明顯一點 */
+    cursor: pointer;
+}
+
+/* 確保今天的懸停也是藍色 */
+.fc-day-today:hover {
+    background-color: #f0f8ff !important;
+}

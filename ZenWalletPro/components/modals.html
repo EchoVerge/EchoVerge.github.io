@@ -184,3 +184,68 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="realizedProfitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cash-coin"></i> 已實現損益 (Realized P&L)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="d-flex justify-content-around p-3 bg-light border-bottom">
+                    <div class="text-center">
+                        <small class="text-muted">總獲利</small>
+                        <div class="text-danger fw-bold" id="rp-total-profit">$0</div>
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted">總虧損</small>
+                        <div class="text-success fw-bold" id="rp-total-loss">$0</div>
+                    </div>
+                    <div class="text-center">
+                        <small class="text-muted">淨損益</small>
+                        <div class="fw-bold fs-5" id="rp-net-profit">$0</div>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 text-center small align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>日期</th>
+                                <th>代號</th>
+                                <th>股數</th>
+                                <th>賣價/均價</th>
+                                <th>損益 $</th>
+                                <th>報酬率 %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="realized-profit-list">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dateDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="date-details-title">當日交易</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="date-details-list" class="list-group list-group-flush">
+                    </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>

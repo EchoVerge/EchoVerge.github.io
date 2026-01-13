@@ -11,14 +11,56 @@ let pieChart = null;
 let netWorthChart = null;
 let tagTrendChart = null;
 let tagModal = null;
+let calendar = null; 
+let dateDetailsModal = null; 
 
 export async function initDashboard() {
     const modalEl = document.getElementById('tagTrendModal');
     if (modalEl) tagModal = new bootstrap.Modal(modalEl);
 
-    // 初始化時只更新全域資產與歷史，圖表將由 TransactionController 載入資料後驅動
+    const dateModalEl = document.getElementById('dateDetailsModal');
+    if (dateModalEl) dateDetailsModal = new bootstrap.Modal(dateModalEl);
+
+    const calendarEl = document.getElementById('calendar');
+    if (calendarEl) {
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'title', // 標題靠左，更簡潔
+                center: '',
+                right: 'prev,next today' // 按鈕靠右
+            },
+            height: '100%', // 隨父容器高度
+            contentHeight: 'auto',
+            locale: 'zh-tw',
+            dayMaxEvents: true, // 🔥 關鍵：限制單日顯示數量，避免 Overflow
+            moreLinkText: '更多', // "More" 的中文
+            fixedWeekCount: false, // 不強制顯示6週，隨該月週數變化 (如4-5週)，節省空間
+
+            dayCellContent: function(arg) {
+                return arg.dayNumberText.replace('日', '');
+            },
+            
+            eventClick: function(info) {
+                if(info.event.startStr) showDateDetails(info.event.startStr);
+            },
+            dateClick: function(info) {
+                showDateDetails(info.dateStr);
+            }
+        });
+        calendar.render();
+        
+        // 解決 Gridstack 拖拉變形問題：監聽視窗變動重繪
+        // (Gridstack 的 resize event 處理比較複雜，這裡用 ResizeObserver 監聽容器)
+        const resizeObserver = new ResizeObserver(() => {
+            calendar.updateSize();
+        });
+        resizeObserver.observe(calendarEl);
+    }
+
     await refreshGlobalData();
     renderTemplates();
+    await renderCalendar();
 }
 
 // 🔥 新增：只更新全域資產 (總資產、投資總值)，不受篩選影響
@@ -70,9 +112,99 @@ export function updateDashboardCharts(filteredTransactions) {
     renderTrendChart(filteredTransactions);
     renderPieChart(filteredTransactions);
     renderTagAnalytics(filteredTransactions);
+    renderCalendar();
 }
 
-// ... (renderTemplates, renderNetWorthChart, renderAccountList 保持原樣) ...
+async function renderCalendar() {
+    if (!calendar) return;
+
+    // 1. 重新抓取所有交易 (忽略外部傳入的 filteredTransactions)
+    const allTransactions = await getTransactions();
+
+    // 2. 依日期加總
+    const dailyStats = {}; 
+    
+    allTransactions.forEach(tx => {
+        const date = tx.dateStr; 
+        if (!dailyStats[date]) dailyStats[date] = { income: 0, expense: 0 };
+        
+        if (tx.type === '收入') dailyStats[date].income += parseFloat(tx.amount);
+        else if (tx.type === '支出') dailyStats[date].expense += parseFloat(tx.amount);
+    });
+
+    // 3. 轉換為 Events
+    const events = [];
+    for (const [date, stats] of Object.entries(dailyStats)) {
+        if (stats.income > 0) {
+            events.push({
+                title: `+${Math.round(stats.income)}`,
+                start: date,
+                backgroundColor: 'transparent',
+                borderColor: 'transparent',
+                textColor: '#198754', 
+                classNames: ['fw-bold', 'small']
+            });
+        }
+        if (stats.expense > 0) {
+            events.push({
+                title: `-${Math.round(stats.expense)}`,
+                start: date,
+                backgroundColor: 'transparent',
+                borderColor: 'transparent',
+                textColor: '#dc3545', 
+                classNames: ['fw-bold', 'small']
+            });
+        }
+    }
+
+    // 4. 更新 Calendar
+    calendar.removeAllEvents();
+    calendar.addEventSource(events);
+}
+
+// 🔥 顯示當日交易明細 Modal
+async function showDateDetails(dateStr) {
+    if (!dateDetailsModal) return;
+
+    // 取得當日所有交易 (需重新 fetch 以確保完整性，或傳遞當下 filter 結果)
+    // 這裡簡單起見，讀取所有交易再 filter date
+    // 若要支援篩選器連動，可以改用全域變數存當下的 filteredTransactions
+    // 但通常點擊日期就是想看那天發生什麼事，所以讀取「該日所有交易」較直覺
+    
+    const transactions = await getTransactions();
+    const dayTxs = transactions.filter(tx => tx.dateStr === dateStr);
+
+    const title = document.getElementById("date-details-title");
+    const list = document.getElementById("date-details-list");
+    
+    if(title) title.textContent = `${dateStr} 交易明細`;
+    
+    list.innerHTML = "";
+    if (dayTxs.length === 0) {
+        list.innerHTML = '<div class="text-center text-muted py-3">無交易紀錄</div>';
+    } else {
+        dayTxs.forEach(tx => {
+            const isExpense = tx.type === "支出";
+            const colorClass = isExpense ? "text-danger" : "text-success";
+            const sign = isExpense ? "-" : "+";
+            
+            list.innerHTML += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">${tx.item}</div>
+                        <small class="text-muted">${tx.category} | ${tx.account}</small>
+                    </div>
+                    <div class="${colorClass} fw-bold">
+                        ${sign}$${parseFloat(tx.amount).toLocaleString()}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    dateDetailsModal.show();
+}
+
 async function renderTemplates() {
     const container = document.getElementById("quick-templates-container");
     if (!container) return;

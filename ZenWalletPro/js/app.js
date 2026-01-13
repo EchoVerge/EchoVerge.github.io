@@ -24,10 +24,13 @@ const SYSTEM_TEMPLATES = {
         data: [
             {id: 'widget-total-assets', x: 0, y: 0, w: 5, h: 2},
             {id: 'widget-stats', x: 5, y: 0, w: 7, h: 2},
-            {id: 'widget-cash-overview', x: 0, y: 2, w: 4, h: 5},
-            {id: 'widget-trend', x: 4, y: 2, w: 8, h: 5},
-            {id: 'widget-pie-chart', x: 0, y: 7, w: 4, h: 6},
-            {id: 'widget-transactions', x: 4, y: 7, w: 8, h: 6}
+            {id: 'widget-cash-overview', x: 0, y: 2, w: 5, h: 5},
+            {id: 'widget-trend', x: 5, y: 2, w: 7, h: 4},
+            {id: 'widget-pie-chart', x: 0, y: 7, w: 5, h: 4},
+            {id: 'widget-transactions', x: 5, y: 6, w: 7, h: 7}, // Height increased
+            {id: 'widget-net-worth', x: 0, y: 13, w: 12, h: 4},
+            {id: 'widget-tags', x: 0, y: 17, w: 5, h: 5},
+            {id: 'widget-calendar', x: 5, y: 17, w: 7, h: 5} // New Calendar
         ]
     },
     charts: {
@@ -38,20 +41,21 @@ const SYSTEM_TEMPLATES = {
             {id: 'widget-stats', x: 4, y: 0, w: 8, h: 2},
             {id: 'widget-trend', x: 0, y: 2, w: 8, h: 5},
             {id: 'widget-pie-chart', x: 8, y: 2, w: 4, h: 5},
-            {id: 'widget-transactions', x: 0, y: 7, w: 8, h: 6},
-            {id: 'widget-cash-overview', x: 8, y: 7, w: 4, h: 6}
+            {id: 'widget-transactions', x: 0, y: 13, w: 12, h: 6},
+            {id: 'widget-cash-overview', x: 0, y: 7, w: 4, h: 6},
+            {id: 'widget-calendar', x: 4, y: 7, w: 8, h: 6}
         ]
     },
     focus: {
         name: "記帳專注 (列表優先)",
         icon: "bi-pencil-square",
         data: [
-            {id: 'widget-transactions', x: 0, y: 0, w: 7, h: 13},
+            {id: 'widget-transactions', x: 0, y: 0, w: 7, h: 16},
             {id: 'widget-total-assets', x: 7, y: 0, w: 5, h: 2},
             {id: 'widget-stats', x: 7, y: 2, w: 5, h: 2},
             {id: 'widget-trend', x: 7, y: 4, w: 5, h: 4},
-            {id: 'widget-pie-chart', x: 7, y: 8, w: 5, h: 5},
-            {id: 'widget-cash-overview', x: 0, y: 13, w: 12, h: 4}
+            {id: 'widget-calendar', x: 7, y: 8, w: 5, h: 5},
+            {id: 'widget-cash-overview', x: 0, y: 16, w: 12, h: 4}
         ]
     }
 };
