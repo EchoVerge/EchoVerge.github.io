@@ -2,6 +2,7 @@
  * assets/js/modules/jsonBackupManager.js
  * 負責本機 JSON 格式的備份與還原
  */
+import { db, saveHistoryToDB, getHistoryFromDB, loadHistoryFromDB, deleteHistoryFromDB, renameHistoryInDB, updateHistoryInDB } from './db.js';
 import { getAllHistoryForBackup, restoreHistoryFromBackup } from './historyManager.js';
 import { showToast } from './toast.js';
 
