@@ -150,6 +150,15 @@
                         </div>
                     </div>
 
+                    <div class="grid-stack-item" gs-id="widget-tags" gs-x="0" gs-y="17" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
+                        <div class="grid-stack-item-content dashboard-module" id="module-tags">
+                            <h4 class="module-title"><i class="bi bi-tags-fill"></i> 標籤支出排行</h4>
+                            <div id="tag-analytics-list" class="list-group list-group-flush flex-grow-1 overflow-auto small">
+                                <div class="text-center text-muted py-3">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid-stack-item" gs-id="widget-transactions" gs-x="5" gs-y="6" gs-w="7" gs-h="7" gs-min-w="5" gs-min-h="6">
                         <div class="grid-stack-item-content dashboard-module" id="module-transactions">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -199,9 +208,38 @@
                                             <div class="col-6">
                                                 <select id="add-account" class="form-select form-select-sm" required><option value="">帳戶</option></select>
                                             </div>
-                                            <div class="col-8"><input type="text" class="form-control form-control-sm" id="add-item" placeholder="項目" required></div>
-                                            <div class="col-4"><input type="number" class="form-control form-control-sm" id="add-amount" placeholder="$" step="any" required></div>
-                                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤 (選填)"></div>
+                                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-item" placeholder="項目" required></div>
+                                            
+                                            <div id="stock-fields" class="col-12 bg-white border rounded p-2 d-none">
+                                                <div class="row g-2 align-items-end">
+                                                    <div class="col-12"><small class="text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> 股票交易資訊</small></div>
+                                                    <div class="col-4">
+                                                        <label class="form-label small mb-0">代號</label>
+                                                        <input type="text" class="form-control form-control-sm" id="stock-ticker" placeholder="2330.TW">
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <label class="form-label small mb-0">股數</label>
+                                                        <input type="number" class="form-control form-control-sm" id="stock-qty" placeholder="數量">
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <label class="form-label small mb-0">單價</label>
+                                                        <div class="input-group input-group-sm">
+                                                            <input type="number" class="form-control" id="stock-price" step="any" placeholder="$">
+                                                            <button class="btn btn-outline-secondary" type="button" id="btn-fetch-stock-price-add" title="抓取股價"><i class="bi bi-cloud-download"></i></button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label small mb-0">手續費</label>
+                                                        <input type="number" class="form-control form-control-sm" id="stock-fee" value="0">
+                                                    </div>
+                                                    <div class="col-6 text-end">
+                                                        <small class="text-muted" id="stock-total-display">總計: 0</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-12"><div class="input-group input-group-sm"><span class="input-group-text">$</span><input type="number" class="form-control" id="add-amount" placeholder="總金額" step="any" required></div></div>
+                                            <div class="col-12"><input type="text" class="form-control form-control-sm" id="add-tags" placeholder="標籤 (輸入 #股票 觸發連動)"></div>
                                             <div class="col-12"><textarea class="form-control form-control-sm" id="add-notes" rows="1" placeholder="備註"></textarea></div>
                                             <div class="col-12"><button type="submit" class="btn btn-primary btn-sm w-100">新增</button></div>
                                         </div>
@@ -223,37 +261,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="grid-stack-item" gs-id="widget-tags" gs-x="0" gs-y="17" gs-w="5" gs-h="5" gs-min-w="3" gs-min-h="4">
-                        <div class="grid-stack-item-content dashboard-module" id="module-tags">
-                            <h4 class="module-title"><i class="bi bi-tags-fill"></i> 標籤支出排行</h4>
-                            <div id="tag-analytics-list" class="list-group list-group-flush flex-grow-1 overflow-auto small">
-                                <div class="text-center text-muted py-3">載入中...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal fade" id="tagTrendModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title"><i class="bi bi-graph-up"></i> <span id="tag-trend-title">標籤趨勢</span></h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <div class="d-flex justify-content-between mb-3">
-                                        <span class="text-muted">歷史總支出</span>
-                                        <strong class="text-expense fs-5" id="tag-trend-total">$ 0</strong>
-                                    </div>
-                                    <div style="height: 300px; position: relative;">
-                                        <canvas id="tagTrendChart"></canvas>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                 </div>
             </div>
@@ -263,18 +270,18 @@
                     <div class="col-lg-4">
                         <div class="dashboard-module h-100">
                             <h4 class="module-title"><i class="bi bi-graph-up-arrow"></i> 投資管理</h4>
-                            <p class="text-muted small">請輸入代號 (台股請加 .TW，如 2330.TW；美股直接輸入，如 AAPL)。</p>
+                            <p class="text-muted small">請輸入代號 (台股請加 .TW)。</p>
                             <form id="portfolioForm">
                                 <div class="mb-3">
-                                    <label for="pf-ticker" class="form-label small">代號 (Ticker)</label>
-                                    <input type="text" class="form-control" id="pf-ticker" placeholder="例如: 2330.TW, VOO" required>
+                                    <label class="form-label small">代號</label>
+                                    <input type="text" class="form-control" id="pf-ticker" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="pf-qty" class="form-label small">持有數量</label>
+                                    <label class="form-label small">數量</label>
                                     <input type="number" class="form-control" id="pf-qty" step="any" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="pf-price" class="form-label small">當前市價</label>
+                                    <label class="form-label small">市價</label>
                                     <div class="input-group">
                                         <input type="number" class="form-control" id="pf-price" step="any" required>
                                         <button class="btn btn-outline-secondary" type="button" id="btn-fetch-single" title="從 Yahoo 抓取">
@@ -282,7 +289,7 @@
                                         </button>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save"></i> 儲存持股</button>
+                                <button type="submit" class="btn btn-primary w-100">儲存</button>
                             </form>
                         </div>
                     </div>
@@ -300,8 +307,8 @@
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
-                                    <thead class="table-light"><tr><th>代號</th><th class="text-end">數量</th><th class="text-end">市價</th><th class="text-end">總值</th><th class="text-center">操作</th></tr></thead>
-                                    <tbody id="portfolioList"><tr><td colspan="5" class="text-center text-muted">載入中...</td></tr></tbody>
+                                    <thead class="table-light"><tr><th>代號</th><th class="text-end">數量</th><th class="text-end">市價</th><th class="text-end">總值</th><th class="text-end">損益</th><th class="text-center">操作</th></tr></thead>
+                                    <tbody id="portfolioList"><tr><td colspan="6" class="text-center text-muted">載入中...</td></tr></tbody>
                                 </table>
                             </div>
                         </div>
@@ -346,7 +353,6 @@
                 </div>
 
                 <div class="settings-grid">
-                    
                     <div class="dashboard-module">
                         <h4 class="module-title"><i class="bi bi-lightning-charge-fill"></i> 快速模版管理</h4>
                         <form id="addTemplateForm" class="row g-2 align-items-end mb-3">
@@ -433,6 +439,35 @@
                             <div class="col-6"><label class="form-label small">帳戶</label><select id="edit-account" class="form-select" required></select></div>
                             <div class="col-6"><label class="form-label small">項目</label><input type="text" class="form-control" id="edit-item" required></div>
                             <div class="col-6"><label class="form-label small">金額</label><input type="number" class="form-control" id="edit-amount" min="0" step="any" required></div>
+                            
+                            <div id="edit-stock-fields" class="col-12 bg-white border rounded p-2 d-none">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-12"><small class="text-primary fw-bold"><i class="bi bi-graph-up-arrow"></i> 股票交易資訊</small></div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-0">代號</label>
+                                        <input type="text" class="form-control form-control-sm" id="edit-stock-ticker" placeholder="2330.TW">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-0">股數</label>
+                                        <input type="number" class="form-control form-control-sm" id="edit-stock-qty" placeholder="數量">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label small mb-0">單價</label>
+                                        <div class="input-group input-group-sm">
+                                            <input type="number" class="form-control" id="edit-stock-price" step="any" placeholder="$">
+                                            <button class="btn btn-outline-secondary" type="button" id="btn-fetch-stock-price-edit" title="抓取股價"><i class="bi bi-cloud-download"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small mb-0">手續費</label>
+                                        <input type="number" class="form-control form-control-sm" id="edit-stock-fee" value="0">
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <small class="text-muted" id="edit-stock-total-display">總計: 0</small>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12"><label class="form-label small">標籤</label><input type="text" class="form-control" id="edit-tags"></div>
                             <div class="col-12"><label class="form-label small">備註</label><textarea class="form-control" id="edit-notes" rows="2"></textarea></div>
                         </div>
@@ -514,6 +549,29 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="window.confirmSaveLayout()">儲存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="tagTrendModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-graph-up"></i> <span id="tag-trend-title">標籤趨勢</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">歷史總支出</span>
+                        <strong class="text-expense fs-5" id="tag-trend-total">$ 0</strong>
+                    </div>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="tagTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
                 </div>
             </div>
         </div>

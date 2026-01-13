@@ -1,176 +1,159 @@
 // js/portfolioController.js
-import { getHoldings, saveHolding, deleteHolding, fetchYahooPrice, updateAllHoldingsPrices } from "./services/portfolio.js"; // ✅ 修正：已補上引入
+import { getHoldings, updateHolding, deleteHolding, fetchYahooPrice } from "./services/portfolio.js";
 import { showLoader, hideLoader } from "./utils/ui.js";
-import { refreshDashboard } from "./dashboardController.js";
+
+let currentHoldings = [];
 
 export async function initPortfolioModule() {
-    setupEventListeners();
+    const form = document.getElementById("portfolioForm");
+    if (form) {
+        form.addEventListener("submit", handleSavePortfolio);
+    }
+
+    const refreshBtn = document.getElementById("btn-refresh-prices");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", updateAllPrices);
+    }
+
+    const fetchSingleBtn = document.getElementById("btn-fetch-single");
+    if (fetchSingleBtn) {
+        fetchSingleBtn.addEventListener("click", async () => {
+            const ticker = document.getElementById("pf-ticker").value.trim();
+            if (!ticker) return alert("請輸入代號");
+            
+            showLoader();
+            const price = await fetchYahooPrice(ticker);
+            hideLoader();
+            
+            if (price) {
+                document.getElementById("pf-price").value = price;
+            } else {
+                alert("抓取失敗，請確認代號 (台股請加 .TW)");
+            }
+        });
+    }
+
     await renderPortfolio();
 }
 
-function setupEventListeners() {
-    // 綁定表單提交
-    const form = document.getElementById("portfolioForm");
-    if (form) form.addEventListener("submit", handleSaveHolding);
+async function renderPortfolio() {
+    const listEl = document.getElementById("portfolioList");
+    const totalValueEl = document.getElementById("portfolio-total-value");
     
-    // 綁定抓取單一價格按鈕
-    const btnSingle = document.getElementById("btn-fetch-single");
-    if (btnSingle) btnSingle.addEventListener("click", handleFetchSinglePrice);
+    listEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted">載入中...</td></tr>';
     
-    // 綁定更新所有價格按鈕
-    const btnRefresh = document.getElementById("btn-refresh-prices");
-    if (btnRefresh) btnRefresh.addEventListener("click", handleRefreshAllPrices);
-}
-
-// 新增持股時，自動抓取單一價格
-async function handleFetchSinglePrice() {
-    const tickerInput = document.getElementById("pf-ticker");
-    const priceInput = document.getElementById("pf-price");
+    currentHoldings = await getHoldings();
     
-    if (!tickerInput || !priceInput) return;
+    // 過濾掉股數為 0 的 (已賣光)
+    const activeHoldings = currentHoldings.filter(h => h.quantity > 0);
 
-    const ticker = tickerInput.value.trim().toUpperCase();
-
-    if (!ticker) {
-        alert("請先輸入代號 (例如: 2330.TW 或 VOO)");
+    if (activeHoldings.length === 0) {
+        listEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted">目前無持股</td></tr>';
+        totalValueEl.textContent = "$ 0";
         return;
     }
 
-    // 顯示按鈕 loading 狀態
-    const btn = document.getElementById("btn-fetch-single");
-    const originalHtml = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-    btn.disabled = true;
+    let totalValue = 0;
+    listEl.innerHTML = "";
 
-    try {
-        const price = await fetchYahooPrice(ticker); // 呼叫 service
-        if (price !== null) {
-            priceInput.value = price;
-        } else {
-            alert("查無此代號，請確認 Yahoo Finance 上是否有此代號。\n(台股請加 .TW，如 2330.TW)");
-        }
-    } catch (e) {
-        console.error(e);
-        alert("查詢失敗，請稍後再試");
-    } finally {
-        btn.innerHTML = originalHtml;
-        btn.disabled = false;
-    }
+    activeHoldings.forEach(h => {
+        const marketVal = h.quantity * h.currentPrice;
+        totalValue += marketVal;
+        
+        // 計算損益
+        const avgCost = h.averageCost || 0; // 若無成本資料則為 0
+        const costVal = h.quantity * avgCost;
+        const profit = marketVal - costVal;
+        const profitPercent = costVal > 0 ? (profit / costVal) * 100 : 0;
+        
+        // 顏色樣式
+        const profitClass = profit >= 0 ? "text-danger" : "text-success"; // 台股紅漲綠跌
+        const sign = profit >= 0 ? "+" : "";
+
+        listEl.innerHTML += `
+            <tr>
+                <td>
+                    <div class="fw-bold">${h.ticker}</div>
+                    <small class="text-muted">均價: $${avgCost.toFixed(2)}</small>
+                </td>
+                <td class="text-end sensitive">${h.quantity}</td>
+                <td class="text-end sensitive">$${h.currentPrice}</td>
+                <td class="text-end sensitive fw-bold">$${Math.round(marketVal).toLocaleString()}</td>
+                <td class="text-end sensitive ${profitClass}">
+                    <div>${sign}$${Math.round(profit).toLocaleString()}</div>
+                    <small>${sign}${profitPercent.toFixed(2)}%</small>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-outline-danger btn-sm py-0" onclick="window.handleDeleteHolding('${h.id}')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    totalValueEl.textContent = `$ ${Math.round(totalValue).toLocaleString()}`;
 }
 
-// 更新所有持股價格
-async function handleRefreshAllPrices() {
-    if (!confirm("確定要從 Yahoo Finance 更新所有持股價格嗎？")) return;
-    
-    showLoader();
-    try {
-        const result = await updateAllHoldingsPrices(); // 呼叫 service
-        alert(result.message);
-        await renderPortfolio(); // 重新渲染列表
-        await refreshDashboard(); // 更新總資產
-    } catch (e) {
-        alert("更新失敗: " + e.message);
-    } finally {
-        hideLoader();
-    }
-}
-
-async function handleSaveHolding(e) {
+async function handleSavePortfolio(e) {
     e.preventDefault();
+    const ticker = document.getElementById("pf-ticker").value.trim().toUpperCase();
+    const qty = parseFloat(document.getElementById("pf-qty").value);
+    const price = parseFloat(document.getElementById("pf-price").value);
+
+    if (!ticker || isNaN(qty) || isNaN(price)) return;
+
     showLoader();
-
-    const ticker = document.getElementById("pf-ticker").value.trim();
-    const qty = document.getElementById("pf-qty").value;
-    const price = document.getElementById("pf-price").value;
-
     try {
-        await saveHolding(ticker, qty, price);
+        // 這裡的手動新增通常用於初始化，我們簡單處理：若已存在則更新數量與現價，不改變平均成本(除非你要手動調整)
+        // 或者，我們可以視為「買入」，呼叫 stockService。
+        // 但為了彈性，這裡維持原有的 updateHolding (直接覆蓋/新增)，適合修正資料。
+        // 如果要嚴謹，應該引導使用者去「新增交易」。
+        
+        // 檢查是否已存在
+        const exist = currentHoldings.find(h => h.ticker === ticker);
+        const data = {
+            ticker, 
+            quantity: qty, 
+            currentPrice: price,
+            // 若是新股，設成本=現價；若舊股，保留原成本
+            averageCost: exist ? exist.averageCost : price 
+        };
+        
+        if (exist) await updateHolding(exist.id, data);
+        else await updateHolding(null, data);
+
         document.getElementById("portfolioForm").reset();
         await renderPortfolio();
-        await refreshDashboard();
-    } catch (error) {
-        alert("儲存失敗: " + error.message);
+    } catch (err) {
+        alert(err.message);
     } finally {
         hideLoader();
     }
 }
 
-async function renderPortfolio() {
-    const tbody = document.getElementById("portfolioList");
-    const totalEl = document.getElementById("portfolio-total-value");
-    
-    if (!tbody || !totalEl) return;
-
-    try {
-        const holdings = await getHoldings();
-        let totalValue = 0;
-
-        if (holdings.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">尚無持股資料</td></tr>';
-            totalEl.textContent = "$ 0.00";
-            return;
-        }
-
-        tbody.innerHTML = "";
-        
-        holdings.forEach(h => {
-            const value = h.quantity * h.currentPrice;
-            totalValue += value;
-            
-            // 格式化最後更新時間
-            let dateStr = '';
-            if (h.updatedAt) {
-                // 處理 Firestore Timestamp 或一般 Date
-                const dateObj = h.updatedAt.toDate ? h.updatedAt.toDate() : new Date(h.updatedAt);
-                dateStr = dateObj.toLocaleDateString();
-            }
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>
-                    <span class="fw-bold">${h.ticker}</span>
-                    <br><small class="text-muted" style="font-size: 0.75rem;">${dateStr} 更新</small>
-                </td>
-                <td class="text-end">${parseFloat(h.quantity).toLocaleString()}</td>
-                <td class="text-end text-muted">$${parseFloat(h.currentPrice).toLocaleString()}</td>
-                <td class="text-end fw-bold text-success">$${value.toLocaleString()}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="window.handleEditHolding('${h.ticker}', ${h.quantity}, ${h.currentPrice})">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="window.handleDeleteHolding('${h.id}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        totalEl.textContent = `$ ${totalValue.toLocaleString()}`;
-
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">載入失敗: ${e.message}</td></tr>`;
-    }
-}
-
-// --- 全域函式 ---
-window.handleEditHolding = function(ticker, qty, price) {
-    document.getElementById("pf-ticker").value = ticker;
-    document.getElementById("pf-qty").value = qty;
-    document.getElementById("pf-price").value = price;
-    document.getElementById("pf-ticker").focus();
-};
-
-window.handleDeleteHolding = async function(id) {
-    if (!confirm("確定要刪除此持股嗎？")) return;
+async function updateAllPrices() {
     showLoader();
     try {
-        await deleteHolding(id);
+        const tasks = currentHoldings.map(async (h) => {
+            const price = await fetchYahooPrice(h.ticker);
+            if (price) {
+                await updateHolding(h.id, { ...h, currentPrice: price });
+            }
+        });
+        await Promise.all(tasks);
         await renderPortfolio();
-        await refreshDashboard();
+        alert("股價更新完成");
     } catch (e) {
-        alert("刪除失敗: " + e.message);
+        console.error(e);
+        alert("更新部分失敗");
     } finally {
         hideLoader();
     }
+}
+
+window.handleDeleteHolding = async function(id) {
+    if(!confirm("確定刪除此持股紀錄？")) return;
+    showLoader();
+    await deleteHolding(id);
+    await renderPortfolio();
+    hideLoader();
 };

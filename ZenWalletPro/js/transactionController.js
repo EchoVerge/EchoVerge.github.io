@@ -2,6 +2,8 @@
 import { getTransactions, addTransaction, deleteTransaction, updateTransaction, addTransfer, addAdjustment } from "./services/transaction.js";
 import { getCategories } from "./services/category.js";
 import { getAccounts } from "./services/account.js";
+import { updatePortfolioByTransaction } from "./services/stockService.js";
+import { fetchYahooPrice } from "./services/portfolio.js"; // 引入股價 API
 import { showLoader, hideLoader } from "./utils/ui.js";
 import { refreshDashboard } from "./dashboardController.js";
 
@@ -11,13 +13,10 @@ let currentTransactions = [];
 let editModal = null;
 let transferModal = null;
 let adjustmentModal = null;
-
-// 時間導覽變數
-let currentViewUnit = 'month'; // year, month, week, day
+let currentViewUnit = 'month'; 
 let currentBaseDate = new Date();
 
 export async function initTransactionModule() {
-    // 初始化 Modals
     const editEl = document.getElementById('editTransactionModal');
     if(editEl) editModal = new bootstrap.Modal(editEl);
     
@@ -27,89 +26,122 @@ export async function initTransactionModule() {
     const adjEl = document.getElementById('adjustmentModal');
     if(adjEl) adjustmentModal = new bootstrap.Modal(adjEl);
 
-    // 設定預設日期
-    const addDateEl = document.getElementById("add-date");
-    if(addDateEl) addDateEl.valueAsDate = new Date();
-    
-    const transDateEl = document.getElementById("transfer-date");
-    if(transDateEl) transDateEl.valueAsDate = new Date();
+    document.getElementById("add-date").valueAsDate = new Date();
+    document.getElementById("transfer-date").valueAsDate = new Date();
 
     await loadDropdownData();
     setupEventListeners();
+    setupStockLogic(); // 啟動股票邏輯
     
-    // 初始化時間篩選
     updateDateFiltersByUnit(0);
 
-    // 🔥 監聽資料變更事件 (當設定頁新增類別/帳戶時觸發)
     document.addEventListener("zenwallet:dataChanged", async () => {
-        console.log("偵測到資料變更，重新載入選單...");
         await loadDropdownData();
-        await renderTransactionList(true); // 重新渲染列表以防帳戶名稱變更
+        await renderTransactionList(true); 
     });
 }
 
-// 載入並填充所有下拉選單
+// 🔥 股票邏輯：含自動計算與線上抓取
+function setupStockLogic() {
+    const ids = ['add', 'edit'];
+    
+    ids.forEach(prefix => {
+        // 1. 顯示/隱藏
+        const tagInput = document.getElementById(`${prefix}-tags`);
+        const stockContainer = document.getElementById(prefix === 'add' ? 'stock-fields' : 'edit-stock-fields');
+        if (tagInput && stockContainer) {
+            tagInput.addEventListener('input', (e) => {
+                if (e.target.value.includes('#股票')) stockContainer.classList.remove('d-none');
+                else stockContainer.classList.add('d-none');
+            });
+        }
+
+        // 2. 自動計算
+        const qtyIn = document.getElementById(prefix === 'add' ? 'stock-qty' : 'edit-stock-qty');
+        const priceIn = document.getElementById(prefix === 'add' ? 'stock-price' : 'edit-stock-price');
+        const feeIn = document.getElementById(prefix === 'add' ? 'stock-fee' : 'edit-stock-fee');
+        const amountIn = document.getElementById(`${prefix}-amount`);
+        const typeIn = document.getElementById(`${prefix}-type`);
+        const displayEl = document.getElementById(prefix === 'add' ? 'stock-total-display' : 'edit-stock-total-display');
+
+        const autoCalc = () => {
+            if (!qtyIn || !priceIn || !amountIn) return;
+            const q = parseFloat(qtyIn.value) || 0;
+            const p = parseFloat(priceIn.value) || 0;
+            const f = parseFloat(feeIn?.value) || 0;
+            const type = typeIn.value;
+
+            if (q > 0 && p > 0) {
+                let total = (type === '支出') ? (q * p) + f : (q * p) - f;
+                amountIn.value = Math.round(total);
+                if(displayEl) displayEl.textContent = `試算: $${total.toLocaleString()}`;
+            }
+        };
+
+        if(qtyIn) qtyIn.addEventListener('input', autoCalc);
+        if(priceIn) priceIn.addEventListener('input', autoCalc);
+        if(feeIn) feeIn.addEventListener('input', autoCalc);
+        if(typeIn) typeIn.addEventListener('change', autoCalc);
+
+        // 3. 🔥 線上抓取股價按鈕
+        const fetchBtn = document.getElementById(prefix === 'add' ? 'btn-fetch-stock-price-add' : 'btn-fetch-stock-price-edit');
+        if (fetchBtn) {
+            fetchBtn.addEventListener('click', async () => {
+                const tickerInput = document.getElementById(prefix === 'add' ? 'stock-ticker' : 'edit-stock-ticker');
+                const ticker = tickerInput.value.trim();
+                if (!ticker) return alert("請先輸入代號");
+                
+                showLoader();
+                const price = await fetchYahooPrice(ticker);
+                hideLoader();
+                
+                if (price) {
+                    priceIn.value = price;
+                    autoCalc(); // 觸發重算
+                } else {
+                    alert("抓取失敗，請確認代號 (台股請加 .TW)");
+                }
+            });
+        }
+    });
+}
+
 async function loadDropdownData() {
     try {
         const [cats, accs] = await Promise.all([getCategories(), getAccounts()]);
         allCategories = cats;
         allAccounts = accs;
         
-        // 定義需要填充的 select ID 列表
-        const accountSelects = ["add-account", "edit-account", "transfer-from-account", "transfer-to-account"];
-        
-        accountSelects.forEach(id => {
+        ["add-account", "edit-account", "transfer-from-account", "transfer-to-account"].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
-                // 保留目前選中的值 (如果有)
                 const currentVal = el.value;
                 el.innerHTML = '<option value="" disabled selected>請選擇...</option>';
-                
                 allAccounts.forEach(acc => {
-                    // 轉帳選單排除投資帳戶 (選擇性)
                     if(id.includes('transfer') && acc.name.includes("投資")) return;
                     el.innerHTML += `<option value="${acc.name}">${acc.name}</option>`;
                 });
-
-                // 嘗試恢復選取狀態
-                if (currentVal && Array.from(el.options).some(o => o.value === currentVal)) {
-                    el.value = currentVal;
-                }
+                if (currentVal) el.value = currentVal;
             }
         });
-
-        // 類別選單通常是連動的，但我們可以先初始化 edit-category 以防萬一
-        // (實際顯示時會由 updateCategoryOptions 動態產生)
-
     } catch (e) {
         console.error("載入下拉選單失敗", e);
     }
 }
 
 function setupEventListeners() {
-    // 交易 CRUD
     setupCategoryDependency("add-type", "add-category");
     setupCategoryDependency("edit-type", "edit-category");
     
-    const addForm = document.getElementById("addTransactionForm");
-    if(addForm) addForm.addEventListener("submit", handleAddSubmit);
-    
-    const editForm = document.getElementById("editTransactionForm");
-    if(editForm) editForm.addEventListener("submit", handleEditSubmit);
-
-    // 轉帳與核對
-    const transForm = document.getElementById("addTransferForm");
-    if(transForm) transForm.addEventListener("submit", handleTransferSubmit);
+    document.getElementById("addTransactionForm")?.addEventListener("submit", handleAddSubmit);
+    document.getElementById("editTransactionForm")?.addEventListener("submit", handleEditSubmit);
+    document.getElementById("addTransferForm")?.addEventListener("submit", handleTransferSubmit);
     
     const adjustBtn = document.querySelector('#adjustmentModal .btn-primary');
     if(adjustBtn) adjustBtn.addEventListener("click", handleAdjustmentSubmit);
 
-    // 時間導覽按鈕
-    const prevBtn = document.getElementById("nav-prev");
-    if(prevBtn) prevBtn.addEventListener("click", () => navigateTime(-1));
-    
-    const nextBtn = document.getElementById("nav-next");
-    if(nextBtn) nextBtn.addEventListener("click", () => navigateTime(1));
+    document.getElementById("nav-prev")?.addEventListener("click", () => navigateTime(-1));
+    document.getElementById("nav-next")?.addEventListener("click", () => navigateTime(1));
     
     document.querySelectorAll('input[name="viewUnit"]').forEach(radio => {
         radio.addEventListener("change", (e) => {
@@ -118,7 +150,6 @@ function setupEventListeners() {
         });
     });
 
-    // 搜尋框監聽
     const searchInput = document.getElementById("search-keyword");
     if(searchInput) {
         searchInput.addEventListener("input", () => {
@@ -137,9 +168,6 @@ function setupCategoryDependency(typeId, catId) {
     }
 }
 
-/**
- * 更新類別選項
- */
 function updateCategoryOptions(selectId, type, currentVal = null, exclude = []) {
     const select = document.getElementById(selectId);
     if(!select) return;
@@ -156,7 +184,6 @@ function updateCategoryOptions(selectId, type, currentVal = null, exclude = []) 
     if (currentVal) select.value = currentVal;
 }
 
-// --- 時間導覽邏輯 ---
 function navigateTime(direction) {
     updateDateFiltersByUnit(direction);
 }
@@ -174,7 +201,6 @@ function updateDateFiltersByUnit(direction) {
     const m = currentBaseDate.getMonth();
     const d = currentBaseDate.getDate();
     const displayLabel = document.getElementById("current-view-display");
-
     const fmt = (date) => date.toISOString().split('T')[0];
 
     if (currentViewUnit === 'year') {
@@ -210,6 +236,9 @@ async function handleAddSubmit(e) {
     e.preventDefault();
     showLoader();
     
+    const tags = document.getElementById("add-tags").value.split(/[,，]/).map(t=>t.trim()).filter(Boolean);
+    const isStock = tags.includes("#股票");
+
     const formData = {
         date: document.getElementById("add-date").value,
         type: document.getElementById("add-type").value,
@@ -218,15 +247,29 @@ async function handleAddSubmit(e) {
         item: document.getElementById("add-item").value,
         amount: document.getElementById("add-amount").value,
         notes: document.getElementById("add-notes").value,
-        tags: document.getElementById("add-tags").value.split(/[,，]/).map(t=>t.trim()).filter(Boolean)
+        tags: tags,
+        isStock: isStock,
+        stockTicker: isStock ? document.getElementById("stock-ticker").value.trim().toUpperCase() : null,
+        stockQty: isStock ? document.getElementById("stock-qty").value : null,
+        stockPrice: isStock ? document.getElementById("stock-price").value : null,
+        stockFee: isStock ? document.getElementById("stock-fee").value : null,
     };
 
     try {
+        if (isStock) {
+            if(!formData.stockTicker || !formData.stockQty || !formData.stockPrice) {
+                throw new Error("請完整填寫股票資訊（代號、股數、單價）");
+            }
+            await updatePortfolioByTransaction(formData);
+        }
+
         await addTransaction(formData);
+        
         document.getElementById("addTransactionForm").reset();
         document.getElementById("add-date").valueAsDate = new Date();
         document.getElementById("add-category").innerHTML = '<option value="">類別</option>';
         document.getElementById("add-category").disabled = true;
+        document.getElementById("stock-fields").classList.add("d-none");
         
         await renderTransactionList(true); 
         await refreshDashboard();
@@ -238,6 +281,10 @@ async function handleEditSubmit(e) {
     showLoader();
     const id = document.getElementById("edit-id").value;
     
+    const tagsStr = document.getElementById("edit-tags").value;
+    const tags = tagsStr.split(/[,，]/).map(t=>t.trim()).filter(Boolean);
+    const isStock = tags.includes("#股票");
+
     const formData = {
         date: document.getElementById("edit-date").value,
         type: document.getElementById("edit-type").value,
@@ -246,7 +293,12 @@ async function handleEditSubmit(e) {
         item: document.getElementById("edit-item").value,
         amount: document.getElementById("edit-amount").value,
         notes: document.getElementById("edit-notes").value,
-        tags: document.getElementById("edit-tags").value.split(/[,，]/).map(t=>t.trim()).filter(Boolean)
+        tags: tags,
+        isStock: isStock,
+        stockTicker: isStock ? document.getElementById("edit-stock-ticker").value.trim().toUpperCase() : null,
+        stockQty: isStock ? document.getElementById("edit-stock-qty").value : null,
+        stockPrice: isStock ? document.getElementById("edit-stock-price").value : null,
+        stockFee: isStock ? document.getElementById("edit-stock-fee").value : null,
     };
 
     try {
@@ -280,14 +332,6 @@ async function handleTransferSubmit(e) {
         alert("轉帳成功");
     } catch (err) { alert(err.message); } finally { hideLoader(); }
 }
-
-window.showAdjustmentModal = function(accountName, currentBalance) {
-    document.getElementById("adjust-account-name").textContent = accountName;
-    document.getElementById("adjust-account-name-hidden").value = accountName;
-    document.getElementById("adjust-calculated-balance").value = currentBalance;
-    document.getElementById("adjust-actual-balance").value = "";
-    adjustmentModal.show();
-};
 
 async function handleAdjustmentSubmit() {
     const account = document.getElementById("adjust-account-name-hidden").value;
@@ -330,7 +374,8 @@ async function renderTransactionList(useFilter = false) {
                 if (keyword) {
                     const itemMatch = tx.item.toLowerCase().includes(keyword);
                     const notesMatch = tx.notes && tx.notes.toLowerCase().includes(keyword);
-                    if (!itemMatch && !notesMatch) return false;
+                    const tickerMatch = tx.stockTicker && tx.stockTicker.toLowerCase().includes(keyword);
+                    if (!itemMatch && !notesMatch && !tickerMatch) return false;
                 }
                 return true;
             });
@@ -343,11 +388,14 @@ async function renderTransactionList(useFilter = false) {
             displayData.forEach(tx => {
                 const isExpense = tx.type === "支出";
                 const amountClass = isExpense ? "text-expense" : "text-income";
+                // 🔥 若有股票代號，顯示 Badge
+                const stockBadge = tx.stockTicker ? `<span class="badge bg-light text-dark border ms-1">${tx.stockTicker}</span>` : '';
+
                 listEl.innerHTML += `
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-center">
                             <div style="min-width: 0;">
-                                <div class="fw-bold text-truncate">${tx.item}</div>
+                                <div class="fw-bold text-truncate">${tx.item} ${stockBadge}</div>
                                 <div class="text-muted small">${tx.dateStr} | ${tx.category} | ${tx.account}</div>
                             </div>
                             <div class="text-end flex-shrink-0 ms-2">
@@ -379,12 +427,30 @@ window.handleOpenEdit = function(id) {
     document.getElementById("edit-tags").value = tx.tags ? tx.tags.join(", ") : "";
     document.getElementById("edit-notes").value = tx.notes;
 
+    // 🔥 回填股票資訊
+    if (tx.isStock) {
+        document.getElementById("edit-stock-fields").classList.remove("d-none");
+        document.getElementById("edit-stock-ticker").value = tx.stockTicker || "";
+        document.getElementById("edit-stock-qty").value = tx.stockQty || "";
+        document.getElementById("edit-stock-price").value = tx.stockPrice || "";
+        document.getElementById("edit-stock-fee").value = tx.stockFee || "";
+        // 觸發一次試算顯示
+        const total = ((parseFloat(tx.stockQty)||0) * (parseFloat(tx.stockPrice)||0)) + (tx.type==='支出' ? (parseFloat(tx.stockFee)||0) : -(parseFloat(tx.stockFee)||0));
+        document.getElementById("edit-stock-total-display").textContent = `試算: $${Math.round(total).toLocaleString()}`;
+    } else {
+        document.getElementById("edit-stock-fields").classList.add("d-none");
+        document.getElementById("edit-stock-ticker").value = "";
+        document.getElementById("edit-stock-qty").value = "";
+        document.getElementById("edit-stock-price").value = "";
+        document.getElementById("edit-stock-fee").value = "0";
+    }
+
     updateCategoryOptions("edit-category", tx.type, tx.category, []);
     editModal.show();
 };
 
 window.handleDeleteTx = async function(id) {
-    if(!confirm("確定刪除?")) return;
+    if(!confirm("確定刪除? (注意：刪除股票交易不會自動回滾投資組合，請手動修正)")) return;
     showLoader();
     try {
         await deleteTransaction(id);
@@ -402,3 +468,11 @@ window.showTransferModal = function() {
     document.getElementById("transfer-date").valueAsDate = new Date();
     transferModal.show();
 }
+
+window.showAdjustmentModal = function(accountName, currentBalance) {
+    document.getElementById("adjust-account-name").textContent = accountName;
+    document.getElementById("adjust-account-name-hidden").value = accountName;
+    document.getElementById("adjust-calculated-balance").value = currentBalance;
+    document.getElementById("adjust-actual-balance").value = "";
+    adjustmentModal.show();
+};

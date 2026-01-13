@@ -3,7 +3,6 @@ import { LocalDB } from "./storage/localDB.js";
 import { CloudDB } from "./storage/cloudDB.js";
 import { AuthState } from "./auth.js";
 
-// 定義 IndexedDB 每個 Store 的主鍵欄位
 const STORE_CONFIG = {
     'transactions': 'id',
     'accounts': 'id',
@@ -15,11 +14,7 @@ const STORE_CONFIG = {
     'asset_history': 'date'
 };
 
-// 定義 LocalStorage 中需要同步的版面配置 Keys
-const LAYOUT_KEYS = [
-    'dashboard_current_layout',
-    'dashboard_custom_layouts'
-];
+const LAYOUT_KEYS = ['dashboard_current_layout', 'dashboard_custom_layouts'];
 
 // 上傳：本地 -> 雲端 (包含資料庫與版面配置)
 export async function syncUp() {
@@ -40,68 +35,61 @@ export async function syncUp() {
         }
     }
 
-    // 2. 🔥 同步 LocalStorage 版面配置 (Layouts)
+    // 2. 同步 LocalStorage 版面配置
     const layoutItems = [];
     for (const key of LAYOUT_KEYS) {
         const rawValue = localStorage.getItem(key);
         if (rawValue) {
             try {
-                // 將字串轉為 JSON 物件存入 Firestore，保持資料結構清晰
-                layoutItems.push({
-                    id: key,
-                    data: JSON.parse(rawValue)
-                });
-            } catch (e) {
-                console.warn(`[Layout] Parse error for ${key}`, e);
-            }
+                layoutItems.push({ id: key, data: JSON.parse(rawValue) });
+            } catch (e) { console.warn(`[Layout] Parse error for ${key}`, e); }
         }
     }
-
     if (layoutItems.length > 0) {
-        // 存入 'layouts' 集合
         await CloudDB.overwriteStore(user.uid, 'layouts', layoutItems, 'id');
         console.log(`[layouts] 已上傳 ${layoutItems.length} 筆版面設定`);
     }
     
-    // 更新最後同步時間
     localStorage.setItem('last_sync_time', new Date().toLocaleString());
     return true;
 }
 
-// 下載：雲端 -> 本地 (包含資料庫與版面配置)
+// 下載：雲端 -> 本地 (強制覆蓋)
 export async function syncDown() {
     const { user, isPremium } = AuthState;
     if (!user || !isPremium) throw new Error("僅限 PRO 會員使用雲端同步功能");
 
     console.log("開始從雲端下載...");
 
-    // 1. 同步 IndexedDB 資料
     const stores = Object.keys(STORE_CONFIG);
+
+    // 1. 資料庫部分
     for (const store of stores) {
         const keyField = STORE_CONFIG[store];
         const cloudData = await CloudDB.getAll(user.uid, store, keyField);
         
+        // 🔥 關鍵修正：無論雲端有沒有資料，都先清空本地，確保是「覆蓋」而不是「合併」
+        await LocalDB.clearStore(store);
+        
         if (cloudData.length > 0) {
-            await LocalDB.clearStore(store);
             await LocalDB.importStore(store, cloudData);
             console.log(`[${store}] 已下載 ${cloudData.length} 筆`);
+        } else {
+            console.log(`[${store}] 雲端無資料，本地已清空`);
         }
     }
 
-    // 2. 🔥 同步 LocalStorage 版面配置 (Layouts)
+    // 2. 版面配置部分
     const cloudLayouts = await CloudDB.getAll(user.uid, 'layouts', 'id');
     if (cloudLayouts.length > 0) {
         cloudLayouts.forEach(item => {
-            // 檢查是否為合法的版面 Key
             if (LAYOUT_KEYS.includes(item.id) && item.data) {
-                // 寫回 LocalStorage (需轉回字串)
                 localStorage.setItem(item.id, JSON.stringify(item.data));
             }
         });
         console.log(`[layouts] 已下載 ${cloudLayouts.length} 筆版面設定`);
     }
 
-    // 更新最後同步時間
     localStorage.setItem('last_sync_time', new Date().toLocaleString());
     return true;
 }

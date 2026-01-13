@@ -1,5 +1,19 @@
 // js/utils/ui.js
-
+// 動態載入 HTML 檔案的函式
+export async function loadComponent(elementId, filePath) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    try {
+        const response = await fetch(filePath);
+        if (!response.ok) throw new Error(`Failed to load ${filePath}`);
+        const html = await response.text();
+        element.innerHTML = html;
+    } catch (error) {
+        console.error(error);
+        element.innerHTML = `<div class="alert alert-danger">載入失敗: ${filePath}</div>`;
+    }
+}
 /**
  * 顯示全螢幕載入動畫
  */
