@@ -124,7 +124,7 @@ body {
     min-height: 0; 
 }
 
-/* 設定頁面的 Grid 佈局 */
+/* 設定頁面的 Grid 佈局 (舊版保留，新版使用 Bootstrap Grid) */
 .settings-grid {
     display: grid;
     gap: 24px;
@@ -150,10 +150,9 @@ body {
 .modal-backdrop { z-index: 1050; }
 
 /* =========================================
-   🔥 7. 手機版優化 (Mobile Card View)
+   7. 手機版優化 (Mobile Card View)
    ========================================= */
 @media (max-width: 768px) {
-    /* 將交易列表項目改為卡片式 */
     #transactionsList .list-group-item {
         border: 1px solid #eee;
         margin-bottom: 8px;
@@ -163,23 +162,20 @@ body {
     }
 
     #transactionsList .list-group-item .d-flex {
-        /* 在極窄螢幕允許換行 */
         flex-wrap: wrap; 
     }
 
-    /* 調整內容間距 */
     #transactionsList .list-group-item > div:first-child {
         width: 100%;
         margin-bottom: 8px;
     }
 
-    /* 金額與按鈕區塊 */
     #transactionsList .list-group-item .text-end {
         width: 100%;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-left: 0 !important; /* 覆蓋 inline style */
+        margin-left: 0 !important;
         border-top: 1px dashed #eee;
         padding-top: 8px;
     }
@@ -188,16 +184,13 @@ body {
 /* =========================================
    8. 新功能樣式 (隱私 & 模版)
    ========================================= */
-
-/* 隱私模式：模糊敏感數據 */
 body.privacy-active .sensitive {
     filter: blur(6px);
     transition: filter 0.3s ease;
-    user-select: none; /* 防止被選取複製 */
+    user-select: none;
     cursor: default;
 }
 
-/* 快速記帳按鈕區 */
 .quick-actions-container {
     display: flex;
     gap: 10px;
@@ -256,12 +249,12 @@ body.privacy-active .sensitive {
     margin-right: 8px;
 }
 
-.tag-stat-item:nth-child(1) .tag-rank-num { color: #ffc107; font-weight: bold; } /* 金 */
-.tag-stat-item:nth-child(2) .tag-rank-num { color: #adb5bd; font-weight: bold; } /* 銀 */
-.tag-stat-item:nth-child(3) .tag-rank-num { color: #fd7e14; font-weight: bold; } /* 銅 */
+.tag-stat-item:nth-child(1) .tag-rank-num { color: #ffc107; font-weight: bold; }
+.tag-stat-item:nth-child(2) .tag-rank-num { color: #adb5bd; font-weight: bold; }
+.tag-stat-item:nth-child(3) .tag-rank-num { color: #fd7e14; font-weight: bold; }
 
 /* =========================================
-   10. FullCalendar 行事曆美化 (🔥 修正版)
+   10. FullCalendar 行事曆美化
    ========================================= */
 #calendar {
     --fc-border-color: #f0f0f0;
@@ -269,18 +262,9 @@ body.privacy-active .sensitive {
     font-size: 0.85rem;
 }
 
-/* 標頭工具列 */
-.fc-header-toolbar {
-    margin-bottom: 1rem !important;
-}
+.fc-header-toolbar { margin-bottom: 1rem !important; }
+.fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; color: #333; }
 
-.fc-toolbar-title {
-    font-size: 1.25rem !important;
-    font-weight: 700;
-    color: #333;
-}
-
-/* 按鈕樣式 */
 .fc-button {
     background-color: #fff !important;
     border: 1px solid #dee2e6 !important;
@@ -303,7 +287,6 @@ body.privacy-active .sensitive {
     color: #0d6efd !important;
 }
 
-/* 表格邊框 */
 .fc-theme-standard th, .fc-theme-standard td, .fc-theme-standard .fc-scrollgrid {
     border-color: #f8f9fa !important;
 }
@@ -319,10 +302,9 @@ body.privacy-active .sensitive {
     font-weight: 500;
     padding: 8px !important;
     position: relative;
-    z-index: 2; /* 確保數字在背景之上 */
+    z-index: 2;
 }
 
-/* 當天 (Today) 樣式 */
 .fc-day-today .fc-daygrid-day-number {
     background-color: #0d6efd;
     color: white;
@@ -335,7 +317,6 @@ body.privacy-active .sensitive {
     margin: 4px;
 }
 
-/* 事件樣式 */
 .fc-event {
     cursor: pointer;
     border: none !important;
@@ -349,30 +330,98 @@ body.privacy-active .sensitive {
     font-size: 0.8rem;
 }
 
-/* 隱藏捲軸 */
-.fc-scroller {
-    overflow-y: hidden !important; 
-}
+.fc-scroller { overflow-y: hidden !important; }
 
-/* 預設背景 (本月日期) */
+/* 日期背景與懸停順序 */
 .fc-day {
     background-color: #ffffff !important;
     transition: background-color 0.2s ease;
 }
 
-/* 非本月背景 (淺灰) */
 .fc-day-other {
     background-color: #f9f9f9 !important;
     opacity: 0.8;
 }
 
-/* 懸停效果  */
 .fc-daygrid-day:hover {
-    background-color: #f0f8ff !important; /* AliceBlue，比 #f8faff 更明顯一點 */
+    background-color: #f0f8ff !important;
     cursor: pointer;
 }
 
-/* 確保今天的懸停也是藍色 */
 .fc-day-today:hover {
     background-color: #f0f8ff !important;
+}
+
+/* =========================================
+   11. 系統設定頁面美化 (Settings Page) (🔥 修正版)
+   ========================================= */
+
+/* 通用卡片樣式：增強陰影與邊框，解決「不顯眼」問題 */
+#settings-tab .card {
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#settings-tab .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 卡片標頭：加深背景色對比 */
+#settings-tab .card-header {
+    background-color: #f8f9fa; /* 淺灰底 */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 12px 16px;
+    border-top-left-radius: 16px !important;
+    border-top-right-radius: 16px !important;
+}
+
+/* 頂部功能區圖示方塊 */
+.icon-square {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+}
+
+/* 🔥 列表樣式改為「泡泡容器」風格 */
+#settings-tab .list-group-flush {
+    padding-top: 1rem; /* 列表頂部留白 */
+    padding-bottom: 0.5rem;
+}
+
+#settings-tab .list-group-item {
+    margin: 0 16px 10px 16px; /* 關鍵：左右留白(不貼邊)，下方留白(分隔) */
+    background-color: #f8f9fa; /* 淺灰背景，突顯容器感 */
+    border: 1px solid rgba(0,0,0,0.05) !important; /* 微弱邊框 */
+    border-radius: 12px !important; /* 圓角 */
+    padding: 12px 16px; /* 舒適內距 */
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+/* 列表項懸停效果 */
+#settings-tab .list-group-item:hover {
+    background-color: #e9ecef; /* 懸停時變深一點 */
+    transform: translateX(3px); /* 輕微位移增加互動感 */
+}
+
+/* 列表捲軸美化 */
+#settings-tab .overflow-auto::-webkit-scrollbar {
+    width: 6px;
+}
+#settings-tab .overflow-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+#settings-tab .overflow-auto::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+#settings-tab .overflow-auto::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
 }

@@ -45,3 +45,22 @@ export async function deleteHistory(id) {
 export async function renameHistory(id, newTitle) {
     return await renameHistoryInDB(id, newTitle);
 }
+
+// 7. 取得所有歷史紀錄 (供備份用)
+export async function getAllHistoryForBackup() {
+    // 假設 db.history 是您的 Table 名稱
+    return await db.history.toArray();
+}
+
+// 8. 還原歷史紀錄 (供匯入用)
+export async function restoreHistoryFromBackup(historyList) {
+    // 策略：使用 bulkPut (如果 ID 相同則覆蓋，不同則新增)
+    // 為了安全起見，也可以選擇先清空再寫入 (db.history.clear())，視您的需求而定
+    // 這裡採用「合併/覆蓋」模式
+    if (!historyList || historyList.length === 0) return;
+    
+    // 過濾掉不合法的資料
+    const validRecords = historyList.filter(item => item.id && item.data);
+    
+    await db.history.bulkPut(validRecords);
+}

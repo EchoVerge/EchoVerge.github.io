@@ -13,6 +13,7 @@ import { initUsageMonitor } from './modules/usageMonitor.js';
 // 引入雲端模組
 import { initCloudManager } from './modules/cloudManager.js';
 import { initOnboarding } from './modules/onboarding.js';
+import { initJsonBackupManager } from './modules/jsonBackupManager.js'; // 本地匯入匯出
 
 // 初始化控制器
 initColumnManager();
@@ -21,9 +22,10 @@ initEditorController();
 initGradingController();
 initOutputController();
 initUsageMonitor();
-// 初始化雲端功能
+// 初始化雲端與本地備份功能
 initCloudManager();
 initOnboarding();
+initJsonBackupManager();
 
 // 分頁切換邏輯
 const tabs = document.querySelectorAll('.tab-btn');

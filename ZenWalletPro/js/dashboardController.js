@@ -3,7 +3,7 @@ import { getTransactions } from "./services/transaction.js";
 import { getAccounts } from "./services/account.js";
 import { getHoldings } from "./services/portfolio.js";
 import { getTemplates } from "./services/template.js";
-import { recordDailySnapshot, getHistory } from "./services/history.js";
+import { recordDailySnapshot, getHistory, getHistoryByRange } from "./services/history.js";
 import { addTransaction } from "./services/transaction.js"; // 補上遺漏的 import
 
 let trendChart = null;
@@ -105,14 +105,17 @@ export async function refreshGlobalData() {
 }
 
 // 🔥 新增：接收「篩選後」的交易資料，重繪統計與圖表
-export function updateDashboardCharts(filteredTransactions) {
+export function updateDashboardCharts(filteredTransactions, startDate, endDate) {
     if (!filteredTransactions) return;
 
     renderStats(filteredTransactions);
     renderTrendChart(filteredTransactions);
     renderPieChart(filteredTransactions);
     renderTagAnalytics(filteredTransactions);
-    renderCalendar();
+    renderCalendar(); 
+    
+    // 🔥 更新資產淨值圖
+    renderNetWorthChart(startDate, endDate);
 }
 
 async function renderCalendar() {
@@ -232,20 +235,53 @@ async function renderTemplates() {
     });
 }
 
-async function renderNetWorthChart() {
+async function renderNetWorthChart(startDate, endDate) {
     const ctx = document.getElementById('netWorthChart');
     if (!ctx) return;
-    const history = await getHistory(30); 
-    const labels = history.map(h => h.date.slice(5)); 
+
+    let history = [];
+    
+    // 如果有指定範圍，就用範圍抓；否則預設抓最近 30 天
+    if (startDate && endDate) {
+        history = await getHistoryByRange(startDate, endDate);
+    } else {
+        history = await getHistory(30);
+    }
+
+    // 處理 X 軸標籤 (若跨年則顯示年份，否則只顯示月日)
+    const labels = history.map(h => {
+        return h.date.length >= 10 ? h.date.slice(5) : h.date; 
+    });
+    
     const data = history.map(h => h.total);
+
     if (netWorthChart) netWorthChart.destroy();
+    
     netWorthChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{ label: '總資產', data: data, borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', fill: true, tension: 0.4 }]
+            datasets: [{
+                label: '總資產',
+                data: data,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: history.length > 30 ? 0 : 3, // 點太多時隱藏圓點
+                pointHoverRadius: 5
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: false } },
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            }
+        }
     });
 }
 

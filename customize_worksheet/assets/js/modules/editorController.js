@@ -124,8 +124,9 @@ export function initEditorController() {
         inpSimAns: document.getElementById('edit-q-sim-ans'),
         inpSimText: document.getElementById('edit-q-sim-text'),
         inpSimExpl: document.getElementById('edit-q-sim-expl'),
+        inpBonus: document.getElementById('edit-q-bonus'),
 
-        // [新增] 圖片相關元件
+        // 圖片相關元件
         inpImg: document.getElementById('edit-q-img-input'),
         imgPreview: document.getElementById('edit-q-img-preview'),
         imgPlaceholder: document.getElementById('edit-q-img-placeholder'),
@@ -656,6 +657,7 @@ export function initEditorController() {
         el.inpAns.value = q.ans || '';
         el.inpText.value = q.text || '';
         el.inpExpl.value = q.expl || '';
+        el.inpBonus.checked = !!q.isBonus;
         
         // 載入圖片 (若有)
         tempEditingImg = q.img || null;
@@ -689,6 +691,7 @@ export function initEditorController() {
         q.ans = el.inpAns.value.trim();
         q.text = el.inpText.value;
         q.expl = el.inpExpl.value;
+        q.isBonus = el.inpBonus.checked;
         q.img = tempEditingImg; // 儲存圖片 DataURL
         
         const simText = el.inpSimText.value.trim();
@@ -730,7 +733,8 @@ export function initEditorController() {
                 </div>
                 <div class="parsed-header">
                     <span class="parsed-id">#${q.id}</span> 
-                    <span class="parsed-badge" style="background:${q.ans?'#e8f5e9':'#ffebee'}">${q.ans || '未填答'}</span>
+                    <span class="parsed-badge" style="background:${q.ans?'#e8f5e9':'#ffebee'}">${q.ans || '未填答'}</span> 
+                    ${q.isBonus ? '<span class="parsed-badge" style="background:#ff9800; color:white;">🎁 送分</span>' : ''} <span class="parsed-badge">${source}</span>
                     <span class="parsed-badge">${source}</span>
                     ${q.img ? '<span class="parsed-badge" style="background:#2196F3; color:white;">🖼️ 圖</span>' : ''}
                     ${q.similar ? '<span class="parsed-badge" style="background:#9c27b0; color:white;">★類題</span>' : ''}

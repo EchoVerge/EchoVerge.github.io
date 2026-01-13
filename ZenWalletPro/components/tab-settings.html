@@ -1,116 +1,192 @@
-<div class="row mb-4 g-3">
-    <div class="col-lg-4">
-        <div class="dashboard-module border-start border-4 border-primary h-100">
-            <h5 class="module-title"><i class="bi bi-cloud-check-fill"></i> 雲端同步 (PRO)</h5>
-            <p class="text-muted small flex-grow-1">將您的資料同步至雲端，實現跨裝置使用。</p>
-            <div class="d-flex gap-2 mt-2">
-                <button id="btn-cloud-up" class="btn btn-outline-primary btn-sm flex-grow-1 disabled"><i class="bi bi-cloud-upload"></i> 上傳備份</button>
-                <button id="btn-cloud-down" class="btn btn-outline-primary btn-sm flex-grow-1 disabled"><i class="bi bi-cloud-download"></i> 下載還原</button>
+<div class="row g-4 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-start border-4 border-primary">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-square bg-primary bg-opacity-10 text-primary rounded-3 me-3">
+                        <i class="bi bi-cloud-check-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title fw-bold mb-0">雲端同步 (PRO)</h6>
+                        <small class="text-muted" id="sync-status-text">尚未同步</small>
+                    </div>
+                </div>
+                <p class="card-text text-muted small flex-grow-1">將您的財務資料加密同步至雲端，實現跨裝置無縫接軌。</p>
+                <div class="d-flex gap-2 mt-3">
+                    <button id="btn-cloud-up" class="btn btn-outline-primary btn-sm flex-grow-1 disabled">
+                        <i class="bi bi-cloud-upload"></i> 上傳
+                    </button>
+                    <button id="btn-cloud-down" class="btn btn-outline-primary btn-sm flex-grow-1 disabled">
+                        <i class="bi bi-cloud-download"></i> 下載
+                    </button>
+                </div>
             </div>
-            <small class="text-muted d-block mt-2" id="sync-status-text">尚未同步</small>
         </div>
     </div>
 
-    <div class="col-lg-4">
-        <div class="dashboard-module border-start border-4 border-info h-100">
-            <h5 class="module-title"><i class="bi bi-arrow-down-up"></i> 資料匯出/匯入</h5>
-            <p class="text-muted small flex-grow-1">將資料匯出為 JSON 檔案，或從檔案還原。</p>
-            <div class="d-flex gap-2 mt-2">
-                <button id="btn-export-data" class="btn btn-outline-info btn-sm flex-grow-1"><i class="bi bi-download"></i> 匯出 JSON</button>
-                <button id="btn-import-data" class="btn btn-outline-info btn-sm flex-grow-1"><i class="bi bi-upload"></i> 匯入 JSON</button>
-                <input type="file" id="file-input-import" class="d-none" accept=".json">
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-start border-4 border-info">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-square bg-info bg-opacity-10 text-info rounded-3 me-3">
+                        <i class="bi bi-arrow-down-up fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title fw-bold mb-0">備份/還原</h6>
+                        <small class="text-muted">JSON 檔案</small>
+                    </div>
+                </div>
+                <p class="card-text text-muted small flex-grow-1">匯出您的所有記帳資料為檔案，或從檔案還原紀錄。</p>
+                <div class="d-flex gap-2 mt-3">
+                    <button id="btn-export-data" class="btn btn-outline-info btn-sm flex-grow-1">
+                        <i class="bi bi-download"></i> 匯出
+                    </button>
+                    <button id="btn-import-data" class="btn btn-outline-info btn-sm flex-grow-1">
+                        <i class="bi bi-upload"></i> 匯入
+                    </button>
+                    <input type="file" id="file-input-import" class="d-none" accept=".json">
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-lg-4">
-        <div class="dashboard-module border-start border-4 border-warning h-100">
-            <h5 class="module-title"><i class="bi bi-database-fill-gear"></i> 資料庫初始化</h5>
-            <p class="text-muted small flex-grow-1">如果您是第一次使用，請點擊按鈕寫入預設資料。</p>
-            <button id="btn-init-data" class="btn btn-warning btn-sm w-100 mt-2"><i class="bi bi-magic"></i> 寫入預設資料</button>
+    <div class="col-12 col-md-4">
+        <div class="card h-100 border-start border-4 border-warning">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="icon-square bg-warning bg-opacity-10 text-warning rounded-3 me-3">
+                        <i class="bi bi-database-fill-gear fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="card-title fw-bold mb-0">資料初始化</h6>
+                        <small class="text-muted">危險操作</small>
+                    </div>
+                </div>
+                <p class="card-text text-muted small flex-grow-1">如果您是第一次使用，可一鍵寫入預設的類別與帳戶資料。</p>
+                <button id="btn-init-data" class="btn btn-warning btn-sm w-100 mt-3 text-dark">
+                    <i class="bi bi-magic"></i> 寫入預設資料
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="settings-grid">
+<hr class="my-4 text-muted opacity-25">
+
+<div class="row g-4">
     
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-lightning-charge-fill"></i> 快速模版管理</h4>
-        <form id="addTemplateForm" class="row g-2 align-items-end mb-3">
-            <div class="col-6"><input type="text" class="form-control form-control-sm" id="tpl-name" placeholder="名稱 (例:午餐)" required></div>
-            <div class="col-6"><input type="number" class="form-control form-control-sm" id="tpl-amount" placeholder="金額 (選填)"></div>
-            <div class="col-6"><select id="tpl-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
-            <div class="col-6"><select id="tpl-category" class="form-select form-select-sm" required><option value="">類別</option></select></div>
-            <div class="col-12"><select id="tpl-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
-            <div class="col-12 mt-2"><button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增模版</button></div>
-        </form>
-        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-template-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
-    </div>
-
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-tags-fill"></i> 類別管理</h4>
-        <form id="addCategoryForm" class="row g-2 align-items-end mb-3">
-            <div class="col-5"><label class="form-label small">名稱</label><input type="text" class="form-control form-control-sm" id="new-category-name" required></div>
-            <div class="col-4"><label class="form-label small">類型</label><select id="new-category-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
-            <div class="col-3"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
-        </form>
-        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-category-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
-    </div>
-
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-wallet2"></i> 帳戶管理</h4>
-        <form id="addAccountForm" class="row g-2 align-items-end mb-3">
-            <div class="col-7"><label class="form-label small">帳戶名稱</label><input type="text" class="form-control form-control-sm" id="new-account-name" required></div>
-            <div class="col-5"><label class="form-label small">初始金額</label><input type="number" step="any" class="form-control form-control-sm" id="new-account-initial" value="0" required></div>
-            <div class="col-12 mt-2"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增帳戶</button></div>
-        </form>
-        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-account-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
-    </div>
-
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-bookmark-plus-fill"></i> 標籤管理</h4>
-        <form id="addTagForm" class="row g-2 align-items-end mb-3">
-            <div class="col-8"><label class="form-label small">標籤名稱</label><input type="text" class="form-control form-control-sm" id="new-tag-name" placeholder="#名稱" required></div>
-            <div class="col-4"><button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
-        </form>
-        <hr><ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-tag-list" style="max-height: 200px;"><li class="list-group-item text-muted small">載入中...</li></ul>
-    </div>
-
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-calendar-check-fill"></i> 定期交易設定</h4>
-        <form id="addRecurringForm" class="row g-2 align-items-end mb-3">
-            <div class="col-12"><input type="text" class="form-control form-control-sm" id="rec-name" placeholder="名稱 (如: 房租)" required></div>
-            <div class="col-4"><input type="number" class="form-control form-control-sm" id="rec-amount" placeholder="$" required></div>
-            <div class="col-4"><select id="rec-freq" class="form-select form-select-sm"><option value="monthly">每月</option><option value="weekly">每週</option><option value="yearly">每年</option></select></div>
-            <div class="col-4"><input type="date" class="form-control form-control-sm" id="rec-date" required title="首次執行日"></div>
-            
-            <div class="col-6"><select id="rec-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
-            <div class="col-6"><select id="rec-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
-            <div class="col-6"><select id="rec-category" class="form-select form-select-sm" required><option value="">類別</option></select></div>
-            <div class="col-6"><input type="text" class="form-control form-control-sm" id="rec-tags" placeholder="標籤"></div>
-            <div class="col-12"><input type="text" class="form-control form-control-sm" id="rec-notes" placeholder="備註"></div>
-
-            <div class="col-12 mt-2">
-                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增規則</button>
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-speedometer2 text-primary me-2"></i>預算管理</h6>
+                    <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="window.openBudgetModal()">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             </div>
-        </form>
-        <hr>
-        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="recurring-rules-list" style="max-height: 200px;">
-            <li class="list-group-item text-muted small">載入中...</li>
-        </ul>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1 pt-3" id="settings-budget-list" style="max-height: 300px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
+        </div>
     </div>
 
-    <div class="dashboard-module">
-        <h4 class="module-title"><i class="bi bi-speedometer2"></i> 預算管理</h4>
-        <div class="text-end mb-2">
-            <button class="btn btn-primary btn-sm w-100" onclick="window.openBudgetModal()">
-                <i class="bi bi-plus-lg"></i> 新增預算
-            </button>
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>快速模版</h6>
+            </div>
+            <div class="card-body bg-light-subtle flex-grow-0">
+                <form id="addTemplateForm" class="row g-2">
+                    <div class="col-6"><input type="text" class="form-control form-control-sm" id="tpl-name" placeholder="名稱" required></div>
+                    <div class="col-6"><input type="number" class="form-control form-control-sm" id="tpl-amount" placeholder="$"></div>
+                    <div class="col-6"><select id="tpl-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
+                    <div class="col-6"><select id="tpl-category" class="form-select form-select-sm" required><option value="">類別</option></select></div>
+                    <div class="col-12"><select id="tpl-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
+                    <div class="col-12"><button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增</button></div>
+                </form>
+            </div>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1" id="settings-template-list" style="max-height: 250px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
         </div>
-        <hr>
-        <ul class="list-group list-group-flush flex-grow-1 overflow-auto" id="settings-budget-list" style="max-height: 200px;">
-            <li class="list-group-item text-muted small">載入中...</li>
-        </ul>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-calendar-check-fill text-success me-2"></i>定期交易</h6>
+            </div>
+            <div class="card-body bg-light-subtle flex-grow-0">
+                <form id="addRecurringForm" class="row g-2">
+                    <div class="col-8"><input type="text" class="form-control form-control-sm" id="rec-name" placeholder="名稱" required></div>
+                    <div class="col-4"><input type="number" class="form-control form-control-sm" id="rec-amount" placeholder="$" required></div>
+                    <div class="col-6"><select id="rec-freq" class="form-select form-select-sm"><option value="monthly">每月</option><option value="weekly">每週</option><option value="yearly">每年</option></select></div>
+                    <div class="col-6"><input type="date" class="form-control form-control-sm" id="rec-date" required></div>
+                    <div class="col-6"><select id="rec-account" class="form-select form-select-sm" required><option value="">帳戶</option></select></div>
+                    <div class="col-6"><select id="rec-category" class="form-select form-select-sm" required><option value="">類別</option></select></div>
+                    <div class="col-12" style="display:none;"><select id="rec-type"><option value="支出">支出</option></select><input id="rec-tags"></div>
+                    <div class="col-12"><button type="submit" class="btn btn-outline-success btn-sm w-100"><i class="bi bi-plus-lg"></i> 新增規則</button></div>
+                </form>
+            </div>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1" id="recurring-rules-list" style="max-height: 250px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-tags-fill text-danger me-2"></i>類別管理</h6>
+            </div>
+            <div class="card-body bg-light-subtle flex-grow-0">
+                <form id="addCategoryForm" class="row g-2">
+                    <div class="col-5"><input type="text" class="form-control form-control-sm" id="new-category-name" placeholder="名稱" required></div>
+                    <div class="col-4"><select id="new-category-type" class="form-select form-select-sm" required><option value="支出">支出</option><option value="收入">收入</option></select></div>
+                    <div class="col-3"><button type="submit" class="btn btn-danger btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
+                </form>
+            </div>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1" id="settings-category-list" style="max-height: 250px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-wallet2 text-info me-2"></i>帳戶管理</h6>
+            </div>
+            <div class="card-body bg-light-subtle flex-grow-0">
+                <form id="addAccountForm" class="row g-2">
+                    <div class="col-5"><input type="text" class="form-control form-control-sm" id="new-account-name" placeholder="名稱" required></div>
+                    <div class="col-4"><input type="number" step="any" class="form-control form-control-sm" id="new-account-initial" value="0" placeholder="初始" required></div>
+                    <div class="col-3"><button type="submit" class="btn btn-info text-white btn-sm w-100"><i class="bi bi-plus-lg"></i></button></div>
+                </form>
+            </div>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1" id="settings-account-list" style="max-height: 250px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 setting-card">
+            <div class="card-header">
+                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-bookmark-plus-fill text-secondary me-2"></i>標籤管理</h6>
+            </div>
+            <div class="card-body bg-light-subtle flex-grow-0">
+                <form id="addTagForm" class="input-group input-group-sm">
+                    <span class="input-group-text bg-white">#</span>
+                    <input type="text" class="form-control" id="new-tag-name" placeholder="標籤名稱" required>
+                    <button type="submit" class="btn btn-secondary"><i class="bi bi-plus-lg"></i></button>
+                </form>
+            </div>
+            <ul class="list-group list-group-flush overflow-auto flex-grow-1" id="settings-tag-list" style="max-height: 250px;">
+                <li class="list-group-item text-muted text-center small py-3">載入中...</li>
+            </ul>
+        </div>
     </div>
 
 </div>

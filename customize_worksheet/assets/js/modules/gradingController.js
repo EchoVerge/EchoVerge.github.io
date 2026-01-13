@@ -7,6 +7,7 @@ import { state } from './state.js';
 import { parseFile, fileToBase64 } from './fileHandler.js';
 import { parseErrorText } from './textParser.js';
 import { analyzeAnswerSheetBatch } from './aiParser.js'; 
+import { calculateScoreRatio, ScoringModes } from './scoreCalculator.js';
 
 export function initGradingController() {
     state.gradedData = []; 
@@ -28,7 +29,12 @@ export function initGradingController() {
         detailList: document.getElementById('grade-details-list'),
         errDisplay: document.getElementById('grade-error-ids'),
         btnConfirm: document.getElementById('btn-confirm-grade'),
-        closeBtns: document.querySelectorAll('.close-modal')
+        closeBtns: document.querySelectorAll('.close-modal'),
+
+        // Score Handler
+        btnExportExcel: document.getElementById('btn-export-excel'),
+        selScoringMode: document.getElementById('sel-scoring-mode'),
+        inputFullScore: document.getElementById('input-full-score')
     };
 
     // 1. 加入校對按鈕 (動態)
@@ -175,7 +181,7 @@ export function initGradingController() {
         el.closeBtns.forEach(b => b.addEventListener('click', () => el.modal.style.display = 'none'));
     }
 
-    // 校對視窗邏輯
+    // 5. 校對視窗邏輯
     let currentReviewIndex = 0;
     function openReviewModal(index) {
         if (index < 0 || index >= state.gradedData.length) return;
@@ -218,6 +224,83 @@ export function initGradingController() {
         });
         document.getElementById('txt-raw-s').value = text;
         document.getElementById('txt-raw-s').dispatchEvent(new Event('input'));
+    }
+
+    // 6. Export as Excel
+    if (el.btnExportExcel) {
+        el.btnExportExcel.addEventListener('click', () => {
+            if (state.gradedData.length === 0 && (!state.students || state.students.length === 0)) {
+                return alert("無成績資料可匯出");
+            }
+            exportGradesToExcel();
+        });
+    }
+    function exportGradesToExcel() {
+        const fullScore = parseInt(el.inputFullScore?.value || 100);
+        const qCount = state.questions.length;
+        const scorePerQ = fullScore / (qCount || 1);
+        const mode = el.selScoringMode?.value || 'strict';
+
+        // 準備 Excel 資料列
+        const excelRows = [];
+
+        // 資料來源有兩種：
+        // 1. state.gradedData (AI 閱卷或是完整記錄，包含原始答案) -> 支援部分給分
+        // 2. state.students (僅包含錯題 ID) -> 僅支援全對或全錯(或送分)
+        
+        // 優先使用 gradedData
+        const sourceData = (state.gradedData.length > 0) ? state.gradedData : state.students;
+
+        sourceData.forEach((student, idx) => {
+            let totalScore = 0;
+            let correctCount = 0;
+            let details = {}; // 紀錄每題得分狀況
+
+            // 遍歷每一題計算分數
+            state.questions.forEach((q, qIdx) => {
+                const qNum = qIdx + 1;
+                const qKey = q.ans || "";
+                
+                // 取得學生答案
+                let stuAns = "";
+                if (student.rawAnswers) {
+                    // 來源 1: 有原始答案
+                    stuAns = student.rawAnswers[qIdx] || "";
+                } else {
+                    // 來源 2: 只有錯題 ID (parseErrorText 產生的格式通常是 {id, errors: [1, 5]})
+                    // 如果該題 ID 不在 errors 陣列中，假設為全對(與 Key 相同)；若在，假設為空或錯誤
+                    const isError = student.errors && student.errors.includes(String(q.id));
+                    stuAns = isError ? "X" : qKey; 
+                    // 注意：純錯題模式下，無法做多選部分給分，只能全扣
+                }
+
+                // 使用核心計分模組
+                const ratio = calculateScoreRatio(stuAns, qKey, q, mode);
+                const qScore = ratio * scorePerQ;
+                
+                totalScore += qScore;
+                if (ratio === 1) correctCount++;
+
+                details[`Q${qNum}`] = `${stuAns} (${parseFloat(qScore.toFixed(1))})`;
+            });
+
+            // 建立 Excel Row
+            excelRows.push({
+                '座號/姓名': student.seat || student.id || `User_${idx+1}`,
+                '總分': Math.round(totalScore * 10) / 10, // 四捨五入到小數一位
+                '答對題數': correctCount,
+                ...details // 展開每題詳情
+            });
+        });
+
+        // 產生 Excel
+        const ws = XLSX.utils.json_to_sheet(excelRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "成績表");
+        
+        // 檔名加入時間
+        const timeStr = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `成績匯出_${timeStr}.xlsx`);
     }
 }
 

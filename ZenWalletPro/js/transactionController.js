@@ -375,29 +375,32 @@ async function renderTransactionList(useFilter = false) {
     try {
         currentTransactions = await getTransactions(); 
         let displayData = currentTransactions;
+        
+        let start = "";
+        let end = "";
 
         if (useFilter) {
-            const start = document.getElementById("filter-start-date").value;
-            const end = document.getElementById("filter-end-date").value;
-            const keyword = document.getElementById("search-keyword") ? document.getElementById("search-keyword").value.toLowerCase().trim() : "";
+            // 取得目前的日期範圍
+            start = document.getElementById("filter-start-date").value;
+            end = document.getElementById("filter-end-date").value;
             
-            // 讀取進階篩選條件
+            const keyword = document.getElementById("search-keyword") ? document.getElementById("search-keyword").value.toLowerCase().trim() : "";
             const fType = document.getElementById("filter-type")?.value;
             const fAcc = document.getElementById("filter-account")?.value;
             const fCat = document.getElementById("filter-category")?.value;
 
             displayData = displayData.filter(tx => {
-                // 1. 日期篩選 (優先)
+                // 1. 日期篩選
                 if (start && end) {
                     if (tx.dateStr < start || tx.dateStr > end) return false;
                 }
                 
-                // 2. 進階篩選 (Type, Account, Category)
+                // 2. 進階篩選
                 if (fType && tx.type !== fType) return false;
                 if (fAcc && tx.account !== fAcc) return false;
                 if (fCat && tx.category !== fCat) return false;
 
-                // 3. 關鍵字搜尋 (全欄位)
+                // 3. 關鍵字搜尋
                 if (keyword) {
                     const matchItem = tx.item.toLowerCase().includes(keyword);
                     const matchNote = tx.notes && tx.notes.toLowerCase().includes(keyword);
@@ -413,8 +416,8 @@ async function renderTransactionList(useFilter = false) {
             });
         }
 
-        // 🔥 更新儀表板圖表 (使用當下篩選後的資料)
-        updateDashboardCharts(displayData);
+        // 🔥 更新儀表板圖表 (將日期範圍傳入，讓 Net Worth Chart 正確顯示)
+        updateDashboardCharts(displayData, start, end);
 
         // 渲染列表
         if (displayData.length === 0) {

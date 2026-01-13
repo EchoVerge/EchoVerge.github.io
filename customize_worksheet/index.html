@@ -162,6 +162,24 @@
                         <button id="btn-upload-student" class="btn-tool">📂 上傳 Excel 成績</button>
                         <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
                     </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #fff3e0; border-radius: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-weight:bold; color:#e65100;">計分設定：</span>
+                        
+                        <label>滿分</label>
+                        <input type="number" id="input-full-score" value="100" style="width:60px; padding:5px;">
+                        
+                        <label>多選題</label>
+                        <select id="sel-scoring-mode" style="padding:5px;">
+                            <option value="strict">全對才給分 (Strict)</option>
+                            <option value="deduct_20">錯一個選項扣 1/5 (20%)</option>
+                            <option value="deduct_40">錯一個選項扣 2/5 (40%)</option>
+                            <option value="half">錯一個選項扣一半 (50%)</option>
+                        </select>
+
+                        <button id="btn-export-excel" class="btn-tool" style="background: #2e7d32; color: white; margin-left: auto;">
+                            📊 匯出成績 Excel
+                        </button>
+                    </div>
                     <div class="grading-input-wrapper">
                         <textarea id="txt-raw-s" placeholder="在此輸入錯題代碼，例如：&#10;01: 1, 5&#10;02: 3, 4"></textarea>
                     </div>
@@ -219,6 +237,22 @@
 
                     <button id="btn-google-logout" class="btn-tool text-danger" style="width:100%; margin-top:10px;">登出</button>
                 </div>
+
+                <div id="local-backup-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <h3 style="font-size: 1.1em; color: #555; margin-bottom: 10px;">📦 本機手動備份 (JSON)</h3>
+                    <p style="font-size: 0.9em; color: #777; margin-bottom: 15px;">
+                        若不使用雲端同步，可手動下載備份檔保存。
+                    </p>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-local-export" class="btn-secondary" style="flex: 1;">
+                            ⬇️ 匯出備份
+                        </button>
+                        <button id="btn-local-import" class="btn-secondary" style="flex: 1;">
+                            ⬆️ 匯入還原
+                        </button>
+                    </div>
+                    <input type="file" id="file-local-import" accept=".json" style="display: none;">
+                </div>
             </div>
         </div>
     </div>
@@ -244,6 +278,11 @@
                             <label style="color:#2e7d32;">正確答案 (Answer)</label>
                             <input type="text" id="edit-q-ans" class="input-field" placeholder="例如: A 或 ABC (多選)">
                         </div>
+                    </div>
+                    
+                    <div class="form-group" style="width:100px; display:flex; align-items:center; padding-top:25px;">
+                        <input type="checkbox" id="edit-q-bonus" style="width:20px; height:20px; margin-right:5px;">
+                        <label for="edit-q-bonus" style="margin:0; cursor:pointer; font-weight:bold; color:#ff9800;">🎁 送分</label>
                     </div>
 
                     <div class="form-group">
