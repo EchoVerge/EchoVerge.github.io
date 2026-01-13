@@ -1,16 +1,13 @@
 /**
  * assets/js/modules/historyManager.js
- * V3.0: 升級為 IndexedDB (Dexie) 存取，支援圖片儲存
+ * V3.2: 修正 db 未定義錯誤，支援備份還原
  */
-import { saveHistoryToDB, getHistoryFromDB, loadHistoryFromDB, deleteHistoryFromDB, renameHistoryInDB, updateHistoryInDB } from './db.js';
-
-// 為了保持與 EditorController 的相容性，我們維持函式名稱不變
-// 但請注意：現在這些函式都是 async (非同步)，回傳的是 Promise
+// ⚠️ 關鍵修正：這裡必須加入 'db'
+import { db, saveHistoryToDB, getHistoryFromDB, loadHistoryFromDB, deleteHistoryFromDB, renameHistoryInDB, updateHistoryInDB } from './db.js';
 
 // 1. 儲存新紀錄
 export async function saveHistory(questions, title) {
     if (!questions || !questions.length) return null;
-    // 轉發給 db.js 處理
     return await saveHistoryToDB(questions, title);
 }
 
@@ -31,7 +28,7 @@ export async function getHistoryList() {
     return await getHistoryFromDB();
 }
 
-// 4. 讀取單一紀錄 (含完整資料/圖片)
+// 4. 讀取單一紀錄
 export async function loadHistory(id) {
     return await loadHistoryFromDB(id);
 }
@@ -46,21 +43,27 @@ export async function renameHistory(id, newTitle) {
     return await renameHistoryInDB(id, newTitle);
 }
 
-// 7. 取得所有歷史紀錄 (供備份用)
+// --- [新增] 供 jsonBackupManager 使用的介面 ---
+
+// 7. 取得所有歷史紀錄 (備份用)
 export async function getAllHistoryForBackup() {
-    // 假設 db.history 是您的 Table 名稱
+    // 這裡使用到了 db，所以上方必須 import { db ... }
     return await db.history.toArray();
 }
 
-// 8. 還原歷史紀錄 (供匯入用)
+// 8. 還原歷史紀錄 (匯入用)
 export async function restoreHistoryFromBackup(historyList) {
-    // 策略：使用 bulkPut (如果 ID 相同則覆蓋，不同則新增)
-    // 為了安全起見，也可以選擇先清空再寫入 (db.history.clear())，視您的需求而定
-    // 這裡採用「合併/覆蓋」模式
-    if (!historyList || historyList.length === 0) return;
+    if (!historyList || !Array.isArray(historyList) || historyList.length === 0) return;
     
-    // 過濾掉不合法的資料
-    const validRecords = historyList.filter(item => item.id && item.data);
+    // 過濾掉格式不正確的資料
+    const validRecords = historyList.filter(item => item.title && item.data);
     
-    await db.history.bulkPut(validRecords);
+    try {
+        // 使用 bulkPut：若 ID 衝突則覆蓋 (更新)，若無 ID 則新增
+        await db.history.bulkPut(validRecords);
+        console.log(`成功還原 ${validRecords.length} 筆資料`);
+    } catch (error) {
+        console.error("還原失敗:", error);
+        throw error;
+    }
 }
