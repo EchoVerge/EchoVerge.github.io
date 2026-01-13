@@ -1,5 +1,5 @@
 // js/app.js
-import { showLoader, hideLoader, showApp } from "./utils/ui.js";
+import { showLoader, hideLoader, showApp, loadComponent } from "./utils/ui.js"; // 🔥 引入 loadComponent
 import { initSettings } from "./settingsController.js";
 import { initTransactionModule } from "./transactionController.js"; 
 import { initDashboard } from "./dashboardController.js";
@@ -60,23 +60,41 @@ document.addEventListener("DOMContentLoaded", async () => {
     showLoader();
     console.log("應用程式啟動中 (Local First Mode)...");
 
-    // 初始化 Modals
+    // 🔥 步驟 1: 先載入所有 HTML 組件
+    // 這會將分散的 HTML 檔案讀取並插入到 index.html 的對應容器中
+    try {
+        await Promise.all([
+            loadComponent('component-navbar', 'components/navbar.html'),
+            loadComponent('dashboard-tab', 'components/tab-dashboard.html'),
+            loadComponent('portfolio-tab', 'components/tab-portfolio.html'),
+            loadComponent('settings-tab', 'components/tab-settings.html'),
+            loadComponent('component-modals', 'components/modals.html')
+        ]);
+        console.log("HTML 組件載入完成");
+    } catch (e) {
+        console.error("組件載入失敗", e);
+        alert("系統載入失敗，請檢查網路或檔案路徑是否正確 (需建立 components 資料夾)");
+        return; // 載入失敗則停止執行
+    }
+
+    // 🔥 步驟 2: HTML 載入後，DOM 元素才存在，此時初始化 Bootstrap Modals
     if(document.getElementById('saveLayoutModal')) 
         saveLayoutModal = new bootstrap.Modal(document.getElementById('saveLayoutModal'));
     
     if(document.getElementById('licenseModal'))
         licenseModal = new bootstrap.Modal(document.getElementById('licenseModal'));
 
-    // 1. 初始化 Auth UI 與監聽器
+    // 3. 初始化 Auth UI 與監聽器 (包含登入按鈕、授權視窗資料綁定)
     setupAuthUI();
 
-    // 2. 檢查定期交易 (離線也能跑)
+    // 4. 檢查定期交易 (離線也能跑)
     const result = await processDueRecurringTransactions();
     if (result.processed) {
         console.log(`已自動執行 ${result.count} 筆定期交易`);
     }
 
-    // 3. 初始化各個模組
+    // 5. 初始化各個功能模組
+    // 這些模組會去抓取剛剛載入的 HTML 元素並綁定事件
     await Promise.all([
         initSettings(),
         initTransactionModule(),
@@ -85,9 +103,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         initLayout()
     ]);
     
+    // 6. 渲染版面配置選單
     renderLayoutMenu();
     
-    // 4. 恢復上次同步時間顯示
+    // 7. 恢復上次同步時間顯示
     updateLastSyncTime();
 
     hideLoader();
@@ -104,11 +123,9 @@ function updateLastSyncTime() {
 // Auth 與 UI 綁定邏輯
 function setupAuthUI() {
     const loginBtn = document.getElementById("btn-login");
-    const logoutBtn = document.getElementById("btn-logout"); // 這是給下拉選單用的，Modal 內的直接 onclick="logout()"
     const userInfo = document.getElementById("user-info");
     const userAvatar = document.getElementById("user-avatar");
     const userBadge = document.getElementById("user-badge");
-    // const userEmail = document.getElementById("user-email"); // 如果導覽列有 Email 顯示
 
     // 綁定同步按鈕 (設定頁)
     const btnUp = document.getElementById("btn-cloud-up");
@@ -124,7 +141,7 @@ function setupAuthUI() {
     // 全域登出函式 (給 HTML onclick 使用)
     window.logout = logout;
 
-    // 🔥 開啟授權視窗 (核心邏輯)
+    // 開啟授權視窗 (核心邏輯)
     window.openLicenseModal = () => {
         if (!AuthState.user) return;
         
@@ -157,7 +174,7 @@ function setupAuthUI() {
         if(licenseModal) licenseModal.show();
     };
 
-    // 🔥 綁定同步功能
+    // 綁定同步功能
     if(btnUp) {
         btnUp.addEventListener("click", async () => {
             if(!confirm("確定要將本地資料「覆蓋」到雲端嗎？")) return;
@@ -223,18 +240,19 @@ function setupAuthUI() {
         }
     });
 
+    // 綁定隱私模式按鈕
     const privacyBtn = document.getElementById("btn-privacy-toggle");
-        if (privacyBtn) {
-            privacyBtn.addEventListener("click", () => {
-                document.body.classList.toggle("privacy-active");
-                const icon = privacyBtn.querySelector("i");
-                if (document.body.classList.contains("privacy-active")) {
-                    icon.classList.replace("bi-eye", "bi-eye-slash");
-                } else {
-                    icon.classList.replace("bi-eye-slash", "bi-eye");
-                }
-            });
-        }
+    if (privacyBtn) {
+        privacyBtn.addEventListener("click", () => {
+            document.body.classList.toggle("privacy-active");
+            const icon = privacyBtn.querySelector("i");
+            if (document.body.classList.contains("privacy-active")) {
+                icon.classList.replace("bi-eye", "bi-eye-slash");
+            } else {
+                icon.classList.replace("bi-eye-slash", "bi-eye");
+            }
+        });
+    }
 }
 
 // --- Gridstack 相關邏輯 ---
