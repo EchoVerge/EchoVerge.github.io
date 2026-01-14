@@ -14,13 +14,12 @@ export async function initSettings() {
     await refreshAllSettings();
     await renderRecurringRules();
     await loadRecurringDropdowns();
-    await renderTemplatesList(); // 🔥 新增：載入模版列表
+    await renderTemplatesList(); 
 }
 
 // 通用的全域通知函式
 function notifyDataChanged() {
     document.dispatchEvent(new Event("zenwallet:dataChanged"));
-    // 同時更新設定頁面自己的下拉選單
     loadRecurringDropdowns();
     loadTemplateDropdowns();
 }
@@ -100,9 +99,12 @@ function setupEventListeners() {
     // 5. 定期規則表單
     const recForm = document.getElementById("addRecurringForm");
     if(recForm) {
-        document.getElementById("rec-type").addEventListener("change", (e) => {
-            updateRecCategoryOptions(e.target.value);
-        });
+        const recTypeEl = document.getElementById("rec-type");
+        if(recTypeEl) {
+            recTypeEl.addEventListener("change", (e) => {
+                updateRecCategoryOptions(e.target.value);
+            });
+        }
 
         recForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -111,14 +113,21 @@ function setupEventListeners() {
             const freq = document.getElementById("rec-freq").value;
             const date = document.getElementById("rec-date").value;
             
-            const type = document.getElementById("rec-type").value;
-            const account = document.getElementById("rec-account").value;
-            const category = document.getElementById("rec-category").value;
-            const tags = document.getElementById("rec-tags").value;
-            const notes = document.getElementById("rec-notes").value;
+            // 🔥 安全讀取：防止 DOM 元素不存在導致 Crash
+            const typeEl = document.getElementById("rec-type");
+            const accountEl = document.getElementById("rec-account");
+            const categoryEl = document.getElementById("rec-category");
+            const tagsEl = document.getElementById("rec-tags");
+            const notesEl = document.getElementById("rec-notes");
 
-            if(!type || !account || !category) {
-                alert("請完整填寫類型、帳戶與類別");
+            const type = typeEl ? typeEl.value : "支出";
+            const account = accountEl ? accountEl.value : "";
+            const category = categoryEl ? categoryEl.value : "";
+            const tags = tagsEl ? tagsEl.value : "";
+            const notes = notesEl ? notesEl.value : "";
+
+            if(!account || !category) {
+                alert("請完整填寫帳戶與類別");
                 return;
             }
 
@@ -133,13 +142,15 @@ function setupEventListeners() {
         });
     }
 
-    // 6. 🔥 快速模版表單
+    // 6. 快速模版表單
     const tplForm = document.getElementById("addTemplateForm");
     if (tplForm) {
-        // 連動類別 (使用與定期規則類似的邏輯)
-        document.getElementById("tpl-type").addEventListener("change", (e) => {
-            updateTemplateCategoryOptions(e.target.value);
-        });
+        const tplTypeEl = document.getElementById("tpl-type");
+        if(tplTypeEl) {
+            tplTypeEl.addEventListener("change", (e) => {
+                updateTemplateCategoryOptions(e.target.value);
+            });
+        }
 
         tplForm.addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -157,7 +168,7 @@ function setupEventListeners() {
             await addTemplate({ name, amount, type, category, account });
             tplForm.reset();
             await renderTemplatesList();
-            notifyDataChanged(); // 通知 Dashboard 顯示新按鈕
+            notifyDataChanged(); 
         });
     }
 
@@ -199,7 +210,7 @@ function setupEventListeners() {
 // 載入下拉選單資料
 async function loadRecurringDropdowns() {
     const [categories, accounts] = await Promise.all([getCategories(), getAccounts()]);
-    window.allCategoriesForRec = categories; // 暫存給連動使用
+    window.allCategoriesForRec = categories; 
 
     // 填充定期規則的帳戶
     const recAccSelect = document.getElementById("rec-account");
@@ -223,7 +234,6 @@ async function loadRecurringDropdowns() {
 }
 
 function loadTemplateDropdowns(accounts) {
-    // 若未傳入 accounts，重新抓取 (防禦性)
     if (!accounts) {
         getAccounts().then(accs => loadTemplateDropdowns(accs));
         return;
@@ -291,7 +301,7 @@ async function renderCategories() {
     const list = document.getElementById("settings-category-list");
     list.innerHTML = "載入中...";
     const data = await getCategories();
-    window.allCategoriesForRec = data; // 更新快取
+    window.allCategoriesForRec = data; 
     
     list.innerHTML = "";
     data.forEach(item => {
@@ -347,7 +357,7 @@ async function renderTags() {
     });
 }
 
-// 🔥 新增：渲染模版列表
+// 渲染模版列表
 async function renderTemplatesList() {
     const list = document.getElementById("settings-template-list");
     if (!list) return;
@@ -373,7 +383,6 @@ async function renderTemplatesList() {
     });
 }
 
-// 刪除處理函式
 async function handleDeleteCategory(id, name) {
     if (!confirm(`確定刪除類別「${name}」？`)) return;
     showLoader();
@@ -430,7 +439,6 @@ async function renderRecurringRules() {
     });
 }
 
-// 全域刪除函式
 window.handleDeleteRule = async (id) => {
     if(!confirm("確定停止此定期規則？")) return;
     showLoader();
@@ -450,7 +458,7 @@ window.handleDeleteTemplate = async (id) => {
     try {
         await deleteTemplate(id);
         await renderTemplatesList();
-        notifyDataChanged(); // 通知 Dashboard 更新
+        notifyDataChanged(); 
     } catch(e) {
         alert("刪除失敗");
     } finally {
