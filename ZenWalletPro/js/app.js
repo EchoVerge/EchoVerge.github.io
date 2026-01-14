@@ -69,7 +69,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("應用程式啟動中 (Local First Mode)...");
 
     // 🔥 步驟 1: 先載入所有 HTML 組件
-    // 這會將分散的 HTML 檔案讀取並插入到 index.html 的對應容器中
     try {
         await Promise.all([
             loadComponent('component-navbar', 'components/navbar.html'),
@@ -82,7 +81,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (e) {
         console.error("組件載入失敗", e);
         alert("系統載入失敗，請檢查網路或檔案路徑是否正確 (需建立 components 資料夾)");
-        return; // 載入失敗則停止執行
+        return; 
     }
 
     // 🔥 步驟 2: HTML 載入後，DOM 元素才存在，此時初始化 Bootstrap Modals
@@ -92,17 +91,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     if(document.getElementById('licenseModal'))
         licenseModal = new bootstrap.Modal(document.getElementById('licenseModal'));
 
-    // 3. 初始化 Auth UI 與監聽器 (包含登入按鈕、授權視窗資料綁定)
+    // 3. 初始化 Auth UI 與監聽器
     setupAuthUI();
 
-    // 4. 檢查定期交易 (離線也能跑)
+    // 4. 檢查定期交易
     const result = await processDueRecurringTransactions();
     if (result.processed) {
         console.log(`已自動執行 ${result.count} 筆定期交易`);
     }
 
     // 5. 初始化各個功能模組
-    // 這些模組會去抓取剛剛載入的 HTML 元素並綁定事件
     await Promise.all([
         initSettings(),
         initTransactionModule(),
@@ -117,6 +115,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // 7. 恢復上次同步時間顯示
     updateLastSyncTime();
+
+    // 🔥 8. 註冊 Service Worker (PWA)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker 註冊成功:', reg.scope))
+            .catch(err => console.log('Service Worker 註冊失敗:', err));
+    }
 
     hideLoader();
     showApp();
