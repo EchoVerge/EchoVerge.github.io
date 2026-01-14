@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EchoVerge 專案實驗室</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect x=%220%22 y=%220%22 width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%232b32b2%22/><path d=%22M32 10L54 22V42L32 54L10 42V22L32 10Z%22 fill=%22none%22 stroke=%22white%22 stroke-width=%225%22 stroke-linejoin=%22round%22/><path d=%22M10 22L32 34L54 22M32 34V54%22 fill=%22none%22 stroke=%22white%22 stroke-width=%225%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
-
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     
     <style>
@@ -99,19 +99,19 @@
 
         /* --- 專案配色設定 --- */
         
-        /* 專案 1: 薪資系統 (藍青色) */
+        /* 專案 1: 薪資系統 (淺藍青色) */
         .cover-salary {
             background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
         }
 
-        /* 專案 2: PDF 工具 (藍紫色) */
-        .cover-pdf {
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-        }
-
-        /* 專案 3: 學習單生成器 (橙紅色 - 新增) */
+        /* 專案 2: 學習單生成器 (橙紅色) */
         .cover-worksheet {
             background: linear-gradient(45deg, #FF512F 0%, #DD2476 100%);
+        }
+
+        /* 專案 3: ZenWallet Pro (深藍色 + 專業感) */
+        .cover-wallet {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
         }
 
         /* 開發中 (灰紫色) */
@@ -231,21 +231,21 @@
                 </div>
             </a>
 
-            <a href="./watermark_killer/" class="project-card">
-                <div class="card-cover cover-pdf">
-                    <i class="bi bi-file-earmark-pdf"></i>
+            <a href="./ZenWalletPro/" class="project-card">
+                <div class="card-cover cover-wallet">
+                    <i class="bi bi-wallet2"></i>
                 </div>
                 <div class="card-body">
-                    <div class="card-title">PDF 全能工具箱</div>
+                    <div class="card-title">Zen Wallet Pro</div>
                     <div class="card-desc">
-                        針對 NotebookLM 優化的 PDF 處理器。提供互動式遮罩、去浮水印、圖層管理與一鍵比對原圖功能。
+                        全方位個人財務與投資組合管理系統。整合預算追蹤、資產配置分析與即時儀表板，掌握財富脈動。
                     </div>
                     <div class="tags">
-                        <span class="tag">React</span>
-                        <span class="tag">PDF-Lib</span>
-                        <span class="tag">Utility</span>
+                        <span class="tag">Finance</span>
+                        <span class="tag">Investment</span>
+                        <span class="tag">PWA</span>
                     </div>
-                    <div class="btn-arrow">開始使用 <i class="bi bi-arrow-right"></i></div>
+                    <div class="btn-arrow">進入系統 <i class="bi bi-arrow-right"></i></div>
                 </div>
             </a>
 
