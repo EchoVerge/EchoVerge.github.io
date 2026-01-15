@@ -1,11 +1,15 @@
 /**
  * assets/js/modules/aiParser.js
- * V2.7: 更新閱卷 Prompt，適應四欄式佈局 (左一為座號)
+ * V2.8: 優化 Prompt，明確要求 AI 辨識多選題 (Multiple Choice Support)
  */
 
 import { recordRequest, handleApiError } from './usageMonitor.js';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
+
+// ... (fetchAvailableModels 與 callGemini 保持不變，省略以節省篇幅，請保留原有的程式碼) ...
+// 為了完整性，如果您需要我可以貼出完整版，但主要是 analyzeAnswerSheetBatch 的 Prompt 要改。
+// 以下是完整的檔案內容：
 
 export async function fetchAvailableModels(apiKey) {
     try {
@@ -60,11 +64,11 @@ async function callGemini(key, model, contents) {
 
 // 1. 題目解析
 export async function parseWithGemini(apiKey, model, text) {
-    const prompt = `試題轉 JSON。格式：[{"id":"1","text":"...","expl":"...","ans":"A"}]。請自動偵測答案。內容：${text}`;
+    const prompt = `試題轉 JSON。格式：[{"id":"1","text":"...","expl":"...","ans":"A"}]。請自動偵測答案，若為多選請串接字母(如 "AC")。內容：${text}`;
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 2. 批次閱卷 (更新版)
+// 2. 批次閱卷 (Prompt 重大更新)
 export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCount) {
     const promptText = `
     你將收到 ${base64Images.length} 張答案卡圖片。
@@ -72,24 +76,28 @@ export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCoun
     [版面結構]
     試卷主體分為「四個直欄」：
     1. 最左側第一欄：【座號劃記區】。包含「十」、「個」兩行，下方為 0-9 的圓圈。
-    2. 右側三欄：【題目作答區】。包含第 1-15、16-30、31-45 題的選項。
+    2. 右側三欄：【題目作答區】。每一列代表一題，包含 A, B, C, D, E 五個選項圓圈。
 
     [任務目標]
-    請依序辨識每一張圖片：
+    請依序辨識每一張圖片，回傳 JSON 陣列：
+    
     1. 座號 (seat): 
-       - 請聚焦於圖片【最左側】的座號區。
-       - 辨識「十位」與「個位」哪兩個圓圈被塗黑。
-       - 例如：十位塗0、個位塗5，則座號為 "05"。
-       - 若無法辨識劃記，回傳 "unknown"。
+       - 辨識左側「十位」與「個位」的塗黑圓圈。
+       - 回傳兩位數格式，例如 "05"。若無法辨識回傳 "unknown"。
        
     2. 作答 (answers): 
-       - 忽略最左側的座號區，辨識右側題目區的塗黑選項 (A-E)。
+       - 忽略座號區，辨識右側題目區。
        - 題號範圍：1 到 ${qCount}。
+       - 【重要】：這是一份包含「多選題」的考卷。
+       - 請檢查每一題的 A, B, C, D, E 選項，若同一題有多個圓圈被塗黑，請將其字母全部列出並排序。
+       - 例如：同時塗了 A 和 C，回傳 "AC"。
+       - 例如：只塗了 B，回傳 "B"。
+       - 若該題未作答，回傳 "" (空字串)。
     
-    回傳 JSON 陣列：
+    回傳格式範例：
     [
-        {"seat": "01", "answers": {"1":"A", "2":"B"}},
-        {"seat": "05", "answers": {"1":"C", "2":"D"}}
+        {"seat": "01", "answers": {"1":"A", "2":"AC", "3":"BDE"}},
+        {"seat": "05", "answers": {"1":"C", "2":"D", "3":"A"}}
     ]
     `;
 
@@ -152,7 +160,8 @@ export async function parseImageWithGemini(apiKey, model, base64Images) {
     1. 請將所有頁面的題目合併處理，即使圖片包含多題，也要全部列出。
     2. 如果圖片有數學公式，請轉換為 LaTeX 格式 (用 $ 包裹)。
     3. 忽略圖片中的手寫筆跡或雜訊，只提取題目印刷文字。
-    4. 直接回傳 JSON Array，不要有 Markdown 標記。
+    4. 題目若為多選題，請在 ans 欄位回傳所有正確選項(如 "AC")。
+    5. 直接回傳 JSON Array，不要有 Markdown 標記。
 
     JSON 結構：
     [
@@ -203,10 +212,11 @@ export async function autoSolveQuestionsBatch(questions, model, apiKey) {
 
     [輸出規則]
     請回傳一個 JSON 陣列，包含原本的 id 以及生成的 ans (答案) 和 expl (解析)。
+    若為多選題，ans 請回傳所有選項 (例如 "ABC")。
     格式範例：
     [
       { "id": "1", "ans": "A", "expl": "因為..." },
-      { "id": "2", "ans": "C", "expl": "解題步驟..." }
+      { "id": "2", "ans": "AC", "expl": "解題步驟..." }
     ]
     `;
 

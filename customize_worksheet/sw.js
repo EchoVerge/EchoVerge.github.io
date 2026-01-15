@@ -3,7 +3,7 @@
  * Service Worker for PWA capabilities
  * V2: Added Dexie.js to cache and bumped version to force refresh
  */
-const CACHE_NAME = 'worksheet-assistant-v5.2.0'; 
+const CACHE_NAME = 'worksheet-assistant-v5.3.0'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

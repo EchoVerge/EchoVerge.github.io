@@ -1,8 +1,8 @@
 /**
  * assets/js/modules/textParser.js
- * 負責文字解析：
- * 1. 將純文字轉換為題目物件 (含答案擷取)
- * 2. 解析錯題速記文字 (座號: 錯題)
+ * V3.0 Fix: 
+ * 1. 修正多選題答案擷取邏輯 (支援 ABC, A,B 格式)
+ * 2. 移除必須標記 M 的限制，只要答案有多個選項即視為多選
  */
 
 // ==========================================
@@ -15,13 +15,13 @@ export function parseQuestionMixed(text, defaultExpl = '') {
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     // 嘗試分割題目 (常見格式：數字開頭 + 點/頓號)
-    // Regex 邏輯：找到 "1. " 或 "1、" 開頭的段落，直到下一個數字開頭前
+    // Regex: 抓取 "1. " 或 "1、" 開頭
     const regex = /(\d+)[.、\s]([\s\S]*?)(?=(?:\n\d+[.、\s])|$)/g;
     
     let matches;
     const questions = [];
     
-    // 如果 Regex 找不到任何題目，嘗試用雙換行分割
+    // 如果 Regex 找不到任何題目，嘗試用雙換行分割 (備用模式)
     if (!text.match(regex)) {
         const blocks = text.split(/\n\n+/);
         return blocks.map((block, i) => extractAnswerFromBlock(i + 1, block.trim(), defaultExpl));
@@ -45,42 +45,42 @@ function extractAnswerFromBlock(id, content, defaultExpl) {
     let ans = '';
 
     // 1. 嘗試擷取解析 (Explanation)
-    // 常見關鍵字：解析、說明、詳解
     const explRegex = /\n(解析|說明|詳解|Note)[:：]([\s\S]*)/i;
     const explMatch = text.match(explRegex);
     
     if (explMatch) {
         expl = explMatch[2].trim();
-        text = text.replace(explMatch[0], '').trim(); // 從本文移除解析部分
+        text = text.replace(explMatch[0], '').trim(); 
     }
 
-    // 2. 嘗試擷取答案 (Answer) - 從本文或解析中找
-    // 支援格式： (A), [B], 答案：C, Ans: D
-    // 優先找獨立一行的答案
-    const ansRegex = /(?:答案|Ans|Answer)[:：\s]*([A-E])(?:\)|\])?/i;
-    const bracketAnsRegex = /[\(\[]([A-E])[\)\]]$/m; // 行尾的 (A) 或 [A]
+    // 2. 嘗試擷取答案 (Answer) - 支援多選
+    // 修改點：([A-E]) 改為 ([A-E,\s]+)，允許抓取多個字母
+    const ansRegex = /(?:答案|Ans|Answer)[:：\s]*([A-E,\s]+)(?:\)|\])?/i;
+    // 行尾括號判定：(ABC) 或 [AB]
+    const bracketAnsRegex = /[\(\[]([A-E,\s]+)[\)\]]$/m; 
 
-    // 先找明確標示 "答案：A" 的
     let ansMatch = text.match(ansRegex) || expl.match(ansRegex);
     
-    if (ansMatch) {
-        ans = ansMatch[1].toUpperCase();
-    } else {
-        // 若沒找到，找行尾括號 (A)
+    if (!ansMatch) {
         ansMatch = text.match(bracketAnsRegex) || expl.match(bracketAnsRegex);
-        if (ansMatch) ans = ansMatch[1].toUpperCase();
+    }
+
+    if (ansMatch) {
+        // 正規化答案：轉大寫 -> 移除逗號與空白 -> 排序
+        // 例如 "A, C" -> "AC"
+        ans = ansMatch[1].toUpperCase().replace(/[^A-E]/g, '').split('').sort().join('');
     }
 
     return {
         id: id,
         text: text,
         expl: expl,
-        ans: ans // 標準答案欄位
+        ans: ans // 現在可以是 "AC" 或 "ABC"
     };
 }
 
 // ==========================================
-// 2. [補回] 錯題速記解析 (Step 2 用)
+// 2. 錯題速記解析 (Step 2 用)
 // ==========================================
 export function parseErrorText(text) {
     if (!text) return [];
@@ -90,19 +90,15 @@ export function parseErrorText(text) {
     lines.forEach(line => {
         line = line.trim();
         if (!line) return;
-        if (line.startsWith('[已匯入')) return; // 跳過系統訊息行
+        if (line.startsWith('[已匯入')) return;
         
-        // 格式範例: "05: 1, 3, 5" 或 "06: 全對"
-        // 抓取冒號前的座號，與冒號後的內容
         const parts = line.split(/[:：]/);
         if (parts.length >= 2) {
             const seat = parts[0].trim();
             const errorStr = parts[1].trim();
             
-            // 分割錯題 ID
             let errors = [];
             if (errorStr && errorStr !== '全對' && errorStr !== '無錯題' && errorStr !== '無') {
-                // 支援逗號、空格分隔
                 errors = errorStr.split(/[,，\s]+/).filter(x => x);
             }
             
