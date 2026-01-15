@@ -1,15 +1,15 @@
 /**
  * assets/js/modules/answerSheetRenderer.js
- * V10.8: OMR 佈局修復版 (Layout Fix)
- * * 修正: 移除上方定位點容器多餘的 display: flex，確保寬度自動填滿 (Block behavior)
- * * 結果: 強制上方定位點結構與下方題目格 100% 一致，解決對齊問題
+ * V11.2: 座號區對齊修復版 (Seat Alignment Fix)
+ * * 修正: 左側定位點的頂部佔位區補上 margin-bottom: 1px，解決垂直錯位問題
+ * * 功能: 保持列印顯色與版面比例
  */
 
 export function createAnswerSheet(title, qCount) {
     const PAGE_PADDING = 15;
     const INFO_HEIGHT = 55;
     
-    // [設定] OMR 定位點尺寸 (13px = 氣泡直徑)
+    // 主題目的定位點尺寸 (13px)
     const OMR_MARK_W = 13; 
     const OMR_MARK_H = 13; 
 
@@ -58,16 +58,16 @@ export function createAnswerSheet(title, qCount) {
 
                 <div style="display: flex; margin-bottom: 5px; height: ${INFO_HEIGHT}mm; width: 100%; align-items: stretch;">
                     
-                    <div style="width: 10%; border: 2px solid #000; padding: 2px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div style="width: 15%; border: 2px solid #000; padding: 2px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <div style="font-size:11px; font-weight:bold; margin-bottom: 2px; text-align: center; width: 100%; border-bottom: 1px solid #ccc;">座號</div>
-                        <div style="display: flex; flex-direction: row; gap: 4px; justify-content: center;">
+                        <div style="display: flex; flex-direction: row; gap: 2px; justify-content: center;">
                             ${generateSeatMatrix()}
                         </div>
                     </div>
 
                     <div style="width: 5%;"></div>
 
-                    <div style="width: 25%; border: 2px solid #000; padding: 8px; border-radius: 4px; display: flex; flex-direction: column; justify-content: space-evenly;">
+                    <div style="width: 20%; border: 2px solid #000; padding: 8px; border-radius: 4px; display: flex; flex-direction: column; justify-content: space-evenly;">
                         <div style="border-bottom:1px solid #000; padding-bottom: 2px; font-size: 13px; font-weight: bold;">班級:</div>
                         <div style="border-bottom:1px solid #000; padding-bottom: 2px; font-size: 13px; font-weight: bold;">姓名:</div>
                         <div style="border-bottom:1px solid #000; padding-bottom: 2px; font-size: 13px; font-weight: bold;">座號:</div>
@@ -122,14 +122,11 @@ function createMarker(top, left, right, bottom) {
     return `<div class="fiducial-marker" style="${style}"></div>`;
 }
 
-// [關鍵修正] 生成頂部定位點
 function generateTopTimingMarks(cols, w, h, pageStart, pageEnd, perCol) {
-    // 1. 左側隱形佔位 (抵銷 Row Marker 的寬度 13px + margin 2px)
     let leftPlaceholder = '<div style="width: 13px; margin-right: 2px; flex-shrink: 0;"></div>';
     
     let columnsHtml = '';
     for (let c = 0; c < cols; c++) {
-        // 智慧顯示判斷
         const colStartQ = pageStart + (c * perCol);
         const isColumnActive = colStartQ <= pageEnd;
         const markColor = isColumnActive ? 'black' : 'transparent';
@@ -143,18 +140,11 @@ function generateTopTimingMarks(cols, w, h, pageStart, pageEnd, perCol) {
             `;
         }
         
-        // 2. 欄位結構鏡像
-        // [修正點] 這裡移除了 `display: flex`，改為預設的 block
-        // 下方的 createQuestionCell 是被包裹在 <div style="flex: 1; padding: 0 3px;"> 裡面
-        // 內部的 createQuestionCell 是一個 div (block-like flex container)
-        // 所以這裡我們也要用同樣的結構
         columnsHtml += `
             <div style="flex: 1; padding: 0 3px;">
                 <div style="display: flex; align-items: center; border: 1px solid transparent; padding: 1px 3px;">
-                    
                     <div style="width: 18px; margin-right: 2px; border-right: 1px solid transparent;"></div>
-                    
-                    <div style="flex: 1; display: flex; justify-content: space-between; gap: 1px;">
+                    <div style="flex: 1; display: flex; justify-content: space-between; gap: 1px; padding-left: 1px;">
                         ${marks}
                     </div>
                 </div>
@@ -162,24 +152,73 @@ function generateTopTimingMarks(cols, w, h, pageStart, pageEnd, perCol) {
         `;
     }
     
-    // 3. 回傳完整結構
     return `${leftPlaceholder}<div style="flex: 1; display: flex;">${columnsHtml}</div>`;
 }
 
+// [修正] 座號矩陣 - 補上 margin-bottom 確保對齊
 function generateSeatMatrix() {
-    const createCol = (label) => {
-        let rows = '';
-        for (let i = 0; i <= 9; i++) {
-            rows += `
-                <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
-                    <div style="font-size: 8px; width: 8px; text-align: right; margin-right: 2px; line-height: 1;">${i}</div>
+    const MARK_SIZE = 10; 
+    const ROW_HEIGHT = 14; 
+
+    // 左側定位點欄 (佔位區也要加 margin-bottom: 1px)
+    let colLeft = `
+        <div style="height: ${ROW_HEIGHT}px; margin-bottom: 1px;"></div>
+        <div style="height: ${ROW_HEIGHT}px; margin-bottom: 1px;"></div>
+    `;
+    for(let i=0; i<=9; i++) {
+        colLeft += `
+            <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
+                <div class="omr-mark-seat-left" style="width: ${MARK_SIZE}px; height: ${MARK_SIZE}px; background: black; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>
+            </div>
+        `;
+    }
+    
+    // 數字標籤欄 (佔位區也要加 margin-bottom: 1px)
+    let colNums = `
+        <div style="height: ${ROW_HEIGHT}px; margin-bottom: 1px;"></div>
+        <div style="height: ${ROW_HEIGHT}px; margin-bottom: 1px;"></div>
+    `;
+    for(let i=0; i<=9; i++) {
+        colNums += `
+            <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: flex-end; margin-bottom: 1px; padding-right: 2px;">
+                <div style="font-size: 8px;">${i}</div>
+            </div>
+        `;
+    }
+
+    const createDataCol = (label) => {
+        let html = '';
+        // 上方定位點 (Row 1)
+        html += `
+            <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
+                <div class="omr-mark-seat-top" style="width: ${MARK_SIZE}px; height: ${MARK_SIZE}px; background: black; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></div>
+            </div>
+        `;
+        // 標題文字 (Row 2)
+        html += `
+            <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
+                <div style="font-size: 9px; font-weight: bold;">${label}</div>
+            </div>
+        `;
+        // 氣泡 (Row 3 ~ 12)
+        for(let i=0; i<=9; i++) {
+            html += `
+                <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
                     <div class="bubble" style="width: 10px; height: 10px; border: 1px solid #000; border-radius: 50%;"></div>
                 </div>
             `;
         }
-        return `<div style="display: flex; flex-direction: column; align-items: center;"><div style="font-size: 8px; margin-bottom: 2px;">${label}</div>${rows}</div>`;
-    };
-    return createCol('十') + `<div style="width: 4px;"></div>` + createCol('個');
+        return `<div style="display: flex; flex-direction: column;">${html}</div>`;
+    }
+
+    return `
+        <div style="display: flex; flex-direction: row; gap: 2px;">
+            <div style="display: flex; flex-direction: column;">${colLeft}</div>
+            <div style="display: flex; flex-direction: column;">${colNums}</div>
+            ${createDataCol('十')}
+            ${createDataCol('個')}
+        </div>
+    `;
 }
 
 function generateColumnsHtml(startNo, endNo, perCol, colCount, markW, markH) {
