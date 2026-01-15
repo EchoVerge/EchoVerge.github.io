@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/gradingController.js
- * V3.1 (Tab Layout): 簡化版，只負責 Tab 3 的閱卷功能
+ * V3.3: Excel 匯出格式優化 (三層表頭：資訊/配分/正確答案)
  */
 
 import { state } from './state.js';
@@ -80,7 +80,7 @@ export function initGradingController() {
         });
     }
 
-    // 4. 批次閱卷 (保持不變)
+    // 4. 批次閱卷
     if(el.btnCam && el.fileImg) {
         el.btnCam.addEventListener('click', () => {
             if(!state.ai.available) return alert("請先設定 AI Key");
@@ -226,7 +226,7 @@ export function initGradingController() {
         document.getElementById('txt-raw-s').dispatchEvent(new Event('input'));
     }
 
-    // 6. Export as Excel
+    // 6. Export as Excel (使用新格式)
     if (el.btnExportExcel) {
         el.btnExportExcel.addEventListener('click', () => {
             if (state.gradedData.length === 0 && (!state.students || state.students.length === 0)) {
@@ -235,86 +235,123 @@ export function initGradingController() {
             exportGradesToExcel();
         });
     }
+
     function exportGradesToExcel() {
         const fullScore = parseInt(el.inputFullScore?.value || 100);
         const qCount = state.questions.length;
-        const scorePerQ = fullScore / (qCount || 1);
+        // 計算單題配分 (取小數點後兩位)
+        const scorePerQ = parseFloat((fullScore / (qCount || 1)).toFixed(2));
         const mode = el.selScoringMode?.value || 'strict';
 
-        // 準備 Excel 資料列
-        const excelRows = [];
+        // 1. 取得考卷標題 (嘗試從 input 找，找不到就用預設)
+        const titleEl = document.getElementById('current-exam-title');
+        const examTitle = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : "測驗成績";
+        const today = new Date().toLocaleDateString();
 
-        // 資料來源有兩種：
-        // 1. state.gradedData (AI 閱卷或是完整記錄，包含原始答案) -> 支援部分給分
-        // 2. state.students (僅包含錯題 ID) -> 僅支援全對或全錯(或送分)
+        // 2. 準備三層 Header
+        // Row 1: | 考卷名稱 | 總分 | 匯出日期 | 第一題 | 第二題 ...
+        const row1 = ['考卷名稱', '總分', '匯出日期'];
+        // Row 2: | (名稱)   | 100  | (日期)   | 10     | 10 ...
+        const row2 = [examTitle, fullScore, today];
+        // Row 3: | 座號     | 姓名 | 得分     | A      | B ... (正確答案)
+        const row3 = ['座號', '姓名', '得分'];
+
+        // 填充題目欄位 (Header 部分)
+        state.questions.forEach((q, idx) => {
+            row1.push(`第${idx + 1}題`);
+            row2.push(scorePerQ); // 單題配分
+            row3.push(q.ans || q.key || ""); // 正確答案
+        });
+
+        // 3. 準備學生資料 Rows
+        const studentRows = [];
         
-        // 優先使用 gradedData
+        // 優先使用 gradedData (AI 閱卷資料)，否則用 students (手動/Excel匯入)
         const sourceData = (state.gradedData.length > 0) ? state.gradedData : state.students;
 
         sourceData.forEach((student, idx) => {
             let totalScore = 0;
-            let correctCount = 0;
-            let details = {}; // 紀錄每題得分狀況
+            const answerCols = []; // 紀錄該生每一題的填答
 
-            // 遍歷每一題計算分數
             state.questions.forEach((q, qIdx) => {
-                const qNum = qIdx + 1;
                 const qKey = q.ans || "";
-                
-                // 取得學生答案
                 let stuAns = "";
+
                 if (student.rawAnswers) {
-                    // 來源 1: 有原始答案
+                    // 來源 1: AI 閱卷 (有原始作答)
                     stuAns = student.rawAnswers[qIdx] || "";
                 } else {
-                    // 來源 2: 只有錯題 ID (parseErrorText 產生的格式通常是 {id, errors: [1, 5]})
-                    // 如果該題 ID 不在 errors 陣列中，假設為全對(與 Key 相同)；若在，假設為空或錯誤
+                    // 來源 2: 純錯題列表 (推算)
                     const isError = student.errors && student.errors.includes(String(q.id));
                     stuAns = isError ? "X" : qKey; 
-                    // 注意：純錯題模式下，無法做多選部分給分，只能全扣
                 }
 
-                // 使用核心計分模組
+                // 計算該題得分
                 const ratio = calculateScoreRatio(stuAns, qKey, q, mode);
                 const qScore = ratio * scorePerQ;
                 
                 totalScore += qScore;
-                if (ratio === 1) correctCount++;
-
-                details[`Q${qNum}`] = `${stuAns} (${parseFloat(qScore.toFixed(1))})`;
+                
+                // 填入學生答案
+                answerCols.push(stuAns);
             });
 
-            // 建立 Excel Row
-            excelRows.push({
-                '座號/姓名': student.seat || student.id || `User_${idx+1}`,
-                '總分': Math.round(totalScore * 10) / 10, // 四捨五入到小數一位
-                '答對題數': correctCount,
-                ...details // 展開每題詳情
-            });
+            // 座號與姓名 (若無姓名則留白)
+            const seat = student.seat || student.id || `${idx+1}`;
+            const name = student.name || ""; 
+
+            studentRows.push([
+                seat,
+                name,
+                Math.round(totalScore * 10) / 10, // 總分 (四捨五入到第一位)
+                ...answerCols
+            ]);
         });
 
-        // 產生 Excel
-        const ws = XLSX.utils.json_to_sheet(excelRows);
+        // 4. 組合所有資料 (Array of Arrays)
+        const wsData = [row1, row2, row3, ...studentRows];
+
+        // 5. 產生 Worksheet 與 Workbook
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "成績表");
-        
-        // 檔名加入時間
+
+        // 6. 下載檔案
         const timeStr = new Date().toISOString().slice(0,10);
-        XLSX.writeFile(wb, `成績匯出_${timeStr}.xlsx`);
+        XLSX.writeFile(wb, `${examTitle}_成績匯出_${timeStr}.xlsx`);
     }
 }
 
+/**
+ * 閱卷核心函式 (含正規化邏輯)
+ */
 function gradePaper(stuAns, keyStr, render = true) {
     const keys = keyStr.split(/[,，\s]+/);
     const wrongs = [];
     let html = '<table style="width:100%; font-size:13px; border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:5px;">題</th><th>標</th><th>生</th><th>判</th></tr></thead><tbody>';
+    
+    // 內部正規化函式：移除括號、標點、空白，只保留英數並排序
+    const normalize = (str) => {
+        if (!str || str === "?" || str === "-") return str;
+        const matches = str.match(/[a-zA-Z0-9]/g);
+        return matches ? matches.map(c => c.toUpperCase()).sort().join('') : "";
+    };
+
     state.questions.forEach((q, i) => {
-        const k = keys[i] ? keys[i].toUpperCase() : "?";
-        let s = "-";
-        if (Array.isArray(stuAns)) s = (stuAns[i] || "-").toUpperCase();
-        else s = (stuAns[i+1] || stuAns[String(i+1)] || "-").toUpperCase();
+        const rawK = keys[i] || "?";
+        const k = rawK === "?" ? "?" : normalize(rawK);
+
+        let rawS = "-";
+        if (Array.isArray(stuAns)) rawS = (stuAns[i] || "-");
+        else rawS = (stuAns[i+1] || stuAns[String(i+1)] || "-");
+        
+        let s = normalize(rawS);
+        if (s === "") s = "-";
+
         const isWrong = k !== "?" && s !== k;
+        
         if(isWrong) wrongs.push(q.id);
+        
         if (render) {
             html += `<tr style="border-bottom:1px solid #eee; background:${isWrong?'#ffebee':''}">
                 <td style="text-align:center;">${q.id}</td>
@@ -324,11 +361,13 @@ function gradePaper(stuAns, keyStr, render = true) {
             </tr>`;
         }
     });
+    
     if (render) {
         html += '</tbody></table>';
         const listEl = document.getElementById('grade-details-list');
         if(listEl) listEl.innerHTML = html;
     }
+    
     return wrongs;
 }
 
