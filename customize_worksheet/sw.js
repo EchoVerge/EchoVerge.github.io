@@ -1,15 +1,17 @@
 /**
  * customize_worksheet/sw.js
  * Service Worker for PWA capabilities
- * V2: Added Dexie.js to cache and bumped version to force refresh
+ * V6.0.0: New Feature : localParser
  */
-const CACHE_NAME = 'worksheet-assistant-v5.3.0'; 
+const CACHE_NAME = 'worksheet-assistant-v6.0.0'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './manifest.json',
   './assets/css/style.css',
   './assets/css/worksheetStyle.css',
   './assets/css/historyItem.css',
+  './assets/css/toast.css', 
   './assets/js/main.js',
   './assets/js/modules/aiParser.js',
   './assets/js/modules/answerSheetRenderer.js',
@@ -21,12 +23,15 @@ const ASSETS_TO_CACHE = [
   './assets/js/modules/fileHandler.js',
   './assets/js/modules/gradingController.js',
   './assets/js/modules/historyManager.js',
+  './assets/js/modules/localParser.js',
   './assets/js/modules/outputController.js',
+  './assets/js/modules/scoreCalculator.js', 
   './assets/js/modules/settingsController.js',
   './assets/js/modules/state.js',
   './assets/js/modules/textParser.js',
   './assets/js/modules/usageMonitor.js',
   './assets/js/modules/viewRenderer.js',
+  './assets/js/modules/toast.js', 
   './assets/imgs/icon.svg',
   'https://unpkg.com/dexie/dist/dexie.js' 
 ];
@@ -37,7 +42,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache v2');
+        console.log('Opened cache ' + CACHE_NAME);
         return cache.addAll(ASSETS_TO_CACHE);
       })
   );
@@ -48,7 +53,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        return response || fetch(event.request);
+        // 如果快取有，就回傳快取；否則去網路抓
+        return response || fetch(event.request).catch((err) => {
+            console.error('Fetch failed for:', event.request.url, err);
+            return caches.match('./offline.html'); 
+        });
       })
   );
 });
@@ -61,6 +70,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })

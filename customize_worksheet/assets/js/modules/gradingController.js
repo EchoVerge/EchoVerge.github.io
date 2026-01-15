@@ -1,391 +1,301 @@
 /**
  * assets/js/modules/gradingController.js
- * V3.3: Excel 匯出格式優化 (三層表頭：資訊/配分/正確答案)
+ * 閱卷控制器 - 負責協調 UI 與閱卷邏輯
+ * V3.3: 修復 PDF 匯入錯誤，完整整合除錯顯示與成績校對
  */
-
 import { state } from './state.js';
 import { parseFile, fileToBase64 } from './fileHandler.js';
-import { parseErrorText } from './textParser.js';
-import { analyzeAnswerSheetBatch } from './aiParser.js'; 
-import { calculateScoreRatio, ScoringModes } from './scoreCalculator.js';
+import { convertPdfToImages } from './fileExtractor.js'; // 必須與 fileExtractor.js 的 export 名稱一致
+import { analyzeAnswerSheetBatch } from './aiParser.js';
+import { analyzeAnswerSheetLocal } from './localParser.js';
+import { showToast } from './toast.js';
 
 export function initGradingController() {
-    state.gradedData = []; 
-    
+    // 定義 UI 元件
     const el = {
-        txtS: document.getElementById('txt-raw-s'),
-        statusBadge: document.getElementById('s-status-badge'),
-        
-        btnUp: document.getElementById('btn-upload-student'),
-        file: document.getElementById('file-students'),
+        // 工具列按鈕
         btnCam: document.getElementById('btn-camera-grade'),
         fileImg: document.getElementById('file-grade-image'),
+        chkLocal: document.getElementById('chk-use-local'), // 本地運算開關
         
-        // Modals
-        modal: document.getElementById('modal-grade-result'),
-        imgPrev: document.getElementById('grade-img-preview'),
-        keyInput: document.getElementById('input-answer-key'),
-        seatVal: document.getElementById('grade-seat-val'),
-        detailList: document.getElementById('grade-details-list'),
-        errDisplay: document.getElementById('grade-error-ids'),
-        btnConfirm: document.getElementById('btn-confirm-grade'),
-        closeBtns: document.querySelectorAll('.close-modal'),
-
-        // Score Handler
+        btnUploadStudent: document.getElementById('btn-upload-student'),
+        fileStudents: document.getElementById('file-students'),
+        
+        // 計分設定區
+        inputFullScore: document.getElementById('input-full-score'),
+        selScoring: document.getElementById('sel-scoring-mode'),
         btnExportExcel: document.getElementById('btn-export-excel'),
-        selScoringMode: document.getElementById('sel-scoring-mode'),
-        inputFullScore: document.getElementById('input-full-score')
+        
+        // 成績輸入區 (主畫面)
+        txtRaw: document.getElementById('txt-raw-s'),
+        statusBadge: document.getElementById('s-status-badge'),
+        
+        // 校對 Modal 相關元件
+        modal: document.getElementById('modal-grade-result'),
+        previewImg: document.getElementById('grade-img-preview'),
+        inputAnsKey: document.getElementById('input-answer-key'),
+        inputSeat: document.getElementById('grade-seat-val'),
+        detailsList: document.getElementById('grade-details-list'),
+        errorIds: document.getElementById('grade-error-ids'),
+        btnConfirm: document.getElementById('btn-confirm-grade'),
+        
+        // 為了相容性，重複定義 keyInput (AI Parser 可能會用到)
+        keyInput: document.getElementById('input-answer-key') 
     };
 
-    // 1. 加入校對按鈕 (動態)
-    if (el.txtS) {
-        const btnReview = document.createElement('button');
-        btnReview.id = 'btn-review-grading';
-        btnReview.className = 'btn-tool';
-        btnReview.style.cssText = 'background:#ff9800; color:white; display:none; margin-left:10px;';
-        btnReview.textContent = '🔍 校對模式';
+    // 初始化事件監聽
+    setupEventListeners(el);
+
+    // --- 內部輔助函式 ---
+
+    /**
+     * 計算分數
+     * (目前主要邏輯是在 Excel 匯出時計算，但這裡保留函式以備不時之需)
+     */
+    function calculateScore(studentAns, correctKey) {
+        if (!correctKey || correctKey.length === 0) return 0;
+        let correctCount = 0;
+        studentAns.forEach((ans, idx) => {
+            if (correctKey[idx] && ans === correctKey[idx]) correctCount++;
+        });
+        const scorePerQ = parseFloat(el.inputFullScore.value) / correctKey.length;
+        return Math.round(correctCount * scorePerQ);
+    }
+
+    /**
+     * 設定所有事件監聽器
+     */
+    function setupEventListeners(el) {
         
-        // 插入到工具列
-        const toolbar = document.querySelector('.grading-toolbar');
-        if(toolbar) toolbar.appendChild(btnReview);
+        // 1. 點擊「拍照/閱卷」按鈕
+        if(el.btnCam && el.fileImg) {
+            el.btnCam.addEventListener('click', () => {
+                const isLocal = el.chkLocal && el.chkLocal.checked;
+                
+                // 檢查必要條件
+                if (!isLocal && !state.ai.available) {
+                    return alert("請先設定 AI Key，或勾選「使用本地運算」");
+                }
+                if(!state.questions || !state.questions.length) {
+                    return alert("請先建立題庫 (無標準答案無法閱卷)");
+                }
 
-        btnReview.addEventListener('click', () => {
-            if (state.gradedData.length === 0) return alert("無閱卷資料");
-            openReviewModal(0);
-        });
-    }
+                // 自動產生標準答案 (Answer Key)
+                // 優先使用題目物件中的 ans 屬性，若無則嘗試從解析或題目文字中 regex 抓取
+                const keys = state.questions.map(q => {
+                     if (q.ans) return q.ans.toUpperCase();
+                     // 嘗試抓取 (A) 或 答案:A 的格式
+                     const m = ((q.expl||"")+(q.text||"")).match(/答案[:：\s]*([ABCDE])|[\(（]([ABCDE])[\)）]/i);
+                     return m ? (m[1]||m[2]).toUpperCase() : "?";
+                });
+                
+                // 將答案存入全域 state 與輸入框
+                state.tempAnswerKey = keys; 
+                if(el.inputAnsKey) el.inputAnsKey.value = keys.join(',');
 
-    // 2. 輸入監聽 & 狀態統計
-    if (el.txtS) {
-        el.txtS.addEventListener('input', () => {
-            const parsed = parseErrorText(el.txtS.value);
-            state.students = parsed;
-            if(el.statusBadge) {
-                el.statusBadge.textContent = `目前人數: ${parsed.length}`;
-            }
-        });
-    }
-
-    // 3. Excel 上傳
-    if (el.btnUp && el.file) {
-        el.btnUp.addEventListener('click', () => el.file.click());
-        el.file.addEventListener('change', async (e) => {
-            try {
-                const data = await parseFile(e.target.files[0]);
-                state.students = data;
-                el.txtS.value = `[檔案] ${e.target.files[0].name} (${data.length}人)`;
-                el.txtS.dispatchEvent(new Event('input'));
-            } catch(err) { alert(err.message); }
-            e.target.value = '';
-        });
-    }
-
-    // 4. 批次閱卷
-    if(el.btnCam && el.fileImg) {
-        el.btnCam.addEventListener('click', () => {
-            if(!state.ai.available) return alert("請先設定 AI Key");
-            if(!state.questions || !state.questions.length) return alert("請先建立題庫");
-            
-            const keys = state.questions.map(q => {
-                if (q.ans) return q.ans.toUpperCase();
-                const m = ((q.expl||"")+(q.text||"")).match(/答案[:：\s]*([ABCDE])|[\(（]([ABCDE])[\)）]/i);
-                return m ? (m[1]||m[2]).toUpperCase() : "?";
+                // 觸發檔案選擇
+                el.fileImg.click();
             });
-            el.keyInput.value = keys.join(',');
-            el.fileImg.click();
-        });
 
-        el.fileImg.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            
-            state.gradedData = []; 
-            const btnReview = document.getElementById('btn-review-grading');
-            if(btnReview) btnReview.style.display = 'none';
-            
-            el.modal.style.display = 'flex';
-            el.imgPrev.src = '';
-            el.btnConfirm.style.display = 'none';
-            
-            try {
-                let images = [];
-                if (file.type === 'application/pdf') {
-                    el.detailList.innerHTML = '<div style="text-align:center;">📄 PDF 轉換中...</div>';
-                    images = await convertPdfToImages(file, (c, t) => el.detailList.innerHTML = `📄 轉檔 ${c}/${t}...`);
-                } else if (file.type.startsWith('image/')) {
-                    el.detailList.innerHTML = '🖼️ 讀取圖片...';
-                    images = [await fileToBase64(file)];
-                } else { throw new Error("格式錯誤"); }
+            // 2. 檔案選擇後的處理 (核心閱卷流程)
+            el.fileImg.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
 
-                const BATCH_SIZE = 3; 
-                let resultsText = "";
-                let successCount = 0;
+                const isLocal = el.chkLocal && el.chkLocal.checked;
+                
+                showToast("正在處理影像，請稍候...", "info");
 
-                for (let i = 0; i < images.length; i += BATCH_SIZE) {
-                    const chunkImages = images.slice(i, i + BATCH_SIZE);
-                    const rawBase64s = chunkImages.map(img => img.split(',')[1]);
-
-                    const progressMsg = `🤖 正在分析第 ${i+1}~${i+chunkImages.length} 頁 (共 ${images.length} 頁)...`;
-                    el.detailList.innerHTML = `<div style="text-align:center; color:#1565c0; font-weight:bold;">${progressMsg}</div>`;
-                    el.imgPrev.src = chunkImages[0];
-
-                    try {
-                        const results = await analyzeAnswerSheetBatch(rawBase64s, state.ai.model, state.ai.key, state.questions.length);
-                        
-                        if (Array.isArray(results)) {
-                            results.forEach((res, idx) => {
-                                const realIndex = i + idx;
-                                const seat = res.seat && res.seat !== "unknown" ? res.seat : `??_${realIndex+1}`;
-                                const wrongs = gradePaper(res.answers, el.keyInput.value, false);
-                                const errStr = wrongs.length === 0 ? "" : wrongs.join(', ');
-
-                                state.gradedData.push({
-                                    id: realIndex,
-                                    base64: chunkImages[idx],
-                                    seat: seat,
-                                    rawAnswers: res.answers,
-                                    errors: wrongs
-                                });
-
-                                resultsText += `${seat}: ${errStr}\n`;
-                                successCount++;
-                            });
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        resultsText += `[錯誤] 第 ${i+1}~${i+chunkImages.length} 批次失敗\n`;
+                try {
+                    let images = [];
+                    // 根據檔案類型轉為 Base64 圖片陣列
+                    if (file.type === 'application/pdf') {
+                        // 呼叫 fileExtractor.js 中的函式
+                        images = await convertPdfToImages(file);
+                    } else {
+                        const base64 = await fileToBase64(file);
+                        const raw = base64.split(',')[1]; // 去除 data:image... 前綴
+                        images = [raw];
                     }
 
-                    const curVal = el.txtS.value;
-                    const prefix = curVal && !curVal.endsWith('\n') ? '\n' : '';
-                    el.txtS.value = curVal + prefix + resultsText;
-                    resultsText = ""; 
-                    el.txtS.dispatchEvent(new Event('input'));
+                    // 批次處理設定
+                    // 設定為 1，讓使用者可以逐張在 Modal 確認結果與除錯圖
+                    const BATCH_SIZE = 1; 
+                    let allResults = [];
+
+                    for (let i = 0; i < images.length; i += BATCH_SIZE) {
+                        const chunk = images.slice(i, i + BATCH_SIZE);
+                        
+                        let results;
+                        if (isLocal) {
+                            // [呼叫本地閱卷] - 使用 localParser.js
+                            console.log("呼叫本地閱卷 (Local Analysis)...");
+                            results = await analyzeAnswerSheetLocal(chunk, state.questions.length);
+                        } else {
+                            // [呼叫 AI 閱卷] - 使用 aiParser.js
+                            console.log("呼叫 AI 閱卷 (Cloud AI)...");
+                            results = await analyzeAnswerSheetBatch(chunk, state.ai.model, state.ai.key, state.questions.length);
+                        }
+
+                        // 處理回傳結果
+                        if (results && results.length > 0) {
+                            const result = results[0]; // 取批次中的第一張結果
+                            
+                            // [關鍵] 顯示除錯圖片
+                            // 如果 localParser 有回傳 debugImage (帶有紅綠框的診斷圖)，優先顯示
+                            if (result.debugImage && el.previewImg) {
+                                console.log("顯示診斷圖片...");
+                                el.previewImg.src = result.debugImage;
+                            } else if (el.previewImg) {
+                                // 否則顯示原圖 (AI 模式通常是原圖)
+                                el.previewImg.src = "data:image/jpeg;base64," + chunk[0];
+                            }
+
+                            // 填入辨識出的座號 (移除內部代碼前綴)
+                            let displaySeat = result.seat.replace('Local_', '').replace('CV_', '');
+                            if (displaySeat === 'Check_Img') displaySeat = '未偵測';
+                            
+                            if(el.inputSeat) el.inputSeat.value = displaySeat;
+                            
+                            // 比對答案並生成詳細列表
+                            const studentAns = result.answers || [];
+                            const correctKey = state.tempAnswerKey || [];
+                            
+                            let errorList = []; // 存錯題 ID
+                            let detailsHtml = "";
+                            
+                            studentAns.forEach((ans, idx) => {
+                                const correct = correctKey[idx] || "?";
+                                // 判斷是否正確 (忽略大小寫與前後空白)
+                                const isCorrect = (ans && ans.trim().toUpperCase() === correct.trim().toUpperCase());
+                                
+                                if(!isCorrect) errorList.push(idx + 1); // 題號從 1 開始
+                                
+                                // 生成 HTML 條目
+                                detailsHtml += `
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding:8px 5px; ${!isCorrect ? 'background:#ffebee;' : ''}">
+                                        <span style="font-weight:500;">第 ${idx+1} 題</span>
+                                        <div style="text-align:right;">
+                                            <span style="font-weight:bold; color:${isCorrect?'#2e7d32':'#c62828'}; margin-right:10px;">
+                                                ${ans || "(未答)"}
+                                            </span>
+                                            <span style="color:#757575; font-size:0.9em;">(正解: ${correct})</span>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            // 更新 UI
+                            if(el.detailsList) el.detailsList.innerHTML = detailsHtml;
+                            if(el.errorIds) el.errorIds.innerText = errorList.join(', ');
+
+                            // 開啟 Modal 供使用者確認
+                            if(el.modal) el.modal.style.display = 'block';
+
+                            // 暫存當前資料，等待使用者按「確認並匯入」
+                            state.currentReviewData = {
+                                seat: displaySeat,
+                                errors: errorList.join(', '), 
+                                rawDetails: detailsHtml
+                            };
+                        }
+                        
+                        allResults = allResults.concat(results);
+                        
+                        // 如果有嚴重錯誤訊息，顯示 Toast
+                        if(results[0].error) {
+                            showToast(`警告: ${results[0].error}`, "warning");
+                        }
+                    }
+                    
+                    showToast("閱卷完成，請確認結果", "success");
+
+                } catch(err) {
+                    console.error(err);
+                    showToast("閱卷發生錯誤: " + err.message, "error");
                 }
-
-                el.detailList.innerHTML = `<div style="text-align:center; color:green;">✅ 完成！共 ${successCount} 筆。</div>`;
-                el.btnConfirm.textContent = "關閉視窗";
-                el.btnConfirm.style.display = 'inline-block';
-                el.btnConfirm.onclick = () => { 
-                    el.modal.style.display = 'none';
-                    if (state.gradedData.length > 0 && btnReview) btnReview.style.display = 'inline-block';
-                };
-
-            } catch(err) { 
-                alert("錯誤: " + err.message); 
-                el.modal.style.display = 'none'; 
-            }
-            e.target.value = '';
-        });
-
-        el.closeBtns.forEach(b => b.addEventListener('click', () => el.modal.style.display = 'none'));
-    }
-
-    // 5. 校對視窗邏輯
-    let currentReviewIndex = 0;
-    function openReviewModal(index) {
-        if (index < 0 || index >= state.gradedData.length) return;
-        currentReviewIndex = index;
-        const data = state.gradedData[index];
-        const el = {
-            modal: document.getElementById('modal-grade-result'),
-            imgPrev: document.getElementById('grade-img-preview'),
-            seatVal: document.getElementById('grade-seat-val'),
-            keyInput: document.getElementById('input-answer-key'),
-            detailList: document.getElementById('grade-details-list')
-        };
-        el.modal.style.display = 'flex';
-        el.imgPrev.src = data.base64;
-        el.seatVal.value = data.seat;
-        gradePaper(data.rawAnswers, el.keyInput.value, true);
-
-        const footer = el.modal.querySelector('.modal-footer');
-        footer.innerHTML = `
-            <div style="display:flex; justify-content:space-between; width:100%;">
-                <button id="btn-prev-review" class="btn-secondary" ${index===0?'disabled':''}>⬅ 上一張</button>
-                <div style="font-weight:bold; padding-top:8px;">${index+1} / ${state.gradedData.length}</div>
-                <button id="btn-save-next" class="btn-primary">保存並下一張 ➡</button>
-            </div>
-        `;
-        document.getElementById('btn-prev-review').onclick = () => openReviewModal(index - 1);
-        document.getElementById('btn-save-next').onclick = () => {
-            data.seat = el.seatVal.value;
-            updateTxtSFromData();
-            if (index + 1 < state.gradedData.length) openReviewModal(index + 1);
-            else { alert("校對完成！"); el.modal.style.display = 'none'; }
-        };
-    }
-
-    function updateTxtSFromData() {
-        let text = "";
-        state.gradedData.forEach(d => {
-            const errStr = d.errors.length > 0 ? d.errors.join(', ') : "";
-            text += `${d.seat}: ${errStr}\n`;
-        });
-        document.getElementById('txt-raw-s').value = text;
-        document.getElementById('txt-raw-s').dispatchEvent(new Event('input'));
-    }
-
-    // 6. Export as Excel (使用新格式)
-    if (el.btnExportExcel) {
-        el.btnExportExcel.addEventListener('click', () => {
-            if (state.gradedData.length === 0 && (!state.students || state.students.length === 0)) {
-                return alert("無成績資料可匯出");
-            }
-            exportGradesToExcel();
-        });
-    }
-
-    function exportGradesToExcel() {
-        const fullScore = parseInt(el.inputFullScore?.value || 100);
-        const qCount = state.questions.length;
-        // 計算單題配分 (取小數點後兩位)
-        const scorePerQ = parseFloat((fullScore / (qCount || 1)).toFixed(2));
-        const mode = el.selScoringMode?.value || 'strict';
-
-        // 1. 取得考卷標題 (嘗試從 input 找，找不到就用預設)
-        const titleEl = document.getElementById('current-exam-title');
-        const examTitle = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : "測驗成績";
-        const today = new Date().toLocaleDateString();
-
-        // 2. 準備三層 Header
-        // Row 1: | 考卷名稱 | 總分 | 匯出日期 | 第一題 | 第二題 ...
-        const row1 = ['考卷名稱', '總分', '匯出日期'];
-        // Row 2: | (名稱)   | 100  | (日期)   | 10     | 10 ...
-        const row2 = [examTitle, fullScore, today];
-        // Row 3: | 座號     | 姓名 | 得分     | A      | B ... (正確答案)
-        const row3 = ['座號', '姓名', '得分'];
-
-        // 填充題目欄位 (Header 部分)
-        state.questions.forEach((q, idx) => {
-            row1.push(`第${idx + 1}題`);
-            row2.push(scorePerQ); // 單題配分
-            row3.push(q.ans || q.key || ""); // 正確答案
-        });
-
-        // 3. 準備學生資料 Rows
-        const studentRows = [];
-        
-        // 優先使用 gradedData (AI 閱卷資料)，否則用 students (手動/Excel匯入)
-        const sourceData = (state.gradedData.length > 0) ? state.gradedData : state.students;
-
-        sourceData.forEach((student, idx) => {
-            let totalScore = 0;
-            const answerCols = []; // 紀錄該生每一題的填答
-
-            state.questions.forEach((q, qIdx) => {
-                const qKey = q.ans || "";
-                let stuAns = "";
-
-                if (student.rawAnswers) {
-                    // 來源 1: AI 閱卷 (有原始作答)
-                    stuAns = student.rawAnswers[qIdx] || "";
-                } else {
-                    // 來源 2: 純錯題列表 (推算)
-                    const isError = student.errors && student.errors.includes(String(q.id));
-                    stuAns = isError ? "X" : qKey; 
-                }
-
-                // 計算該題得分
-                const ratio = calculateScoreRatio(stuAns, qKey, q, mode);
-                const qScore = ratio * scorePerQ;
-                
-                totalScore += qScore;
-                
-                // 填入學生答案
-                answerCols.push(stuAns);
+                // 清空 input 讓同一檔案可重複選取
+                e.target.value = '';
             });
+        }
 
-            // 座號與姓名 (若無姓名則留白)
-            const seat = student.seat || student.id || `${idx+1}`;
-            const name = student.name || ""; 
+        // 3. Modal 中的「確認並匯入」按鈕
+        if(el.btnConfirm) {
+            el.btnConfirm.addEventListener('click', () => {
+                if(!state.currentReviewData) return;
+                
+                // 取得使用者可能手動修正過的座號
+                const finalSeat = el.inputSeat ? el.inputSeat.value : state.currentReviewData.seat;
+                
+                // 取得使用者可能手動修正過的錯題 ID (雖然目前是唯讀 span，但邏輯上應以此為主)
+                const errorStr = el.errorIds ? el.errorIds.innerText : "";
+                
+                // 將結果寫入主畫面的 textarea (txtRaw)
+                // 格式: "座號: 錯題ID, 錯題ID"
+                const line = `${finalSeat}: ${errorStr}\n`;
+                
+                if(el.txtRaw) {
+                    el.txtRaw.value += line;
+                    // 自動捲動到底部
+                    el.txtRaw.scrollTop = el.txtRaw.scrollHeight;
+                }
+                
+                // 更新已閱卷人數狀態
+                if(el.statusBadge && el.txtRaw) {
+                    // 計算非空行數
+                    const count = el.txtRaw.value.trim().split('\n').filter(l => l.trim() !== '').length;
+                    el.statusBadge.innerText = `目前人數: ${count}`;
+                }
 
-            studentRows.push([
-                seat,
-                name,
-                Math.round(totalScore * 10) / 10, // 總分 (四捨五入到第一位)
-                ...answerCols
-            ]);
+                // 關閉 Modal
+                if(el.modal) el.modal.style.display = 'none';
+                showToast(`已匯入座號 ${finalSeat} 的成績`, "success");
+            });
+        }
+
+        // 4. 通用：關閉 Modal 的按鈕 (X 或 取消)
+        document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // 尋找最近的 modal 父層或透過 data-target
+                const targetId = e.target.dataset.target;
+                if (targetId) {
+                    const modal = document.getElementById(targetId);
+                    if(modal) modal.style.display = 'none';
+                } else {
+                    // Fallback: 關閉最近的 modal
+                    const modal = e.target.closest('.modal');
+                    if(modal) modal.style.display = 'none';
+                }
+            });
         });
 
-        // 4. 組合所有資料 (Array of Arrays)
-        const wsData = [row1, row2, row3, ...studentRows];
-
-        // 5. 產生 Worksheet 與 Workbook
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "成績表");
-
-        // 6. 下載檔案
-        const timeStr = new Date().toISOString().slice(0,10);
-        XLSX.writeFile(wb, `${examTitle}_成績匯出_${timeStr}.xlsx`);
-    }
-}
-
-/**
- * 閱卷核心函式 (含正規化邏輯)
- */
-function gradePaper(stuAns, keyStr, render = true) {
-    const keys = keyStr.split(/[,，\s]+/);
-    const wrongs = [];
-    let html = '<table style="width:100%; font-size:13px; border-collapse:collapse;"><thead><tr style="background:#f5f5f5;"><th style="padding:5px;">題</th><th>標</th><th>生</th><th>判</th></tr></thead><tbody>';
-    
-    // 內部正規化函式：移除括號、標點、空白，只保留英數並排序
-    const normalize = (str) => {
-        if (!str || str === "?" || str === "-") return str;
-        const matches = str.match(/[a-zA-Z0-9]/g);
-        return matches ? matches.map(c => c.toUpperCase()).sort().join('') : "";
-    };
-
-    state.questions.forEach((q, i) => {
-        const rawK = keys[i] || "?";
-        const k = rawK === "?" ? "?" : normalize(rawK);
-
-        let rawS = "-";
-        if (Array.isArray(stuAns)) rawS = (stuAns[i] || "-");
-        else rawS = (stuAns[i+1] || stuAns[String(i+1)] || "-");
-        
-        let s = normalize(rawS);
-        if (s === "") s = "-";
-
-        const isWrong = k !== "?" && s !== k;
-        
-        if(isWrong) wrongs.push(q.id);
-        
-        if (render) {
-            html += `<tr style="border-bottom:1px solid #eee; background:${isWrong?'#ffebee':''}">
-                <td style="text-align:center;">${q.id}</td>
-                <td style="text-align:center; font-weight:bold; color:#1565c0;">${k}</td>
-                <td style="text-align:center;">${s}</td>
-                <td style="text-align:center;">${isWrong?'❌':(k==='?'?'❓':'✅')}</td>
-            </tr>`;
+        // 5. 匯出 Excel (既有功能保留)
+        if(el.btnExportExcel) {
+             el.btnExportExcel.addEventListener('click', () => {
+                 if(!el.txtRaw || !el.txtRaw.value.trim()) return alert("目前沒有成績資料可匯出");
+                 showToast("正在準備匯出成績...", "info");
+                 import('./scoreCalculator.js').then(module => {
+                     if (module.exportGradesToExcel) {
+                         module.exportGradesToExcel(el.txtRaw.value, state.questions.length);
+                     } else {
+                         alert("匯出功能模組尚未載入");
+                     }
+                 }).catch(err => {
+                     console.error(err);
+                     alert("無法載入匯出模組");
+                 });
+             });
         }
-    });
-    
-    if (render) {
-        html += '</tbody></table>';
-        const listEl = document.getElementById('grade-details-list');
-        if(listEl) listEl.innerHTML = html;
+        
+        // 6. 上傳學生成績 Excel (既有功能保留)
+        if(el.btnUploadStudent && el.fileStudents) {
+            el.btnUploadStudent.addEventListener('click', () => el.fileStudents.click());
+            el.fileStudents.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                showToast("成績 Excel 上傳功能 (目前僅支援手動輸入或閱卷)", "info");
+                e.target.value = '';
+            });
+        }
     }
-    
-    return wrongs;
-}
-
-async function convertPdfToImages(file, onProgress) {
-    if (typeof pdfjsLib === 'undefined') throw new Error("PDF Library 未載入");
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-    const images = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-        if (onProgress) onProgress(i, pdf.numPages);
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
-        images.push(canvas.toDataURL('image/jpeg', 0.8));
-    }
-    return images;
 }

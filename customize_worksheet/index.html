@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考卷數位助教</title>
-    <!--<link rel="icon" type="image/png" href="assets/imgs/icon-512.png">-->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><path d=%22M12 4H44L60 20V60H12V4Z%22 fill=%22%23FF512F%22/><path d=%22M36 20L40 30L50 34L40 38L36 48L32 38L22 34L32 30Z%22 fill=%22white%22/></svg>">
     
     <link rel="stylesheet" href="assets/css/style.css">
@@ -15,6 +14,8 @@
 
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d6efd">
+    
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="assets/imgs/icon.svg">
@@ -31,6 +32,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://docs.opencv.org/4.8.0/opencv.js" async ononload="console.log('OpenCV 載入完成')"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <script>
@@ -157,6 +159,10 @@
                     <div class="panel-label">📊 成績輸入與 AI 閱卷</div>
                     <div class="grading-toolbar">
                         <button id="btn-camera-grade" class="btn-tool btn-ai-gradient" style="color:white;">📷 拍照/PDF閱卷</button>
+                        <div style="display:inline-flex; align-items:center; margin-left:10px; background:#e8f5e9; padding:5px 10px; border-radius:20px; border:1px solid #c8e6c9;">
+                            <input type="checkbox" id="chk-use-local" checked style="width:16px; height:16px; cursor:pointer;">
+                            <label for="chk-use-local" style="margin:0 0 0 5px; cursor:pointer; font-size:0.9em; color:#2e7d32; font-weight:bold;">使用本地運算 (免費)</label>
+                        </div>
                         <input type="file" id="file-grade-image" accept="image/*, .pdf" style="display: none;">
                         <button id="btn-upload-student" class="btn-tool">📂 上傳 Excel 成績</button>
                         <input type="file" id="file-students" accept=".csv, .xlsx, .xls" style="display: none;">
