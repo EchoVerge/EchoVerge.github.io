@@ -1,15 +1,11 @@
 /**
  * assets/js/modules/aiParser.js
- * V2.8: 優化 Prompt，明確要求 AI 辨識多選題 (Multiple Choice Support)
+ * V3.0 Cleaned: 移除 AI 閱卷功能 (改用本地端)，保留題目生成與解析功能
  */
 
 import { recordRequest, handleApiError } from './usageMonitor.js';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
-
-// ... (fetchAvailableModels 與 callGemini 保持不變，省略以節省篇幅，請保留原有的程式碼) ...
-// 為了完整性，如果您需要我可以貼出完整版，但主要是 analyzeAnswerSheetBatch 的 Prompt 要改。
-// 以下是完整的檔案內容：
 
 export async function fetchAvailableModels(apiKey) {
     try {
@@ -62,62 +58,15 @@ async function callGemini(key, model, contents) {
     }
 }
 
-// 1. 題目解析
+// 1. 題目解析 (AI 格式化)
 export async function parseWithGemini(apiKey, model, text) {
     const prompt = `試題轉 JSON。格式：[{"id":"1","text":"...","expl":"...","ans":"A"}]。請自動偵測答案，若為多選請串接字母(如 "AC")。內容：${text}`;
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 2. 批次閱卷 (Prompt 重大更新)
-export async function analyzeAnswerSheetBatch(base64Images, model, apiKey, qCount) {
-    const promptText = `
-    你將收到 ${base64Images.length} 張答案卡圖片。
-    
-    [版面結構]
-    試卷主體分為「四個直欄」：
-    1. 最左側第一欄：【座號劃記區】。包含「十」、「個」兩行，下方為 0-9 的圓圈。
-    2. 右側三欄：【題目作答區】。每一列代表一題，包含 A, B, C, D, E 五個選項圓圈。
+// [已移除] AI 閱卷功能 (analyzeAnswerSheetBatch) - 改用本地 OpenCV 運算以提升準確度
 
-    [任務目標]
-    請依序辨識每一張圖片，回傳 JSON 陣列：
-    
-    1. 座號 (seat): 
-       - 辨識左側「十位」與「個位」的塗黑圓圈。
-       - 回傳兩位數格式，例如 "05"。若無法辨識回傳 "unknown"。
-       
-    2. 作答 (answers): 
-       - 忽略座號區，辨識右側題目區。
-       - 題號範圍：1 到 ${qCount}。
-       - 【重要】：這是一份包含「多選題」的考卷。
-       - 請檢查每一題的 A, B, C, D, E 選項，若同一題有多個圓圈被塗黑，請將其字母全部列出並排序。
-       - 例如：同時塗了 A 和 C，回傳 "AC"。
-       - 例如：只塗了 B，回傳 "B"。
-       - 若該題未作答，回傳 "" (空字串)。
-    
-    回傳格式範例：
-    [
-        {"seat": "01", "answers": {"1":"A", "2":"AC", "3":"BDE"}},
-        {"seat": "05", "answers": {"1":"C", "2":"D", "3":"A"}}
-    ]
-    `;
-
-    const parts = [{ text: promptText }];
-    base64Images.forEach(b64 => {
-        parts.push({
-            inlineData: { mimeType: "image/jpeg", data: b64 }
-        });
-    });
-
-    return await callGemini(apiKey, model, [{ parts: parts }]);
-}
-
-// 3. 單張閱卷
-export async function analyzeAnswerSheet(base64Image, model, apiKey, qCount) {
-    const result = await analyzeAnswerSheetBatch([base64Image], model, apiKey, qCount);
-    return result[0];
-}
-
-// 4. 批次生成類題
+// 2. 批次生成類題
 export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     const simpleList = questions.map(q => ({ id: q.id, text: q.text, ans: q.ans }));
     
@@ -137,7 +86,7 @@ export async function generateSimilarQuestionsBatch(questions, model, apiKey) {
     return await callGemini(apiKey, model, [{ parts: [{ text: prompt }] }]);
 }
 
-// 5. Vision 解析題目
+// 3. Vision 解析題目 (圖片轉文字/LaTeX)
 export async function parseImageWithGemini(apiKey, model, base64Images) {
     const images = Array.isArray(base64Images) ? base64Images : [base64Images];
     
@@ -200,7 +149,7 @@ export async function parseImageWithGemini(apiKey, model, base64Images) {
     }
 }
 
-// 6. 批次自動解題
+// 4. 批次自動解題
 export async function autoSolveQuestionsBatch(questions, model, apiKey) {
     const simpleList = questions.map(q => ({ id: q.id, text: q.text }));
     

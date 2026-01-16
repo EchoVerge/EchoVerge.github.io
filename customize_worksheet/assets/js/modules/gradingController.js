@@ -1,13 +1,12 @@
 /**
  * assets/js/modules/gradingController.js
- * 閱卷控制器 V6.1
- * 功能: 隱藏列表、單一入口校對、視窗頂部檔案切換導航
- * V6.1 Update: 最後一張時，「下一張」按鈕自動變更為「完成閱卷」
+ * 閱卷控制器 V7.0 (Pure Local)
+ * 功能: 僅保留本地閱卷 (OpenCV)，移除 AI 閱卷邏輯，保留批次校對與 Excel 匯出
  */
 import { state } from './state.js';
 import { fileToBase64 } from './fileHandler.js';
 import { convertPdfToImages } from './fileExtractor.js';
-import { analyzeAnswerSheetBatch } from './aiParser.js';
+// [移除] import { analyzeAnswerSheetBatch } from './aiParser.js'; 
 import { analyzeAnswerSheetLocal } from './localParser.js';
 import { showToast } from './toast.js';
 
@@ -16,9 +15,8 @@ export function initGradingController() {
     const el = {
         btnCam: document.getElementById('btn-camera-grade'),
         fileImg: document.getElementById('file-grade-image'),
-        chkLocal: document.getElementById('chk-use-local'),
+        // [移除] chkLocal: document.getElementById('chk-use-local'),
         
-        // 入口按鈕與計數
         btnOpenBatch: document.getElementById('btn-open-batch-review'),
         reviewCountBadge: document.getElementById('review-count-badge'),
         
@@ -33,8 +31,7 @@ export function initGradingController() {
 
         // Modal 相關
         modal: document.getElementById('modal-grade-result'),
-        navBar: document.getElementById('grade-file-nav'), // 頂部導航容器
-        
+        navBar: document.getElementById('grade-file-nav'),
         previewImg: document.getElementById('grade-img-preview'),
         inputSeat: document.getElementById('grade-seat-val'),
         inputAnsKey: document.getElementById('input-answer-key'),
@@ -57,11 +54,10 @@ export function initGradingController() {
 
     function setupEventListeners(el) {
         
-        // 1. 拍照/閱卷
+        // 1. 拍照/閱卷按鈕
         if(el.btnCam && el.fileImg) {
             el.btnCam.addEventListener('click', () => {
-                const isLocal = el.chkLocal && el.chkLocal.checked;
-                if (!isLocal && !state.ai.available) return alert("請先設定 AI Key，或勾選「使用本地運算」");
+                // [簡化] 不再檢查 AI Key
                 if(!state.questions || !state.questions.length) return alert("請先建立題庫");
 
                 // 準備 Answer Key
@@ -76,6 +72,7 @@ export function initGradingController() {
                 el.fileImg.click();
             });
 
+            // 檔案選擇後的處理 (強制使用 Local)
             el.fileImg.addEventListener('change', async (e) => {
                 const files = e.target.files;
                 if(!files || files.length === 0) return;
@@ -87,50 +84,52 @@ export function initGradingController() {
                 
                 showToast(`準備處理 ${files.length} 個檔案...`, "info");
 
-                let allImages = [];
-                for (let file of files) {
-                    if (file.type === 'application/pdf') {
-                        const pdfImgs = await convertPdfToImages(file);
-                        allImages.push(...pdfImgs);
-                    } else {
-                        const base64 = await fileToBase64(file);
-                        allImages.push(base64.split(',')[1]);
+                try {
+                    let allImages = [];
+                    for (let file of files) {
+                        if (file.type === 'application/pdf') {
+                            const pdfImgs = await convertPdfToImages(file);
+                            allImages.push(...pdfImgs);
+                        } else {
+                            const base64 = await fileToBase64(file);
+                            allImages.push(base64.split(',')[1]);
+                        }
                     }
-                }
 
-                const isLocal = el.chkLocal && el.chkLocal.checked;
-                let results;
-                if (isLocal) {
-                    results = await analyzeAnswerSheetLocal(allImages, state.questions.length);
-                } else {
-                    results = await analyzeAnswerSheetBatch(allImages, state.ai.model, state.ai.key, state.questions.length);
-                }
+                    // [簡化] 直接呼叫本地閱卷
+                    // console.log("Starting Local Analysis...");
+                    const results = await analyzeAnswerSheetLocal(allImages, state.questions.length);
 
-                results.forEach((r, i) => {
-                    r.uuid = Date.now() + "_" + i;
-                    r.originalImage = allImages[i];
-                    r.status = 'pending';
-                    if (!r.answers) r.answers = [];
-                    while(r.answers.length < state.questions.length) r.answers.push("");
-                });
+                    results.forEach((r, i) => {
+                        r.uuid = Date.now() + "_" + i;
+                        r.originalImage = allImages[i];
+                        r.status = 'pending';
+                        if (!r.answers) r.answers = [];
+                        while(r.answers.length < state.questions.length) r.answers.push("");
+                    });
 
-                state.batchResults = results;
+                    state.batchResults = results;
 
-                if (el.btnOpenBatch) {
-                    el.btnOpenBatch.style.display = 'inline-flex';
-                    if(el.reviewCountBadge) el.reviewCountBadge.innerText = results.length;
+                    if (el.btnOpenBatch) {
+                        el.btnOpenBatch.style.display = 'inline-flex';
+                        if(el.reviewCountBadge) el.reviewCountBadge.innerText = results.length;
+                    }
+                    
+                    showToast(`閱卷完成，共 ${results.length} 份`, "success");
+                    
+                    if (results.length > 0) {
+                        openCorrectionModalByIndex(0);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast("閱卷發生錯誤: " + err.message, "error");
                 }
                 
-                showToast(`辨識完成，共 ${results.length} 份`, "success");
-                
-                if (results.length > 0) {
-                    openCorrectionModalByIndex(0);
-                }
                 e.target.value = '';
             });
         }
 
-        // 2. 入口按鈕點擊事件
+        // 2. 入口按鈕
         if (el.btnOpenBatch) {
             el.btnOpenBatch.addEventListener('click', () => {
                 if (state.batchResults.length > 0) {
@@ -142,11 +141,10 @@ export function initGradingController() {
             });
         }
 
-        // 3. 校對視窗操作
+        // 3. 校對視窗操作 (保持不變)
         if (el.btnConfirm) {
             el.btnConfirm.addEventListener('click', () => {
                 saveCurrentReview();
-                // 若還有下一張則自動跳轉，否則完成
                 if (state.currentReviewIndex < state.batchResults.length - 1) {
                     openCorrectionModalByIndex(state.currentReviewIndex + 1);
                 } else {
@@ -163,14 +161,12 @@ export function initGradingController() {
             });
         }
 
-        // [修改] 下一張按鈕邏輯：若是最後一張，則變身為「完成」
         if (el.btnNext) {
             el.btnNext.addEventListener('click', () => {
                 saveCurrentReview(); 
                 if (state.currentReviewIndex < state.batchResults.length - 1) {
                     openCorrectionModalByIndex(state.currentReviewIndex + 1);
                 } else {
-                    // 已經是最後一張，點擊即完成
                     el.modal.style.display = 'none';
                     showToast("閱卷校對完成！", "success");
                 }
@@ -202,26 +198,20 @@ export function initGradingController() {
         }
     }
 
-    // ============================================================
-    //  校對視窗邏輯
-    // ============================================================
+    // --- (以下 Helper 函式完全保持不變) ---
 
     function openCorrectionModalByIndex(index) {
         if (index < 0 || index >= state.batchResults.length) return;
-        
         state.currentReviewIndex = index;
         const item = state.batchResults[index];
         
-        // 1. 圖片
         if (item.debugImage && el.previewImg) el.previewImg.src = item.debugImage;
         else if (item.originalImage && el.previewImg) el.previewImg.src = "data:image/jpeg;base64," + item.originalImage;
 
-        // 2. 座號
         let displaySeat = (item.seat || "").replace('Local_', '').replace('CV_', '');
         if (displaySeat === 'Check_Img') displaySeat = '';
         if (el.inputSeat) el.inputSeat.value = displaySeat;
 
-        // 3. 狀態
         if (el.statusBadgeModal) {
             const isConfirmed = item.status === 'confirmed';
             el.statusBadgeModal.innerText = isConfirmed ? "✅ 已確認" : "⚠️ 待確認";
@@ -229,37 +219,28 @@ export function initGradingController() {
             el.statusBadgeModal.style.color = isConfirmed ? "#2e7d32" : "#f57c00";
         }
 
-        // 4. [修改] 按鈕狀態與文字邏輯
         el.btnPrev.disabled = (index === 0);
-        
-        // 判斷是否為最後一張
         if (index === state.batchResults.length - 1) {
             el.btnNext.innerHTML = "🏁 完成閱卷";
-            el.btnNext.style.background = "#2e7d32"; // 變為綠色
+            el.btnNext.style.background = "#2e7d32";
             el.btnNext.style.color = "white";
             el.btnNext.style.border = "none";
         } else {
             el.btnNext.innerHTML = "下一張 ➡️";
-            el.btnNext.style.background = ""; // 回復預設
+            el.btnNext.style.background = "";
             el.btnNext.style.color = "";
             el.btnNext.style.border = "";
         }
-        el.btnNext.disabled = false; // 永遠保持啟用 (因為最後一張變成了完成鈕)
+        el.btnNext.disabled = false;
 
-        // 5. 渲染頂部導航列
         renderNavBar();
-
-        // 6. 渲染表格
         renderGradeTable(item.answers);
-
         if (el.modal) el.modal.style.display = 'block';
     }
 
-    // 渲染頂部導航列 (所有檔案的小按鈕)
     function renderNavBar() {
         if (!el.navBar) return;
         el.navBar.innerHTML = "";
-
         state.batchResults.forEach((item, idx) => {
             const btn = document.createElement('button');
             const isCurrent = (idx === state.currentReviewIndex);
@@ -269,17 +250,7 @@ export function initGradingController() {
             if (!label || label === 'Check_Img') label = `#${idx+1}`;
             
             btn.className = "nav-file-btn";
-            btn.style.cssText = `
-                padding: 5px 12px;
-                border: 1px solid ${isCurrent ? '#1976d2' : '#ddd'};
-                background: ${isCurrent ? '#e3f2fd' : (isConfirmed ? '#f1f8e9' : '#fff')};
-                color: ${isCurrent ? '#1565c0' : (isConfirmed ? '#33691e' : '#666')};
-                border-radius: 15px;
-                cursor: pointer;
-                font-size: 0.9em;
-                font-weight: ${isCurrent ? 'bold' : 'normal'};
-                transition: all 0.2s;
-            `;
+            btn.style.cssText = `padding: 5px 12px; border: 1px solid ${isCurrent?'#1976d2':'#ddd'}; background: ${isCurrent?'#e3f2fd':(isConfirmed?'#f1f8e9':'#fff')}; color: ${isCurrent?'#1565c0':(isConfirmed?'#33691e':'#666')}; border-radius: 15px; cursor: pointer; font-size: 0.9em; font-weight: ${isCurrent?'bold':'normal'}; transition: all 0.2s;`;
             
             if (item.error) {
                 btn.style.borderColor = "#ffcdd2";
@@ -289,14 +260,11 @@ export function initGradingController() {
             } else {
                 btn.innerText = label;
             }
-
             btn.addEventListener('click', () => {
                 saveCurrentReview(); 
                 openCorrectionModalByIndex(idx);
             });
-
             el.navBar.appendChild(btn);
-            
             if (isCurrent) {
                 setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }), 50);
             }
@@ -305,7 +273,6 @@ export function initGradingController() {
 
     function renderGradeTable(studentAnswers) {
         if (!el.detailsList) return;
-        
         const correctKey = state.tempAnswerKey || [];
         let html = '';
         let errorList = [];
@@ -314,23 +281,17 @@ export function initGradingController() {
         studentAnswers.forEach((ans, idx) => {
             const correct = correctKey[idx] || "?";
             const isCorrect = (ans && ans.replace(/\s/g,'').toUpperCase() === correct.replace(/\s/g,'').toUpperCase());
-            
             if (!isCorrect) {
                 errorList.push(idx + 1);
                 errorCount++;
             }
-
             const rowColor = isCorrect ? '#fff' : '#ffebee';
             const scoreColor = isCorrect ? '#2e7d32' : '#d32f2f';
 
-            html += `
-            <div class="grade-row" style="display: grid; grid-template-columns: 50px 1fr 1fr; gap: 10px; padding: 6px 15px; border-bottom: 1px solid #eee; align-items: center; background: ${rowColor};">
+            html += `<div class="grade-row" style="display: grid; grid-template-columns: 50px 1fr 1fr; gap: 10px; padding: 6px 15px; border-bottom: 1px solid #eee; align-items: center; background: ${rowColor};">
                 <div style="text-align: center; color: #666;">${idx + 1}</div>
                 <div style="text-align: center; font-weight: bold; color: #555;">${correct}</div>
-                <div>
-                    <input type="text" class="student-ans-input" data-idx="${idx}" value="${ans}" 
-                        style="width: 100%; text-align: center; font-weight: bold; color: ${scoreColor}; border: 1px solid #eee; background: rgba(255,255,255,0.8); padding: 4px; border-radius: 4px;">
-                </div>
+                <div><input type="text" class="student-ans-input" data-idx="${idx}" value="${ans}" style="width: 100%; text-align: center; font-weight: bold; color: ${scoreColor}; border: 1px solid #eee; background: rgba(255,255,255,0.8); padding: 4px; border-radius: 4px;"></div>
             </div>`;
         });
 
@@ -343,10 +304,8 @@ export function initGradingController() {
             input.addEventListener('input', (e) => {
                 const idx = parseInt(e.target.dataset.idx);
                 const newAns = e.target.value.trim().toUpperCase();
-                
                 const currentItem = state.batchResults[state.currentReviewIndex];
                 if (currentItem) currentItem.answers[idx] = newAns;
-                
                 recalcRowStyle(e.target, idx, newAns);
             });
         });
@@ -356,11 +315,9 @@ export function initGradingController() {
         const correctKey = state.tempAnswerKey || [];
         const correct = correctKey[idx] || "?";
         const isCorrect = (newAns.replace(/\s/g,'') === correct.replace(/\s/g,''));
-        
         const row = inputEl.closest('.grade-row');
         inputEl.style.color = isCorrect ? '#2e7d32' : '#d32f2f';
         row.style.background = isCorrect ? '#fff' : '#ffebee';
-        
         updateErrorStats();
     }
 
@@ -382,12 +339,9 @@ export function initGradingController() {
         if (state.currentReviewIndex === -1) return;
         const item = state.batchResults[state.currentReviewIndex];
         const finalSeat = el.inputSeat.value.trim();
-        
         item.seat = finalSeat;
         item.status = 'confirmed';
-
         state.studentAnswerMap[finalSeat] = item.answers;
-        
         renderNavBar();
         
         if (el.txtRaw) {

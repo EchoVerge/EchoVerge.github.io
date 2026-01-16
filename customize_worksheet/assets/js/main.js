@@ -14,6 +14,7 @@ import { initUsageMonitor } from './modules/usageMonitor.js';
 import { initCloudManager } from './modules/cloudManager.js';
 import { initOnboarding } from './modules/onboarding.js';
 import { initJsonBackupManager } from './modules/jsonBackupManager.js'; // 本地匯入匯出
+import { initDebugUtils } from './modules/debugUtils.js';
 
 // 初始化控制器
 initColumnManager();
@@ -26,6 +27,9 @@ initUsageMonitor();
 initCloudManager();
 initOnboarding();
 initJsonBackupManager();
+
+// 初始化控制除錯工具
+initDebugUtils(); 
 
 // 分頁切換邏輯
 const tabs = document.querySelectorAll('.tab-btn');
