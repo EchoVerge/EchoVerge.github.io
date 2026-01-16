@@ -3,7 +3,7 @@
  * Service Worker for PWA capabilities
  * V6.4.0: new proofread interface
  */
-const CACHE_NAME = 'worksheet-assistant-v6.4.0'; 
+const CACHE_NAME = 'worksheet-assistant-v6.4.1'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

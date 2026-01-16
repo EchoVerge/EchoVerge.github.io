@@ -1,7 +1,8 @@
 /**
  * assets/js/modules/gradingController.js
- * 閱卷控制器 V6.0
+ * 閱卷控制器 V6.1
  * 功能: 隱藏列表、單一入口校對、視窗頂部檔案切換導航
+ * V6.1 Update: 最後一張時，「下一張」按鈕自動變更為「完成閱卷」
  */
 import { state } from './state.js';
 import { fileToBase64 } from './fileHandler.js';
@@ -17,7 +18,7 @@ export function initGradingController() {
         fileImg: document.getElementById('file-grade-image'),
         chkLocal: document.getElementById('chk-use-local'),
         
-        // 新增入口按鈕與計數
+        // 入口按鈕與計數
         btnOpenBatch: document.getElementById('btn-open-batch-review'),
         reviewCountBadge: document.getElementById('review-count-badge'),
         
@@ -29,7 +30,6 @@ export function initGradingController() {
         
         txtRaw: document.getElementById('txt-raw-s'),
         statusBadge: document.getElementById('s-status-badge'),
-        // 移除 batchArea，因為我們不需要顯示列表了
 
         // Modal 相關
         modal: document.getElementById('modal-grade-result'),
@@ -83,7 +83,6 @@ export function initGradingController() {
                 // 初始化
                 state.batchResults = [];
                 state.currentReviewIndex = -1;
-                // 隱藏入口按鈕，直到辨識完成
                 if(el.btnOpenBatch) el.btnOpenBatch.style.display = 'none';
                 
                 showToast(`準備處理 ${files.length} 個檔案...`, "info");
@@ -117,7 +116,6 @@ export function initGradingController() {
 
                 state.batchResults = results;
 
-                // [修改] 辨識完成後，顯示入口按鈕，並直接開啟校對視窗
                 if (el.btnOpenBatch) {
                     el.btnOpenBatch.style.display = 'inline-flex';
                     if(el.reviewCountBadge) el.reviewCountBadge.innerText = results.length;
@@ -125,7 +123,6 @@ export function initGradingController() {
                 
                 showToast(`辨識完成，共 ${results.length} 份`, "success");
                 
-                // 自動開啟第一張進行校對
                 if (results.length > 0) {
                     openCorrectionModalByIndex(0);
                 }
@@ -137,7 +134,6 @@ export function initGradingController() {
         if (el.btnOpenBatch) {
             el.btnOpenBatch.addEventListener('click', () => {
                 if (state.batchResults.length > 0) {
-                    // 若有上次紀錄，打開上次的位置，否則開第一張
                     const idx = state.currentReviewIndex >= 0 ? state.currentReviewIndex : 0;
                     openCorrectionModalByIndex(idx);
                 } else {
@@ -150,11 +146,12 @@ export function initGradingController() {
         if (el.btnConfirm) {
             el.btnConfirm.addEventListener('click', () => {
                 saveCurrentReview();
-                // 自動跳下一張 (如果有的話)
+                // 若還有下一張則自動跳轉，否則完成
                 if (state.currentReviewIndex < state.batchResults.length - 1) {
                     openCorrectionModalByIndex(state.currentReviewIndex + 1);
                 } else {
-                    showToast("已是最後一張", "success");
+                    el.modal.style.display = 'none';
+                    showToast("閱卷校對完成！", "success");
                 }
             });
         }
@@ -166,10 +163,17 @@ export function initGradingController() {
             });
         }
 
+        // [修改] 下一張按鈕邏輯：若是最後一張，則變身為「完成」
         if (el.btnNext) {
             el.btnNext.addEventListener('click', () => {
                 saveCurrentReview(); 
-                if (state.currentReviewIndex < state.batchResults.length - 1) openCorrectionModalByIndex(state.currentReviewIndex + 1);
+                if (state.currentReviewIndex < state.batchResults.length - 1) {
+                    openCorrectionModalByIndex(state.currentReviewIndex + 1);
+                } else {
+                    // 已經是最後一張，點擊即完成
+                    el.modal.style.display = 'none';
+                    showToast("閱卷校對完成！", "success");
+                }
             });
         }
 
@@ -225,9 +229,22 @@ export function initGradingController() {
             el.statusBadgeModal.style.color = isConfirmed ? "#2e7d32" : "#f57c00";
         }
 
-        // 4. 按鈕狀態
+        // 4. [修改] 按鈕狀態與文字邏輯
         el.btnPrev.disabled = (index === 0);
-        el.btnNext.disabled = (index === state.batchResults.length - 1);
+        
+        // 判斷是否為最後一張
+        if (index === state.batchResults.length - 1) {
+            el.btnNext.innerHTML = "🏁 完成閱卷";
+            el.btnNext.style.background = "#2e7d32"; // 變為綠色
+            el.btnNext.style.color = "white";
+            el.btnNext.style.border = "none";
+        } else {
+            el.btnNext.innerHTML = "下一張 ➡️";
+            el.btnNext.style.background = ""; // 回復預設
+            el.btnNext.style.color = "";
+            el.btnNext.style.border = "";
+        }
+        el.btnNext.disabled = false; // 永遠保持啟用 (因為最後一張變成了完成鈕)
 
         // 5. 渲染頂部導航列
         renderNavBar();
@@ -238,7 +255,7 @@ export function initGradingController() {
         if (el.modal) el.modal.style.display = 'block';
     }
 
-    // [新增] 渲染頂部導航列 (所有檔案的小按鈕)
+    // 渲染頂部導航列 (所有檔案的小按鈕)
     function renderNavBar() {
         if (!el.navBar) return;
         el.navBar.innerHTML = "";
@@ -248,12 +265,10 @@ export function initGradingController() {
             const isCurrent = (idx === state.currentReviewIndex);
             const isConfirmed = (item.status === 'confirmed');
             
-            // 顯示文字：座號 或 索引
             let label = (item.seat || "").replace('Local_', '').replace('CV_', '');
             if (!label || label === 'Check_Img') label = `#${idx+1}`;
             
-            // 樣式設定
-            btn.className = "nav-file-btn"; // 可在 CSS 定義 hover 效果
+            btn.className = "nav-file-btn";
             btn.style.cssText = `
                 padding: 5px 12px;
                 border: 1px solid ${isCurrent ? '#1976d2' : '#ddd'};
@@ -266,7 +281,6 @@ export function initGradingController() {
                 transition: all 0.2s;
             `;
             
-            // 如果有異常，加紅點
             if (item.error) {
                 btn.style.borderColor = "#ffcdd2";
                 btn.innerHTML = `<span style="color:red">●</span> ${label}`;
@@ -276,15 +290,13 @@ export function initGradingController() {
                 btn.innerText = label;
             }
 
-            // 點擊切換
             btn.addEventListener('click', () => {
-                saveCurrentReview(); // 切換前存檔
+                saveCurrentReview(); 
                 openCorrectionModalByIndex(idx);
             });
 
             el.navBar.appendChild(btn);
             
-            // 自動捲動到當前按鈕
             if (isCurrent) {
                 setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }), 50);
             }
@@ -326,14 +338,12 @@ export function initGradingController() {
         if (el.errorIds) el.errorIds.innerText = errorList.join(', ');
         if (el.errorCount) el.errorCount.innerText = errorCount;
 
-        // 綁定輸入事件
         const inputs = el.detailsList.querySelectorAll('.student-ans-input');
         inputs.forEach(input => {
             input.addEventListener('input', (e) => {
                 const idx = parseInt(e.target.dataset.idx);
                 const newAns = e.target.value.trim().toUpperCase();
                 
-                // 更新資料
                 const currentItem = state.batchResults[state.currentReviewIndex];
                 if (currentItem) currentItem.answers[idx] = newAns;
                 
@@ -378,13 +388,10 @@ export function initGradingController() {
 
         state.studentAnswerMap[finalSeat] = item.answers;
         
-        // 更新導航列狀態 (打勾)
         renderNavBar();
         
-        // 更新舊版文字框
         if (el.txtRaw) {
              const errorStr = el.errorIds.innerText;
-             // 簡單防止重複堆疊
              if(!el.txtRaw.value.includes(finalSeat + ":")) {
                  el.txtRaw.value += `${finalSeat}: ${errorStr}\n`;
                  el.txtRaw.scrollTop = el.txtRaw.scrollHeight;
