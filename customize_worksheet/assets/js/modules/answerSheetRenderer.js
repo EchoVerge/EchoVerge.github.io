@@ -94,7 +94,8 @@ export function createAnswerSheet(title, qCount) {
                         <div style="font-size:10px; line-height: 1.6; color: #444;">
                             • 請使用 2B 鉛筆將對應的圓圈塗黑塗滿。<br>
                             • 修改時請使用橡皮擦擦拭乾淨，勿留痕跡。<br>
-                            • 請保持答案卡清潔，切勿折疊、汙損。
+                            • 請保持答案卡清潔，切勿折疊、汙損。<br>
+                            • 若違反劃記規則導致讀卡錯誤，後果由考生自行承擔。
                         </div>
                     </div>
                 </div>

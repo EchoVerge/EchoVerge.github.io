@@ -3,7 +3,7 @@
  * Service Worker for PWA capabilities
  * V6.0.0: New Feature : localParser
  */
-const CACHE_NAME = 'worksheet-assistant-v6.0.0'; 
+const CACHE_NAME = 'worksheet-assistant-v6.1.0'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
