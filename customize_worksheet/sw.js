@@ -1,9 +1,9 @@
 /**
  * customize_worksheet/sw.js
  * Service Worker for PWA capabilities
- * V6.0.0: New Feature : localParser
+ * V6.2.0: Optimize Feature : export score report
  */
-const CACHE_NAME = 'worksheet-assistant-v6.1.0'; 
+const CACHE_NAME = 'worksheet-assistant-v6.2.0'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

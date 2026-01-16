@@ -1,11 +1,11 @@
 /**
  * assets/js/modules/gradingController.js
  * 閱卷控制器 - 負責協調 UI 與閱卷邏輯
- * V3.3: 修復 PDF 匯入錯誤，完整整合除錯顯示與成績校對
+ * V3.6: 支援匯出時加入空白公式欄位與測驗資訊分頁
  */
 import { state } from './state.js';
 import { parseFile, fileToBase64 } from './fileHandler.js';
-import { convertPdfToImages } from './fileExtractor.js'; // 必須與 fileExtractor.js 的 export 名稱一致
+import { convertPdfToImages } from './fileExtractor.js';
 import { analyzeAnswerSheetBatch } from './aiParser.js';
 import { analyzeAnswerSheetLocal } from './localParser.js';
 import { showToast } from './toast.js';
@@ -30,6 +30,9 @@ export function initGradingController() {
         txtRaw: document.getElementById('txt-raw-s'),
         statusBadge: document.getElementById('s-status-badge'),
         
+        // 抓取試卷標題 (用於匯出)
+        infoTitle: document.getElementById('current-exam-title'),
+
         // 校對 Modal 相關元件
         modal: document.getElementById('modal-grade-result'),
         previewImg: document.getElementById('grade-img-preview'),
@@ -39,32 +42,18 @@ export function initGradingController() {
         errorIds: document.getElementById('grade-error-ids'),
         btnConfirm: document.getElementById('btn-confirm-grade'),
         
-        // 為了相容性，重複定義 keyInput (AI Parser 可能會用到)
+        // 為了相容性，重複定義 keyInput
         keyInput: document.getElementById('input-answer-key') 
     };
+
+    // 初始化答案儲存區 (若尚未存在)
+    if (!state.studentAnswerMap) state.studentAnswerMap = {};
 
     // 初始化事件監聽
     setupEventListeners(el);
 
     // --- 內部輔助函式 ---
 
-    /**
-     * 計算分數
-     * (目前主要邏輯是在 Excel 匯出時計算，但這裡保留函式以備不時之需)
-     */
-    function calculateScore(studentAns, correctKey) {
-        if (!correctKey || correctKey.length === 0) return 0;
-        let correctCount = 0;
-        studentAns.forEach((ans, idx) => {
-            if (correctKey[idx] && ans === correctKey[idx]) correctCount++;
-        });
-        const scorePerQ = parseFloat(el.inputFullScore.value) / correctKey.length;
-        return Math.round(correctCount * scorePerQ);
-    }
-
-    /**
-     * 設定所有事件監聽器
-     */
     function setupEventListeners(el) {
         
         // 1. 點擊「拍照/閱卷」按鈕
@@ -81,10 +70,8 @@ export function initGradingController() {
                 }
 
                 // 自動產生標準答案 (Answer Key)
-                // 優先使用題目物件中的 ans 屬性，若無則嘗試從解析或題目文字中 regex 抓取
                 const keys = state.questions.map(q => {
                      if (q.ans) return q.ans.toUpperCase();
-                     // 嘗試抓取 (A) 或 答案:A 的格式
                      const m = ((q.expl||"")+(q.text||"")).match(/答案[:：\s]*([ABCDE])|[\(（]([ABCDE])[\)）]/i);
                      return m ? (m[1]||m[2]).toUpperCase() : "?";
                 });
@@ -108,18 +95,14 @@ export function initGradingController() {
 
                 try {
                     let images = [];
-                    // 根據檔案類型轉為 Base64 圖片陣列
                     if (file.type === 'application/pdf') {
-                        // 呼叫 fileExtractor.js 中的函式
                         images = await convertPdfToImages(file);
                     } else {
                         const base64 = await fileToBase64(file);
-                        const raw = base64.split(',')[1]; // 去除 data:image... 前綴
+                        const raw = base64.split(',')[1];
                         images = [raw];
                     }
 
-                    // 批次處理設定
-                    // 設定為 1，讓使用者可以逐張在 Modal 確認結果與除錯圖
                     const BATCH_SIZE = 1; 
                     let allResults = [];
 
@@ -128,30 +111,24 @@ export function initGradingController() {
                         
                         let results;
                         if (isLocal) {
-                            // [呼叫本地閱卷] - 使用 localParser.js
                             console.log("呼叫本地閱卷 (Local Analysis)...");
                             results = await analyzeAnswerSheetLocal(chunk, state.questions.length);
                         } else {
-                            // [呼叫 AI 閱卷] - 使用 aiParser.js
                             console.log("呼叫 AI 閱卷 (Cloud AI)...");
                             results = await analyzeAnswerSheetBatch(chunk, state.ai.model, state.ai.key, state.questions.length);
                         }
 
                         // 處理回傳結果
                         if (results && results.length > 0) {
-                            const result = results[0]; // 取批次中的第一張結果
+                            const result = results[0];
                             
-                            // [關鍵] 顯示除錯圖片
-                            // 如果 localParser 有回傳 debugImage (帶有紅綠框的診斷圖)，優先顯示
                             if (result.debugImage && el.previewImg) {
-                                console.log("顯示診斷圖片...");
                                 el.previewImg.src = result.debugImage;
                             } else if (el.previewImg) {
-                                // 否則顯示原圖 (AI 模式通常是原圖)
                                 el.previewImg.src = "data:image/jpeg;base64," + chunk[0];
                             }
 
-                            // 填入辨識出的座號 (移除內部代碼前綴)
+                            // 填入辨識出的座號
                             let displaySeat = result.seat.replace('Local_', '').replace('CV_', '');
                             if (displaySeat === 'Check_Img') displaySeat = '未偵測';
                             
@@ -161,17 +138,15 @@ export function initGradingController() {
                             const studentAns = result.answers || [];
                             const correctKey = state.tempAnswerKey || [];
                             
-                            let errorList = []; // 存錯題 ID
+                            let errorList = []; 
                             let detailsHtml = "";
                             
                             studentAns.forEach((ans, idx) => {
                                 const correct = correctKey[idx] || "?";
-                                // 判斷是否正確 (忽略大小寫與前後空白)
                                 const isCorrect = (ans && ans.trim().toUpperCase() === correct.trim().toUpperCase());
                                 
-                                if(!isCorrect) errorList.push(idx + 1); // 題號從 1 開始
+                                if(!isCorrect) errorList.push(idx + 1);
                                 
-                                // 生成 HTML 條目
                                 detailsHtml += `
                                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid #eee; padding:8px 5px; ${!isCorrect ? 'background:#ffebee;' : ''}">
                                         <span style="font-weight:500;">第 ${idx+1} 題</span>
@@ -185,24 +160,22 @@ export function initGradingController() {
                                 `;
                             });
 
-                            // 更新 UI
                             if(el.detailsList) el.detailsList.innerHTML = detailsHtml;
                             if(el.errorIds) el.errorIds.innerText = errorList.join(', ');
 
-                            // 開啟 Modal 供使用者確認
                             if(el.modal) el.modal.style.display = 'block';
 
-                            // 暫存當前資料，等待使用者按「確認並匯入」
+                            // 暫存當前資料
                             state.currentReviewData = {
                                 seat: displaySeat,
                                 errors: errorList.join(', '), 
-                                rawDetails: detailsHtml
+                                rawDetails: detailsHtml,
+                                answers: studentAns
                             };
                         }
                         
                         allResults = allResults.concat(results);
                         
-                        // 如果有嚴重錯誤訊息，顯示 Toast
                         if(results[0].error) {
                             showToast(`警告: ${results[0].error}`, "warning");
                         }
@@ -214,69 +187,71 @@ export function initGradingController() {
                     console.error(err);
                     showToast("閱卷發生錯誤: " + err.message, "error");
                 }
-                // 清空 input 讓同一檔案可重複選取
                 e.target.value = '';
             });
         }
 
-        // 3. Modal 中的「確認並匯入」按鈕
+        // 3. Modal 確認按鈕
         if(el.btnConfirm) {
             el.btnConfirm.addEventListener('click', () => {
                 if(!state.currentReviewData) return;
                 
-                // 取得使用者可能手動修正過的座號
                 const finalSeat = el.inputSeat ? el.inputSeat.value : state.currentReviewData.seat;
-                
-                // 取得使用者可能手動修正過的錯題 ID (雖然目前是唯讀 span，但邏輯上應以此為主)
                 const errorStr = el.errorIds ? el.errorIds.innerText : "";
                 
-                // 將結果寫入主畫面的 textarea (txtRaw)
-                // 格式: "座號: 錯題ID, 錯題ID"
+                // 儲存答案
+                if (state.currentReviewData.answers) {
+                    const seatKey = String(finalSeat).trim();
+                    state.studentAnswerMap[seatKey] = state.currentReviewData.answers;
+                }
+
+                // 寫入畫面
                 const line = `${finalSeat}: ${errorStr}\n`;
-                
                 if(el.txtRaw) {
                     el.txtRaw.value += line;
-                    // 自動捲動到底部
                     el.txtRaw.scrollTop = el.txtRaw.scrollHeight;
                 }
                 
-                // 更新已閱卷人數狀態
                 if(el.statusBadge && el.txtRaw) {
-                    // 計算非空行數
                     const count = el.txtRaw.value.trim().split('\n').filter(l => l.trim() !== '').length;
                     el.statusBadge.innerText = `目前人數: ${count}`;
                 }
 
-                // 關閉 Modal
                 if(el.modal) el.modal.style.display = 'none';
                 showToast(`已匯入座號 ${finalSeat} 的成績`, "success");
             });
         }
 
-        // 4. 通用：關閉 Modal 的按鈕 (X 或 取消)
+        // 4. 關閉 Modal
         document.querySelectorAll('.close-modal, .close-modal-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // 尋找最近的 modal 父層或透過 data-target
                 const targetId = e.target.dataset.target;
-                if (targetId) {
-                    const modal = document.getElementById(targetId);
-                    if(modal) modal.style.display = 'none';
-                } else {
-                    // Fallback: 關閉最近的 modal
-                    const modal = e.target.closest('.modal');
-                    if(modal) modal.style.display = 'none';
-                }
+                const modal = targetId ? document.getElementById(targetId) : e.target.closest('.modal');
+                if(modal) modal.style.display = 'none';
             });
         });
 
-        // 5. 匯出 Excel (既有功能保留)
+        // 5. 匯出 Excel
         if(el.btnExportExcel) {
              el.btnExportExcel.addEventListener('click', () => {
-                 if(!el.txtRaw || !el.txtRaw.value.trim()) return alert("目前沒有成績資料可匯出");
+                 const hasData = Object.keys(state.studentAnswerMap || {}).length > 0;
+                 
+                 if(!hasData && el.txtRaw && el.txtRaw.value.trim()) {
+                     return alert("偵測到舊版數據 (僅有錯題記錄)，請重新閱卷以取得完整作答明細。");
+                 }
+                 
+                 if(!hasData) return alert("目前沒有成績資料可匯出");
+
                  showToast("正在準備匯出成績...", "info");
+                 
+                 const fullScore = parseFloat(el.inputFullScore.value) || 100;
+                 // ★ 新增：取得試卷標題，若無則用預設值
+                 const examTitle = el.infoTitle ? el.infoTitle.value.trim() : "測驗成績";
+
                  import('./scoreCalculator.js').then(module => {
                      if (module.exportGradesToExcel) {
-                         module.exportGradesToExcel(el.txtRaw.value, state.questions.length);
+                         // ★ 修改：多傳入 examTitle
+                         module.exportGradesToExcel(state.studentAnswerMap, state.questions, fullScore, examTitle);
                      } else {
                          alert("匯出功能模組尚未載入");
                      }
@@ -287,7 +262,7 @@ export function initGradingController() {
              });
         }
         
-        // 6. 上傳學生成績 Excel (既有功能保留)
+        // 6. 上傳學生成績 Excel
         if(el.btnUploadStudent && el.fileStudents) {
             el.btnUploadStudent.addEventListener('click', () => el.fileStudents.click());
             el.fileStudents.addEventListener('change', (e) => {
