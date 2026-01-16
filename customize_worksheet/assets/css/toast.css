@@ -1,3 +1,5 @@
+/* customize_worksheet/assets/css/toast.css */
+
 .toast-container {
     position: fixed;
     bottom: 20px;
@@ -28,9 +30,44 @@
 .toast.success { border-left-color: #4CAF50; }
 .toast.error { border-left-color: #F44336; }
 .toast.warning { border-left-color: #FF9800; }
+/* Loading 樣式可選：使用灰色或保持預設藍色 */
+.toast.loading { border-left-color: #78909C; }
+
+/* 圖示樣式 */
+.toast-icon {
+    display: inline-block; /* 必須設為區塊才能旋轉 */
+    margin-right: 10px;    /* 圖示與文字的距離 */
+    font-size: 1.1em;
+    transform-origin: center center; /* 確保繞中心旋轉 */
+}
+
+/* 針對 Loading 狀態下的圖示套用動畫 */
+.toast.loading .toast-icon {
+    animation: hourglassSpin 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
 
 .toast.hide {
     animation: fadeOut 0.3s ease-in forwards;
+}
+
+/* 沙漏翻轉動畫關鍵影格 */
+/* 邏輯：翻轉(0.5s) -> 停頓(1s) -> 翻轉(0.5s) -> 停頓(1s) = 總週期 3s */
+@keyframes hourglassSpin {
+    0% {
+        transform: rotate(0deg);
+    }
+    16.66% { /* 0.5秒後 */
+        transform: rotate(180deg);
+    }
+    50% {    /* 1.5秒 (0.5+1) */
+        transform: rotate(180deg); /* 停頓 */
+    }
+    66.66% { /* 2.0秒 (1.5+0.5) */
+        transform: rotate(360deg);
+    }
+    100% {   /* 3.0秒 (2+1) */
+        transform: rotate(360deg); /* 停頓 */
+    }
 }
 
 @keyframes slideIn {

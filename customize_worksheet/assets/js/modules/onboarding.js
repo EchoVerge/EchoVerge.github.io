@@ -1,6 +1,8 @@
 /**
  * assets/js/modules/onboarding.js
- * V3.0: 配合功能分組重構的教學導覽
+ * V4.4: 教學導覽修正版 (Fix ID Mismatch)
+ * Fix: 修正步驟 3, 5, 6, 8, 9 的按鈕 ID，與 index.html 保持一致
+ * Fix: 更新自動切換分頁的判斷邏輯以匹配新 ID
  */
 
 let driverObj;
@@ -11,10 +13,11 @@ export function initOnboarding() {
         btnHelp.addEventListener('click', startTour);
     }
 
+    // 檢查是否為初次使用
     const hasSeenTour = localStorage.getItem('ws_tour_seen');
     if (!hasSeenTour) {
         setTimeout(() => {
-            if(confirm("歡迎使用考卷數位助教！\n是否需要進行 1 分鐘的快速導覽？")) {
+            if(confirm("歡迎使用考卷數位助教！\n這是一個功能強大的工具，是否需要 2 分鐘的詳細導覽，帶您快速上手？")) {
                 startTour();
             }
             localStorage.setItem('ws_tour_seen', 'true');
@@ -25,81 +28,152 @@ export function initOnboarding() {
 export function startTour() {
     if (!window.driver) return;
 
-    // Helper to get tab buttons
+    // 用來追蹤哪個元素被我們強制顯示了
+    let tempShownElement = null;
+
+    // Helper: 恢復被強制顯示的元素
+    const restoreHiddenElement = () => {
+        if (tempShownElement) {
+            tempShownElement.style.display = 'none';
+            tempShownElement.style.boxShadow = '';
+            tempShownElement.classList.remove('tour-force-show');
+            tempShownElement = null;
+        }
+    };
+
+    // Helper: 取得分頁按鈕
     const getNavBtn = (tabName) => document.querySelector(`button[data-tab="${tabName}"]`);
 
     driverObj = window.driver.js.driver({
         showProgress: true,
         allowClose: true,
+        animate: true,
+        nextBtnText: '下一步 ❯',
+        prevBtnText: '❮ 上一步',
+        doneBtnText: '開始使用',
+        
         steps: [
+            // --- Phase 1: 設定與輸入 ---
             { 
                 element: '#btn-ai-settings', 
-                popover: { title: '1. 設定 AI Key', description: '第一步請先設定 Google AI Key，這是使用所有 AI 功能的前提。' } 
-            },
-            { 
-                // Group 1: 來源 (包含 匯入、Vision、格式化)
-                element: '#group-source', 
-                popover: { 
-                    title: '2. 建立題庫 (輸入)', 
-                    description: '這裡整合了所有「輸入」方式：<br>📂 <b>匯入檔案</b> (Excel/Word)<br>📷 <b>圖片/PDF 辨識</b> (Vision)<br>✨ <b>AI 格式化</b> (整理貼上的雜亂文字)' 
-                } 
+                popover: { title: '1. 核心設定 (AI Key)', description: '一切的開始！請先點此設定 <b>Google Gemini API Key</b>。<br>有了它，系統才能幫您自動解題、生成詳解與格式化文字。' } 
             },
             { 
                 element: '#pane-input', 
-                popover: { title: '3. 文字輸入區', description: '若您選擇手動貼上題目文字，請貼在此處，再點擊上方的「✨ AI 格式化」按鈕進行整理。' } 
+                popover: { title: '2. 題目輸入區', description: '您可以將 Word/PDF 的題目文字直接<b>複製貼上</b>到這裡。<br>或者使用上方的「📂 匯入」按鈕直接讀取檔案。' } 
             },
             { 
-                // Group 2: 處理 (包含 解題、類題)
-                element: '#group-process', 
-                popover: { 
-                    title: '4. AI 賦能 (深加工)', 
-                    description: '當題目進入系統後，可使用這裡的功能來增強內容：<br>🧠 <b>AI 自動解題</b>：自動補全答案與詳細解析。<br>🔮 <b>生成類題</b>：為現有題目生成相似的練習題。' 
-                } 
+                // [修正 ID] btn-format -> btn-ai-parse
+                element: '#btn-ai-parse', 
+                popover: { title: '3. AI 智能格式化', description: '貼上雜亂的文字後，點擊這支<b>魔法棒</b>！<br>AI 會自動幫您辨識題號、選項與配分，將純文字轉換為可編輯的題庫卡片。' } 
             },
+            
+            // --- Phase 2: 編輯與增強 ---
             { 
                 element: '#pane-preview', 
-                popover: { title: '5. 預覽與排序', description: '整理好的題目會顯示在這裡。您可以拖曳卡片調整順序，或點擊鉛筆圖示進行單題編輯。' } 
+                popover: { title: '4. 題庫預覽與編輯', description: '整理好的題目會出現在這。<br>• <b>拖曳</b>卡片可調整順序<br>• 點擊<b>鉛筆</b>可修改內容<br>• 點擊<b>垃圾桶</b>可刪除題目' } 
             },
             { 
-                element: '#group-manage', 
-                popover: { title: '6. 存檔管理', description: '編輯過程中請隨時儲存。「紀錄」按鈕可以幫您找回之前編輯過的試卷。' } 
+                // [修正 ID] btn-auto-solve -> btn-ai-solve
+                element: '#btn-ai-solve', 
+                popover: { title: '5. AI 自動解題', description: '沒有答案？沒問題！<br>點擊此按鈕，AI 會扮演學科專家，自動幫每一題填入<b>正確答案</b>並撰寫<b>詳細解析</b>。' } 
             },
+            { 
+                // [修正 ID] btn-similar -> btn-gen-similar
+                element: '#btn-gen-similar', 
+                popover: { title: '6. 生成類題 (舉一反三)', description: '覺得題目不夠練？<br>點擊此處，AI 會根據現有題目，生成邏輯相似的<b>雙胞胎考卷</b>，適合做為補救教學使用。' } 
+            },
+
+            // --- Phase 3: 輸出 ---
             { 
                 element: 'button[data-tab="tab-export"]', 
-                popover: { title: '7. 考前輸出', description: '切換到此頁籤，可匯出 <b>Word 試卷</b> (分為學生卷/詳解卷) 或產生答案卡。' } 
+                popover: { title: '7. 考前輸出中心', description: '題目準備好後，點擊此分頁準備列印。' } 
             },
+            { 
+                // [修正 ID] btn-export-word -> btn-export-word-student
+                element: '#btn-export-word-student', 
+                popover: { title: '8. 匯出 Word 試卷', description: '一鍵下載排版完美的 <b>docx 檔案</b>。<br>系統會同時產生「學生試卷 (無答案)」與「教師詳解卷 (含解析)」。' } 
+            },
+            { 
+                // [修正 ID] btn-render-sheet -> btn-print-sheet-step1
+                element: '#btn-print-sheet-step1', 
+                popover: { title: '9. 產生電腦閱卷卡', description: '系統會根據您的題目數量 (20題/50題...)，自動生成專屬的<b>答案卡 PDF</b>，請列印給學生畫記。' } 
+            },
+
+            // --- Phase 4: 閱卷 ---
             { 
                 element: 'button[data-tab="tab-grade"]', 
-                popover: { title: '8. 閱卷與補救', description: '考完試後，可用相機批改答案卡，並自動生成學生的補救學習單。' } 
+                popover: { title: '10. 數位閱卷中心', description: '考完試後，請切換到此分頁進行批改。' } 
             },
             { 
+                element: '#btn-camera-grade', 
+                popover: { title: '11. 拍照閱卷', description: '使用手機或 Webcam 拍下答案卡 (支援多張連拍)。<br>系統將使用<b>本地運算 (OpenCV)</b> 進行極速辨識，無需上傳雲端。' } 
+            },
+            { 
+                element: '#btn-open-batch-review', 
+                popover: { title: '12. 校對模式 (虛擬預覽)', description: '當您完成閱卷後，<b>這個橘色按鈕</b>就會出現。<br>點擊它即可開啟視窗，逐張檢查並修正判讀結果。<br>(目前為導覽暫時顯示，實際需先閱卷)', side: 'bottom' } 
+            },
+            { 
+                element: '#btn-generate', 
+                popover: { title: '13. 生成補救學習單', description: '這是最厲害的功能！<br>系統會根據<b>錯題數據</b>，為每位學生量身打造「專屬訂正卷」，只練習他不會的題目。' } 
+            },
+
+            // --- Phase 5: 結尾 ---
+            { 
                 element: '#btn-cloud-settings', 
-                popover: { title: '9. 雲端備份', description: '強烈建議登入 Google 帳號，將您的題庫與設定安全備份到雲端，避免資料遺失。' } 
+                popover: { title: '14. 雲端備份', description: '最後，別忘了點擊右上角登入 Google。<br>將您的心血結晶備份到雲端，換電腦也能繼續工作！' } 
             }
         ],
+
+        // [關鍵邏輯] 1. 切換分頁 -> 2. 檢查隱藏 -> 3. 強制顯示 -> 4. 刷新 Driver
         onHighlightStarted: (element) => {
             if (!element) return;
-            
+
+            // --- A. 清理上一步驟的強制顯示 ---
+            if (tempShownElement && tempShownElement !== element) {
+                restoreHiddenElement();
+            }
+
+            // --- B. 自動切換分頁 (Tab Switching) ---
             const navEdit = getNavBtn('tab-edit');
             const navExport = getNavBtn('tab-export');
             const navGrade = getNavBtn('tab-grade');
 
-            // 1. 如果目標是「考前輸出」按鈕 -> 點擊切換
-            if (element === navExport) {
-                navExport?.click();
+            // 1. Export 相關 (更新 ID: Step 8, 9)
+            if (['btn-export-word-student', 'btn-print-sheet-step1'].includes(element.id)) {
+                if (navExport && !navExport.classList.contains('active')) navExport.click();
             }
-            // 2. 如果目標是「閱卷」按鈕 -> 點擊切換
-            else if (element === navGrade) {
-                navGrade?.click();
+            // 2. Grade 相關 (Step 11, 12, 13)
+            else if (['btn-camera-grade', 'btn-open-batch-review', 'btn-generate'].includes(element.id)) {
+                if (navGrade && !navGrade.classList.contains('active')) navGrade.click();
             }
-            // 3. 如果目標位於「建立題庫 (#tab-edit)」區塊內 -> 切換回題庫分頁
-            // 使用 closest 檢查是否在編輯分頁內 (包含 Toolbar, Input, Preview 等)
-            else if (element.closest && element.closest('#tab-edit')) {
-                // 只有當按鈕存在且目前不是 active 狀態時才點擊
-                if (navEdit && !navEdit.classList.contains('active')) {
-                    navEdit.click();
+            // 3. Tab 按鈕本身
+            else if (element === navExport) navExport?.click();
+            else if (element === navGrade) navGrade?.click();
+            // 4. Edit 相關 (更新 ID: Step 3, 5, 6)
+            else if (['btn-ai-parse', 'btn-ai-solve', 'btn-gen-similar', 'pane-input', 'pane-preview'].includes(element.id) || (element.closest && element.closest('#tab-edit'))) {
+                if (navEdit && !navEdit.classList.contains('active')) navEdit.click();
+            }
+
+            // --- C. 檢查並強制顯示隱藏按鈕 ---
+            // 延遲一點點檢查，確保 Tab 切換完成
+            const computedStyle = window.getComputedStyle(element);
+            const isHidden = (computedStyle.display === 'none') || (element.offsetParent === null);
+
+            if (isHidden) {
+                element.style.display = 'inline-flex';
+                element.style.boxShadow = '0 0 15px rgba(255, 152, 0, 0.8)';
+                element.classList.add('tour-force-show');
+                tempShownElement = element;
+
+                if (driverObj && typeof driverObj.refresh === 'function') {
+                    try { driverObj.refresh(); } catch(e) {}
                 }
             }
+        },
+
+        onDestroyed: () => {
+            restoreHiddenElement();
         }
     });
 

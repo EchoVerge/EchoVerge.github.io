@@ -1,12 +1,11 @@
 /**
  * assets/js/modules/gradingController.js
- * 閱卷控制器 V7.0 (Pure Local)
- * 功能: 僅保留本地閱卷 (OpenCV)，移除 AI 閱卷邏輯，保留批次校對與 Excel 匯出
+ * 閱卷控制器 V7.1
+ * 功能: 優化上傳提示體驗，加入持續性 Loading 狀態，避免使用者誤以為當機
  */
 import { state } from './state.js';
 import { fileToBase64 } from './fileHandler.js';
 import { convertPdfToImages } from './fileExtractor.js';
-// [移除] import { analyzeAnswerSheetBatch } from './aiParser.js'; 
 import { analyzeAnswerSheetLocal } from './localParser.js';
 import { showToast } from './toast.js';
 
@@ -15,7 +14,6 @@ export function initGradingController() {
     const el = {
         btnCam: document.getElementById('btn-camera-grade'),
         fileImg: document.getElementById('file-grade-image'),
-        // [移除] chkLocal: document.getElementById('chk-use-local'),
         
         btnOpenBatch: document.getElementById('btn-open-batch-review'),
         reviewCountBadge: document.getElementById('review-count-badge'),
@@ -57,7 +55,6 @@ export function initGradingController() {
         // 1. 拍照/閱卷按鈕
         if(el.btnCam && el.fileImg) {
             el.btnCam.addEventListener('click', () => {
-                // [簡化] 不再檢查 AI Key
                 if(!state.questions || !state.questions.length) return alert("請先建立題庫");
 
                 // 準備 Answer Key
@@ -72,7 +69,7 @@ export function initGradingController() {
                 el.fileImg.click();
             });
 
-            // 檔案選擇後的處理 (強制使用 Local)
+            // 檔案選擇後的處理
             el.fileImg.addEventListener('change', async (e) => {
                 const files = e.target.files;
                 if(!files || files.length === 0) return;
@@ -82,12 +79,14 @@ export function initGradingController() {
                 state.currentReviewIndex = -1;
                 if(el.btnOpenBatch) el.btnOpenBatch.style.display = 'none';
                 
-                showToast(`準備處理 ${files.length} 個檔案...`, "info");
+                // [新增] 顯示持續性的 Loading Toast (duration = 0)
+                const loadingToast = showToast("⏳ 正在讀取檔案與轉檔中，請稍候...", "loading", 0);
 
                 try {
                     let allImages = [];
                     for (let file of files) {
                         if (file.type === 'application/pdf') {
+                            // PDF 轉檔通常最花時間
                             const pdfImgs = await convertPdfToImages(file);
                             allImages.push(...pdfImgs);
                         } else {
@@ -96,8 +95,10 @@ export function initGradingController() {
                         }
                     }
 
-                    // [簡化] 直接呼叫本地閱卷
-                    // console.log("Starting Local Analysis...");
+                    // 更新提示文字 (如果支援 updateMessage，或者直接發一個新的短暫提示)
+                    showToast(`轉檔完成，開始辨識 ${allImages.length} 張試卷...`, "info", 2000);
+
+                    // 執行本地閱卷
                     const results = await analyzeAnswerSheetLocal(allImages, state.questions.length);
 
                     results.forEach((r, i) => {
@@ -115,17 +116,19 @@ export function initGradingController() {
                         if(el.reviewCountBadge) el.reviewCountBadge.innerText = results.length;
                     }
                     
-                    showToast(`閱卷完成，共 ${results.length} 份`, "success");
+                    showToast(`✅ 閱卷完成，共 ${results.length} 份`, "success");
                     
                     if (results.length > 0) {
                         openCorrectionModalByIndex(0);
                     }
                 } catch (err) {
                     console.error(err);
-                    showToast("閱卷發生錯誤: " + err.message, "error");
+                    showToast("❌ 閱卷發生錯誤: " + err.message, "error", 5000);
+                } finally {
+                    // [新增] 無論成功或失敗，都要手動移除 Loading 提示
+                    if (loadingToast) loadingToast.remove();
+                    e.target.value = '';
                 }
-                
-                e.target.value = '';
             });
         }
 
@@ -141,7 +144,7 @@ export function initGradingController() {
             });
         }
 
-        // 3. 校對視窗操作 (保持不變)
+        // 3. 校對視窗操作
         if (el.btnConfirm) {
             el.btnConfirm.addEventListener('click', () => {
                 saveCurrentReview();
@@ -198,7 +201,7 @@ export function initGradingController() {
         }
     }
 
-    // --- (以下 Helper 函式完全保持不變) ---
+    // --- Helper Functions ---
 
     function openCorrectionModalByIndex(index) {
         if (index < 0 || index >= state.batchResults.length) return;
