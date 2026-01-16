@@ -1,9 +1,9 @@
 /**
  * customize_worksheet/sw.js
  * Service Worker for PWA capabilities
- * V6.2.0: Optimize Feature : export score report
+ * V6.3.0: fix bulk parser
  */
-const CACHE_NAME = 'worksheet-assistant-v6.2.0'; 
+const CACHE_NAME = 'worksheet-assistant-v6.3.0'; 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

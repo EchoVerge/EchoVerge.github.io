@@ -1,17 +1,24 @@
 /**
  * assets/js/modules/localParser.js
- * V29.0: 完美融合版 (Perfect Fusion)
- * * 核心架構: 基於 V21.0 (答案解析最穩定的版本)
- * * 新增功能: 移植 V27.0 的座號解析邏輯 (Phase A)
- * * 關鍵技術: scanTrack 支援 "normal" (V21參數) 與 "small" (V27參數) 雙模式，互不干擾
+ * V30.0: 視覺化除錯增強版 (Visual Debug Enhanced)
+ * * 修正: 擴大 ROI 搜尋範圍，改善偏移問題
+ * * 新增: 強制繪製 Debug 框線 (藍色=搜尋區, 紅色=定位點, 綠色=答案)
+ * * 架構: 延續 V29.0 Fusion 邏輯，保持雙模式掃描
  */
 
 export async function analyzeAnswerSheetLocal(base64Images, qCount) {
-    console.log("🚀 啟動本地閱卷 (V29.0 Fusion)...");
+    console.log("🚀 啟動本地閱卷 (V30.0 Debug)...");
     
+    // 檢查 OpenCV 狀態
     if (typeof cv === 'undefined' || !cv.Mat) {
+        // 嘗試等待
         await new Promise(r => setTimeout(r, 1000));
-        if (typeof cv === 'undefined') throw new Error("OpenCV 載入失敗");
+        if (typeof cv === 'undefined') {
+            return base64Images.map((_, i) => ({ 
+                index: i, 
+                error: "OpenCV 尚未載入，請重新整理頁面" 
+            }));
+        }
     }
 
     const results = [];
@@ -39,12 +46,13 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             gray = new cv.Mat();
             cv.cvtColor(resized, gray, cv.COLOR_RGBA2GRAY, 0);
             binary = new cv.Mat();
-            cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 3);
+            // 參數微調: block size 15->21 減少雜訊
+            cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 21, 5);
 
             // 3. 四角透視校正
             let markers = findFiducialMarkers(binary, debugMat);
             if (!markers) {
-                console.warn("未偵測到四角定位點，嘗試使用原圖");
+                console.warn(`[#${i}] 未偵測到四角定位點，使用原圖掃描`);
                 warped = resized.clone();
             } else {
                 warped = fourPointTransform(resized, markers);
@@ -53,27 +61,27 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             let warpedGray = new cv.Mat();
             cv.cvtColor(warped, warpedGray, cv.COLOR_RGBA2GRAY, 0);
             let warpedBinary = new cv.Mat();
-            cv.adaptiveThreshold(warpedGray, warpedBinary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 13, 2);
+            cv.adaptiveThreshold(warpedGray, warpedBinary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 3);
             
+            // 建立除錯圖 (用來畫框框)
             let debugWarped = warped.clone();
 
             // ==========================================
-            //  Phase A: 座號區解析 (移植自 V27.0)
+            //  Phase A: 座號區 (10px 小框)
             // ==========================================
-            // 使用 "small" 模式，專門針對 10px 定位點
-            
+            // 放寬搜尋範圍 (ROI) 以容許偏移
             const seatROIX = { 
-                xStart: Math.floor(warped.cols * 0.11), 
-                xEnd: Math.floor(warped.cols * 0.20),
-                yStart: Math.floor(warped.rows * 0.065), 
-                yEnd: Math.floor(warped.rows * 0.10) 
+                xStart: Math.floor(warped.cols * 0.10), // 0.11 -> 0.10
+                xEnd: Math.floor(warped.cols * 0.22),   // 0.20 -> 0.22
+                yStart: Math.floor(warped.rows * 0.06), // 0.065 -> 0.06
+                yEnd: Math.floor(warped.rows * 0.11)    // 0.10 -> 0.11
             };
             
             const seatROIY = {
-                xStart: Math.floor(warped.cols * 0.045),
-                xEnd: Math.floor(warped.cols * 0.095),
-                yStart: Math.floor(warped.rows * 0.085), // 確保包含 '0'
-                yEnd: Math.floor(warped.rows * 0.25)
+                xStart: Math.floor(warped.cols * 0.04), // 0.045 -> 0.04
+                xEnd: Math.floor(warped.cols * 0.10),   // 0.095 -> 0.10
+                yStart: Math.floor(warped.rows * 0.08), // 0.085 -> 0.08
+                yEnd: Math.floor(warped.rows * 0.26)    // 0.25 -> 0.26
             };
 
             let seatAnchorsX = scanTrack(warpedBinary, "horizontal", seatROIX, debugWarped, "small");
@@ -81,36 +89,37 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
 
             const seatResult = gradeSeatGrid(warpedGray, seatAnchorsX, seatAnchorsY, debugWarped);
 
-
             // ==========================================
-            //  Phase B: 題目區解析 (保留 V21.0 設定)
+            //  Phase B: 題目區 (13px 標準框)
             // ==========================================
-            // 使用 "normal" 模式，參數與 V21.0 完全一致
-            
+            // 放寬搜尋範圍
             const qTopROI = {
-                yStart: Math.floor(warped.rows * 0.24), 
-                yEnd: Math.floor(warped.rows * 0.28)
+                yStart: Math.floor(warped.rows * 0.22), // 0.24 -> 0.22
+                yEnd: Math.floor(warped.rows * 0.30)    // 0.28 -> 0.30
             };
             
             const qLeftROI = {
-                xStart: Math.floor(warped.cols * 0.02),
-                xEnd: Math.floor(warped.cols * 0.07)
+                xStart: Math.floor(warped.cols * 0.01), // 0.02 -> 0.01
+                xEnd: Math.floor(warped.cols * 0.08)    // 0.07 -> 0.08
             };
 
             let xAnchors = scanTrack(warpedBinary, "horizontal", qTopROI, debugWarped, "normal");
             let yAnchors = scanTrack(warpedBinary, "vertical", qLeftROI, debugWarped, "normal");
 
-            // [補償機制] (V21.0)
+            // [補償機制] 若定位點不足，使用理論值
             if (xAnchors.length < 5) {
                 console.warn("X軸定位點不足，啟用理論推算");
+                // 畫出警告文字
+                cv.putText(debugWarped, "Warning: Use Theoretical X", new cv.Point(50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, [255, 0, 0, 255], 2);
                 xAnchors = generateTheoreticalAnchorsX(warped.cols);
             }
             if (yAnchors.length < 5) {
                 console.warn("Y軸定位點不足，啟用理論推算");
+                cv.putText(debugWarped, "Warning: Use Theoretical Y", new cv.Point(50, 80), cv.FONT_HERSHEY_SIMPLEX, 1, [255, 0, 0, 255], 2);
                 yAnchors = generateTheoreticalAnchorsY(warped.rows);
             }
 
-            // 題目判讀 (V21.0)
+            // 題目判讀
             const { detectedAnswers } = gradeByGrid(
                 warpedGray, 
                 xAnchors, 
@@ -130,26 +139,37 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
                 }
             });
 
+            // 產生 Debug 圖片 (包含紅框藍框)
             let canvas = document.createElement('canvas');
             cv.imshow(canvas, debugWarped);
+            const debugImgData = canvas.toDataURL('image/jpeg', 0.8);
 
-            // 如果座號解析成功，使用解析出的座號；否則標記 Unknown
-            // 為了不因為座號失敗而卡住答案，這裡允許 seatResult 為 null
             const finalSeat = seatResult || `Local_${i + 1}`; 
 
             results.push({
+                uuid: Date.now() + "_" + i, // 唯一 ID，供批次校對使用
+                index: i,
                 seat: finalSeat,
                 answers: flatAnswers,
-                debugImage: canvas.toDataURL('image/jpeg', 0.8),
+                debugImage: debugImgData, // 關鍵：回傳有畫框的圖
                 error: (seatResult === null) ? "座號異常" : null
             });
 
+            // 清理
             warpedGray.delete(); warpedBinary.delete();
             if(warped) warped.delete();
+            debugWarped.delete();
 
         } catch (err) {
             console.error(err);
-            results.push({ seat: `Err`, answers: [], error: err.message });
+            results.push({ 
+                uuid: Date.now() + "_" + i,
+                index: i,
+                seat: `Err_${i+1}`, 
+                answers: [], 
+                error: err.message,
+                debugImage: null 
+            });
         } finally {
             if (src) src.delete();
             if (resized) resized.delete();
@@ -162,42 +182,40 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
 }
 
 // ==========================================
-//  核心演算法 (融合版)
+//  核心演算法
 // ==========================================
 
-/**
- * 軌道掃描 (支援 V21 與 V27 雙重標準)
- * @param {string} targetSize - "normal" (V21標準) 或 "small" (V27座號)
- */
 function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal") {
     const candidates = [];
     let roiRect;
 
+    // 1. 定義搜尋區域 (ROI)
     if (direction === "horizontal") {
         roiRect = new cv.Rect(0, range.yStart, binaryImage.cols, range.yEnd - range.yStart);
     } else {
         roiRect = new cv.Rect(range.xStart, 0, range.xEnd - range.xStart, binaryImage.rows);
     }
 
-    // [除錯] 畫出藍色掃描區
-    let pt1 = new cv.Point(roiRect.x, roiRect.y);
-    let pt2 = new cv.Point(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
-    cv.rectangle(debugMat, pt1, pt2, [255, 0, 0, 255], 1);
+    // [Visual Debug] 畫出藍色搜尋範圍框 (保留此框讓您確認搜尋位置)
+    if(debugMat) {
+        let pt1 = new cv.Point(roiRect.x, roiRect.y);
+        let pt2 = new cv.Point(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
+        cv.rectangle(debugMat, pt1, pt2, [0, 0, 255, 255], 1); 
+    }
 
     let roi = binaryImage.roi(roiRect);
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
     
+    // 尋找輪廓
     cv.findContours(roi, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    // [關鍵分流] 設定過濾條件
+    // 設定過濾條件 (根據目標大小)
     let filter;
     if (targetSize === "small") {
-        // 座號區 (10px) - V27.0 參數
-        filter = { minA: 30, maxA: 350, minW: 4, maxW: 25, arMin: 0.6, arMax: 1.5 };
+        filter = { minA: 20, maxA: 450, minW: 4, maxW: 35, arMin: 0.4, arMax: 2.2 };
     } else {
-        // 題目區 (13px) - V21.0 原始參數 (絕對不變)
-        filter = { minA: 80, maxA: 400, minW: 8, maxW: 25, arMin: 0.7, arMax: 1.4 };
+        filter = { minA: 50, maxA: 600, minW: 6, maxW: 35, arMin: 0.5, arMax: 2.0 };
     }
 
     for (let i = 0; i < contours.size(); ++i) {
@@ -206,6 +224,7 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
         let area = cv.contourArea(cnt);
         let ar = rect.width / rect.height;
 
+        // 寬高比與面積過濾
         if (area > filter.minA && area < filter.maxA && 
             rect.width >= filter.minW && rect.width <= filter.maxW && 
             rect.height >= filter.minW && rect.height <= filter.maxW &&
@@ -214,6 +233,7 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
             let globalCenterX = roiRect.x + rect.x + rect.width / 2;
             let globalCenterY = roiRect.y + rect.y + rect.height / 2;
             
+            // 收集候選點
             candidates.push({ 
                 pos: direction === "horizontal" ? globalCenterX : globalCenterY, 
                 alignVal: direction === "horizontal" ? globalCenterY : globalCenterX 
@@ -223,31 +243,59 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
     
     contours.delete(); hierarchy.delete(); roi.delete();
 
-    // 中位數濾波 (維持 V21 的邏輯)
     if (candidates.length > 0) {
+        // 2. 過濾偏離太遠的雜訊 (使用中位數過濾)
         const alignValues = candidates.map(c => c.alignVal).sort((a, b) => a - b);
         const median = alignValues[Math.floor(alignValues.length / 2)];
-        const TOLERANCE = 10; 
+        const TOLERANCE = 20; // 容許誤差
 
-        const validAnchors = candidates.filter(c => Math.abs(c.alignVal - median) <= TOLERANCE)
-                                       .map(c => c.pos)
-                                       .sort((a, b) => a - b);
+        let rawAnchors = candidates.filter(c => Math.abs(c.alignVal - median) <= TOLERANCE)
+                                   .map(c => c.pos)
+                                   .sort((a, b) => a - b);
         
-        // [除錯] 畫線
-        validAnchors.forEach(pos => {
-            if (direction === "horizontal") {
-                cv.line(debugMat, new cv.Point(pos, range.yStart), new cv.Point(pos, binaryImage.rows), [0, 255, 0, 255], 1);
-            } else {
-                cv.line(debugMat, new cv.Point(0, pos), new cv.Point(binaryImage.cols, pos), [0, 165, 255, 255], 1);
+        // 3. [關鍵修正] 合併過於接近的線條 (Clustering)
+        // 如果兩條線距離小於 15px，視為同一條並取平均值
+        const MERGE_DIST = 15;
+        const mergedAnchors = [];
+        
+        if (rawAnchors.length > 0) {
+            let currentGroup = [rawAnchors[0]];
+            
+            for (let i = 1; i < rawAnchors.length; i++) {
+                if (rawAnchors[i] - rawAnchors[i-1] < MERGE_DIST) {
+                    currentGroup.push(rawAnchors[i]);
+                } else {
+                    // 結算上一組
+                    const avg = currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length;
+                    mergedAnchors.push(avg);
+                    currentGroup = [rawAnchors[i]]; // 開啟新的一組
+                }
             }
-        });
+            // 結算最後一組
+            const avg = currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length;
+            mergedAnchors.push(avg);
+        }
 
-        return validAnchors;
+        // [Visual Debug] 只畫出合併後、乾淨的綠色線條
+        if(debugMat) {
+            mergedAnchors.forEach(pos => {
+                let p1, p2;
+                if (direction === "horizontal") {
+                    p1 = new cv.Point(pos, roiRect.y);
+                    p2 = new cv.Point(pos, roiRect.y + roiRect.height);
+                } else {
+                    p1 = new cv.Point(roiRect.x, pos);
+                    p2 = new cv.Point(roiRect.x + roiRect.width, pos);
+                }
+                cv.line(debugMat, p1, p2, [0, 255, 0, 255], 2);
+            });
+        }
+
+        return mergedAnchors;
     }
     return [];
 }
 
-// 座號區解碼 (V27.0)
 function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
     const DARKNESS_THRESHOLD = 50; 
     
@@ -265,7 +313,7 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
         for (let j = 0; j < 10; j++) {
             let y = validY[j];
             
-            // 精細對焦 (6x6)
+            // 掃描 6x6 區域
             let bestX = x, bestY = y, maxDark = -1;
             for(let dx=-2; dx<=2; dx+=2) {
                 for(let dy=-2; dy<=2; dy+=2) {
@@ -285,8 +333,10 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
             if (maxDark > DARKNESS_THRESHOLD) {
                 foundDigit = j;
                 markCount++;
+                // 填答: 紅色實心
                 cv.rectangle(debugMat, pt1, pt2, [255, 0, 0, 255], -1); 
             } else {
+                // 未填: 灰色空心
                 cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 100], 1); 
             }
         }
@@ -301,7 +351,6 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
     return seatDigits.join(""); 
 }
 
-// 題目區解碼 (V21.0 - 保持不變)
 function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
     const detected = [];
     const OPTIONS = ['A', 'B', 'C', 'D', 'E'];
@@ -361,9 +410,8 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
 
                 if (maxDark > DARKNESS_THRESHOLD) {
                     selectedOptions.push(OPTIONS[optIdx]);
+                    // 填答: 綠色實心 (題目區)
                     cv.rectangle(debugMat, pt1, pt2, [0, 255, 0, 255], -1); 
-                } else {
-                    // cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 100], 1); 
                 }
             });
 
@@ -377,7 +425,6 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
     return { detectedAnswers: finalDetected };
 }
 
-// 理論補償 (V21.0)
 function generateTheoreticalAnchorsX(width) {
     const anchors = [];
     const colWidth = width / 4;
