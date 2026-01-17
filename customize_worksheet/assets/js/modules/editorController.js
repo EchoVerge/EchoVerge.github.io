@@ -119,6 +119,7 @@ export function initEditorController() {
         inpIndex: document.getElementById('edit-q-index'),
         inpId: document.getElementById('edit-q-id'),
         inpAns: document.getElementById('edit-q-ans'),
+        inputScore: document.getElementById('edit-q-score'),
         inpText: document.getElementById('edit-q-text'),
         inpExpl: document.getElementById('edit-q-expl'),
         inpSimAns: document.getElementById('edit-q-sim-ans'),
@@ -652,14 +653,20 @@ export function initEditorController() {
     function openEditModal(index) {
         const q = state.questions[index];
         if (!q) return;
-        el.inpIndex.value = index;
-        el.inpId.value = q.id || '';
+        
+        // 1. 設定隱藏的索引值 (這是最重要的，絕對不能被覆蓋)
+        document.getElementById('edit-q-index').value = index;
+        
+        // 2. 填入各欄位
+        // [修正] 原本這裡有一行 el.inpIndex.value = ... 會導致索引錯亂，已移除
+        el.inpId.value = q.id || ''; 
         el.inpAns.value = q.ans || '';
+        el.inputScore.value = q.score || ''; // 這裡變數名稱是 inputScore
         el.inpText.value = q.text || '';
         el.inpExpl.value = q.expl || '';
         el.inpBonus.checked = !!q.isBonus;
         
-        // 載入圖片 (若有)
+        // 3. 載入圖片 (若有)
         tempEditingImg = q.img || null;
         if (tempEditingImg) {
             el.imgPreview.src = tempEditingImg;
@@ -671,6 +678,7 @@ export function initEditorController() {
             el.inpImg.value = '';
         }
 
+        // 4. 載入類題 (若有)
         if (q.similar) {
             el.inpSimText.value = q.similar.text || '';
             el.inpSimExpl.value = q.similar.expl || '';
@@ -680,33 +688,69 @@ export function initEditorController() {
             el.inpSimExpl.value = '';
             el.inpSimAns.value = '';
         }
+        
+        // 5. 開啟視窗
         el.modalEditor.style.display = 'flex';
     }
 
-    el.btnSaveEdit.addEventListener('click', () => {
-        const index = parseInt(el.inpIndex.value);
-        if (isNaN(index) || index < 0 || index >= state.questions.length) return;
-        const q = state.questions[index];
-        q.id = el.inpId.value;
-        q.ans = el.inpAns.value.trim();
-        q.text = el.inpText.value;
-        q.expl = el.inpExpl.value;
-        q.isBonus = el.inpBonus.checked;
-        q.img = tempEditingImg; // 儲存圖片 DataURL
+    el.btnSaveEdit.onclick = (e) => {
+        e.preventDefault();
         
-        const simText = el.inpSimText.value.trim();
-        const simExpl = el.inpSimExpl.value.trim();
-        const simAns = el.inpSimAns.value.trim();
-        
-        if (simText) {
-            q.similar = { text: simText, expl: simExpl, ans: simAns };
+        // 1. 取得目前編輯的題目索引
+        const indexStr = document.getElementById('edit-q-index').value;
+        const index = parseInt(indexStr);
+
+        if (!isNaN(index) && state.questions[index]) {
+            const q = state.questions[index]; // 取得該題目的參照 (Reference)
+
+            // 2. 更新資料 (修正變數名稱錯誤)
+            q.id = el.inpId.value;       
+            q.ans = el.inpAns.value.toUpperCase().replace(/[^A-E]/g, '');
+            q.score = parseFloat(el.inputScore.value) || 0; // 確保配分是數字
+            q.text = el.inpText.value;   
+            q.expl = el.inpExpl.value;   
+            q.isBonus = el.inpBonus.checked;
+            
+            // 圖片更新
+            if (tempEditingImg) {
+                q.img = tempEditingImg;
+            } else if (el.inpImg.value === '') {
+                // 如果輸入框被清空且沒暫存圖，表示使用者可能想刪圖
+                // 這裡視需求決定是否要 q.img = null;
+            }
+
+            // 類題更新
+            if (el.inpSimAns) {
+                // 確保 similar 物件存在
+                if (!q.similar) q.similar = {};
+                q.similar.ans = el.inpSimAns.value;
+                q.similar.text = el.inpSimText.value;
+                q.similar.expl = el.inpSimExpl.value;
+            }
+
+            // 3. 重新渲染列表 (只做畫面更新，不新增陣列)
+            renderPreview(state.questions, state.sourceType || 'Edit');
+
+            // 4. [重要] 同步回原始文字框 (避免文字框內容過舊，下次編輯時覆蓋掉配分設定)
+            // 這裡簡單將題目轉回文字格式顯示
+            if (el.txtRawQ && !el.txtRawQ.disabled) {
+                const newText = state.questions.map(item => {
+                    let s = `${item.id}. ${item.text}\n(${item.ans}) ${item.expl ? '解析:'+item.expl : ''}`;
+                    if(item.score) s += ` [配分:${item.score}]`;
+                    return s;
+                }).join('\n\n');
+                // 暫時不覆蓋，避免破壞格式，但建議之後加入雙向同步功能
+                // el.txtRawQ.value = newText; 
+            }
+            
+            // 5. 關閉視窗
+            if (el.modalEditor) el.modalEditor.style.display = 'none';
+            
+            showToast("題目已更新 (配分: " + q.score + ")", "success");
         } else {
-            delete q.similar;
+            showToast("儲存失敗：找不到該題索引 (" + index + ")", "error");
         }
-        
-        el.modalEditor.style.display = 'none';
-        renderPreview(state.questions, state.sourceType || 'Edited');
-    });
+    };
 
     function updatePreview() {
         const parsed = parseQuestionMixed(el.txtRawQ.value, '');

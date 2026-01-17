@@ -1,27 +1,22 @@
 /**
  * assets/js/modules/textParser.js
- * V3.0 Fix: 
- * 1. 修正多選題答案擷取邏輯 (支援 ABC, A,B 格式)
- * 2. 移除必須標記 M 的限制，只要答案有多個選項即視為多選
+ * V3.1: 支援解析題目配分 (例如: "(5分)") 與 答案擷取優化
  */
 
 // ==========================================
-// 1. 題目解析核心 (Step 1 用)
+// 1. 題目解析核心
 // ==========================================
 export function parseQuestionMixed(text, defaultExpl = '') {
     if (!text) return [];
 
-    // 預處理：統一換行符號
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    // 嘗試分割題目 (常見格式：數字開頭 + 點/頓號)
     // Regex: 抓取 "1. " 或 "1、" 開頭
     const regex = /(\d+)[.、\s]([\s\S]*?)(?=(?:\n\d+[.、\s])|$)/g;
     
     let matches;
     const questions = [];
     
-    // 如果 Regex 找不到任何題目，嘗試用雙換行分割 (備用模式)
     if (!text.match(regex)) {
         const blocks = text.split(/\n\n+/);
         return blocks.map((block, i) => extractAnswerFromBlock(i + 1, block.trim(), defaultExpl));
@@ -37,14 +32,25 @@ export function parseQuestionMixed(text, defaultExpl = '') {
 }
 
 /**
- * 內部 Helper: 從題目區塊中分離「題目本文」、「解析」與「答案」
+ * 內部 Helper: 分離「本文」、「解析」、「答案」與「配分」
  */
 function extractAnswerFromBlock(id, content, defaultExpl) {
     let text = content;
     let expl = defaultExpl;
     let ans = '';
+    let score = 0; // 預設 0 (代表未設定，後續會用平均分填補)
 
-    // 1. 嘗試擷取解析 (Explanation)
+    // 1. [新增] 嘗試擷取配分 (例如: (2分), [5pt], 10%)
+    // 放在最前面處理，避免被當成題目文字
+    const scoreRegex = /^[\(\[\{（【]\s*(\d+(\.\d+)?)\s*(?:分|pt|%|pts)\s*[\)\]\}）】]/i;
+    const scoreMatch = text.match(scoreRegex);
+    if (scoreMatch) {
+        score = parseFloat(scoreMatch[1]);
+        // 移除配分文字，讓題目更乾淨
+        text = text.replace(scoreMatch[0], '').trim();
+    }
+
+    // 2. 嘗試擷取解析
     const explRegex = /\n(解析|說明|詳解|Note)[:：]([\s\S]*)/i;
     const explMatch = text.match(explRegex);
     
@@ -53,21 +59,17 @@ function extractAnswerFromBlock(id, content, defaultExpl) {
         text = text.replace(explMatch[0], '').trim(); 
     }
 
-    // 2. 嘗試擷取答案 (Answer) - 支援多選
-    // 修改點：([A-E]) 改為 ([A-E,\s]+)，允許抓取多個字母
+    // 3. 嘗試擷取答案
     const ansRegex = /(?:答案|Ans|Answer)[:：\s]*([A-E,\s]+)(?:\)|\])?/i;
-    // 行尾括號判定：(ABC) 或 [AB]
     const bracketAnsRegex = /[\(\[]([A-E,\s]+)[\)\]]$/m; 
 
     let ansMatch = text.match(ansRegex) || expl.match(ansRegex);
-    
     if (!ansMatch) {
         ansMatch = text.match(bracketAnsRegex) || expl.match(bracketAnsRegex);
     }
 
     if (ansMatch) {
-        // 正規化答案：轉大寫 -> 移除逗號與空白 -> 排序
-        // 例如 "A, C" -> "AC"
+        // 正規化答案：只保留 A-E
         ans = ansMatch[1].toUpperCase().replace(/[^A-E]/g, '').split('').sort().join('');
     }
 
@@ -75,37 +77,28 @@ function extractAnswerFromBlock(id, content, defaultExpl) {
         id: id,
         text: text,
         expl: expl,
-        ans: ans // 現在可以是 "AC" 或 "ABC"
+        ans: ans,
+        score: score // 新增此屬性
     };
 }
 
-// ==========================================
-// 2. 錯題速記解析 (Step 2 用)
-// ==========================================
+// 2. 錯題速記解析 (保持不變)
 export function parseErrorText(text) {
     if (!text) return [];
     const lines = text.split('\n');
     const result = [];
-    
     lines.forEach(line => {
         line = line.trim();
-        if (!line) return;
-        if (line.startsWith('[已匯入')) return;
-        
+        if (!line || line.startsWith('[已匯入')) return;
         const parts = line.split(/[:：]/);
         if (parts.length >= 2) {
             const seat = parts[0].trim();
             const errorStr = parts[1].trim();
-            
             let errors = [];
-            if (errorStr && errorStr !== '全對' && errorStr !== '無錯題' && errorStr !== '無') {
+            if (errorStr && !['全對','無錯題','無'].includes(errorStr)) {
                 errors = errorStr.split(/[,，\s]+/).filter(x => x);
             }
-            
-            result.push({
-                seat: seat,
-                errors: errors
-            });
+            result.push({ seat: seat, errors: errors });
         }
     });
     return result;

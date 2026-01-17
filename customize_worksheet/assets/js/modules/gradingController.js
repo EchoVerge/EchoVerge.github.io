@@ -9,6 +9,12 @@ import { convertPdfToImages } from './fileExtractor.js';
 import { analyzeAnswerSheetLocal } from './localParser.js';
 import { showToast } from './toast.js';
 
+function normalizeAns(str) {
+    if (!str) return "";
+    // 移除所有非 A-E (不分大小寫) 的字元，轉大寫，分割，排序，合併
+    return str.replace(/[^A-E]/gi, '').toUpperCase().split('').sort().join('');
+}
+
 export function initGradingController() {
     // 定義 UI 元件
     const el = {
@@ -56,16 +62,9 @@ export function initGradingController() {
         if(el.btnCam && el.fileImg) {
             el.btnCam.addEventListener('click', () => {
                 if(!state.questions || !state.questions.length) return alert("請先建立題庫");
-
-                // 準備 Answer Key
-                const keys = state.questions.map(q => {
-                     if (q.ans) return q.ans.toUpperCase();
-                     const m = ((q.expl||"")+(q.text||"")).match(/答案[:：\s]*([ABCDE])|[\(（]([ABCDE])[\)）]/i);
-                     return m ? (m[1]||m[2]).toUpperCase() : "?";
-                });
+                const keys = state.questions.map(q => normalizeAns(q.ans)); // [修改] 預先正規化 Answer Key
                 state.tempAnswerKey = keys; 
                 if(el.inputAnsKey) el.inputAnsKey.value = keys.join(',');
-
                 el.fileImg.click();
             });
 
@@ -283,7 +282,11 @@ export function initGradingController() {
 
         studentAnswers.forEach((ans, idx) => {
             const correct = correctKey[idx] || "?";
-            const isCorrect = (ans && ans.replace(/\s/g,'').toUpperCase() === correct.replace(/\s/g,'').toUpperCase());
+            // [關鍵] 雙方都正規化後再比對
+            const cleanStudent = normalizeAns(ans);
+            const cleanKey = normalizeAns(correct);
+            const isCorrect = (cleanStudent === cleanKey);
+            
             if (!isCorrect) {
                 errorList.push(idx + 1);
                 errorCount++;
@@ -306,7 +309,8 @@ export function initGradingController() {
         inputs.forEach(input => {
             input.addEventListener('input', (e) => {
                 const idx = parseInt(e.target.dataset.idx);
-                const newAns = e.target.value.trim().toUpperCase();
+                // 這裡保留原始輸入，但在變色判定時使用 normalize
+                const newAns = e.target.value.toUpperCase(); 
                 const currentItem = state.batchResults[state.currentReviewIndex];
                 if (currentItem) currentItem.answers[idx] = newAns;
                 recalcRowStyle(e.target, idx, newAns);
@@ -317,7 +321,11 @@ export function initGradingController() {
     function recalcRowStyle(inputEl, idx, newAns) {
         const correctKey = state.tempAnswerKey || [];
         const correct = correctKey[idx] || "?";
-        const isCorrect = (newAns.replace(/\s/g,'') === correct.replace(/\s/g,''));
+        
+        const cleanStudent = normalizeAns(newAns);
+        const cleanKey = normalizeAns(correct);
+        const isCorrect = (cleanStudent === cleanKey);
+
         const row = inputEl.closest('.grade-row');
         inputEl.style.color = isCorrect ? '#2e7d32' : '#d32f2f';
         row.style.background = isCorrect ? '#fff' : '#ffebee';
@@ -330,7 +338,7 @@ export function initGradingController() {
         let errors = [];
         currentItem.answers.forEach((ans, idx) => {
             const correct = correctKey[idx] || "?";
-            if (ans.replace(/\s/g,'').toUpperCase() !== correct.replace(/\s/g,'').toUpperCase()) {
+            if (normalizeAns(ans) !== normalizeAns(correct)) {
                 errors.push(idx + 1);
             }
         });

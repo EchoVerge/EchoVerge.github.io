@@ -1,8 +1,8 @@
 /**
  * Service Worker for Customize Worksheet
- * Version: 7.1.1
+ * Version: 7.2.0
  * Last Updated: 2026-01-17 (Feature Update)
- * * [Changelog V7.1.1]
+ * * [Changelog V7.1.1] 2026-01-16
  * - Added: assets/js/modules/debugUtils.js (模擬試卷生成器)
  * - Added: assets/css/toast.css (通知樣式表)
  * - Updated: gradingController.js (本地閱卷流程優化、Loading 提示)
@@ -10,9 +10,18 @@
  * - Updated: onboarding.js (新版教學導覽)
  * - Updated: toast.js (沙漏動畫與持續顯示支援)
  * - Removed: AI Grading dependency (aiParser.js cleaned)
+ * * [Changelog V7.2.0] 2026-01-17
+ * - Updated: localParser.js (OpenCV 掃描檔案錯誤修正)
+ * - Updated: gradingController.js (新增得分計算功能)
+ * - Updated: textParser.js (新增剖析單題配分功能)
+ * - Updated: editorController.js (新增編輯單題分數)
+ * - Updated: index.html (新增分數顯示窗格)
+ * - Updated: scoreCalculator.js (匯出excel功能支援導入配分)
+ * - Updated: wordExporter.js (匯出word功能引入配分)
+ * - Updated: viewRenderer.js (學生卷增加配分顯示)
  */
 
-const CACHE_NAME = 'worksheet-assistant-v7.1.1';
+const CACHE_NAME = 'worksheet-assistant-v7.2.0';
 
 const ASSETS_TO_CACHE = [
     './',

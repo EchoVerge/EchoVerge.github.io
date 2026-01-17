@@ -1,7 +1,7 @@
 /**
  * assets/js/modules/scoreCalculator.js
  * 負責處理單題的計分邏輯 與 成績匯出
- * V2.3: 支援寫入進階 Excel 365 算分公式 (LAMBDA/LET)
+ * V2.4: 支援單題獨立配分 (Mixed Scoring)
  */
 
 export const ScoringModes = {
@@ -57,7 +57,7 @@ function calculateMistakes(studentStr, keyStr) {
 /**
  * 匯出成績至 Excel
  * Sheet 1: 學生作答明細 (含自動寫入的 LAMBDA 算分公式)
- * Sheet 2: 題目參數設定
+ * Sheet 2: 題目參數設定 (支援個別配分)
  * Sheet 3: 測驗資訊 (含倒扣參數驗證)
  */
 export function exportGradesToExcel(answerMap, questions, fullScore = 100, examTitle = "測驗") {
@@ -93,9 +93,7 @@ export function exportGradesToExcel(answerMap, questions, fullScore = 100, examT
         // 計算當前 Excel 列號 (Header是1, Key是2, 學生從3開始)
         const r = index + 3;
 
-        // ★ 建構 Excel 公式字串
-        // 替換換行與多餘空白，並將 C3:CCC3 替換為當前列 (例如 C4:CCC4)
-        // 注意: 字串中的雙引號需轉義 \"
+        // ★ 建構 Excel 公式字串 (LAMBDA)
         const formula = `
             =SUM(
             LET(
@@ -128,10 +126,8 @@ export function exportGradesToExcel(answerMap, questions, fullScore = 100, examT
                 ))
             )
             )
-        `.replace(/\s+/g, ' '); // 壓縮成一行以利寫入
+        `.replace(/\s+/g, ' ');
 
-        // 為了讓 SheetJS 識別為公式，通常直接傳入字串即可 (視版本而定)
-        // 若 Excel 開啟後顯示為純文字，使用者點兩下儲存格即可生效
         const row = [seat, formula]; 
         
         for (let i = 0; i < questionCount; i++) {
@@ -147,12 +143,28 @@ export function exportGradesToExcel(answerMap, questions, fullScore = 100, examT
 
     // --- Sheet 2: 題目參數設定 (Type & Score) ---
     
-    const defaultScore = questions.length > 0 ? Math.round((fullScore / questions.length) * 10) / 10 : 0;
+    // [改進] 智慧配分邏輯
+    // 1. 先計算已設定分數的總和
+    const assignedTotal = questions.reduce((sum, q) => sum + (parseFloat(q.score) || 0), 0);
+    // 2. 計算未設定分數的題數
+    const unassignedCount = questions.filter(q => !q.score || parseFloat(q.score) === 0).length;
+    
+    let defaultScore = 0;
+    if (unassignedCount > 0) {
+        // 3. 將剩餘分數平均分配給未設定的題目
+        const remaining = Math.max(0, fullScore - assignedTotal);
+        defaultScore = Math.round((remaining / unassignedCount) * 10) / 10;
+    }
+
     const configHeaders = ['題號', '標準答案', '題型 (自動判斷)', '配分'];
     const configRows = questions.map((q, idx) => {
         const ans = normalize(q.ans || "?");
         const type = ans.length > 1 ? '多選' : '單選';
-        return [idx + 1, ans, type, defaultScore];
+        
+        // 使用個別配分，若無則使用平均配分
+        const finalScore = (q.score && parseFloat(q.score) > 0) ? parseFloat(q.score) : defaultScore;
+        
+        return [idx + 1, ans, type, finalScore];
     });
 
     const wsData2 = [configHeaders, ...configRows];

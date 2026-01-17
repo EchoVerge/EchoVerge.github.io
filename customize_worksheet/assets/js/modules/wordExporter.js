@@ -1,6 +1,6 @@
 /**
  * assets/js/modules/wordExporter.js
- * V2.0: 支援學生卷/詳解卷切換
+ * V2.1: 支援顯示配分
  */
 
 export async function exportToWord(questions, title, type = 'teacher') {
@@ -26,8 +26,19 @@ export async function exportToWord(questions, title, type = 'teacher') {
     for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         
-        // 題號 (學生卷不顯示答案)
-        const idText = isStudent ? `${q.id}. ` : `${q.id}. [答案: ${q.ans || '無'}]`;
+        // 建構題號與配分文字
+        let idText = `${q.id}.`;
+        if (q.score && parseFloat(q.score) > 0) {
+            idText += ` (${q.score}分)`;
+        }
+        
+        // 詳解卷顯示答案
+        if (!isStudent) {
+            idText += ` [答案: ${q.ans || '無'}]`;
+        } else {
+            // 學生卷加一個空格美觀
+            idText += " ";
+        }
 
         docChildren.push(
             new Paragraph({
@@ -45,7 +56,6 @@ export async function exportToWord(questions, title, type = 'teacher') {
         // 題目圖片 (如果有)
         if (q.img) {
             try {
-                // 將 Base64 轉為 Blob/Buffer
                 const response = await fetch(q.img);
                 const blob = await response.blob();
                 const buffer = await blob.arrayBuffer();
@@ -56,7 +66,7 @@ export async function exportToWord(questions, title, type = 'teacher') {
                             new ImageRun({
                                 data: buffer,
                                 transformation: {
-                                    width: 300, // 限制寬度
+                                    width: 300, 
                                     height: 300 * (blob.height / blob.width || 0.75)
                                 }
                             })
@@ -78,9 +88,8 @@ export async function exportToWord(questions, title, type = 'teacher') {
             })
         );
 
-        // --- 以下內容僅在「詳解卷 (Teacher)」顯示 ---
+        // --- 詳解卷內容 ---
         if (!isStudent) {
-            // 解析
             if (q.expl) {
                 docChildren.push(
                     new Paragraph({
@@ -93,7 +102,6 @@ export async function exportToWord(questions, title, type = 'teacher') {
                 );
             }
 
-            // 類題
             if (q.similar) {
                 docChildren.push(
                     new Paragraph({
@@ -107,7 +115,7 @@ export async function exportToWord(questions, title, type = 'teacher') {
                 docChildren.push(
                     new Paragraph({
                         text: q.similar.text,
-                        indent: { left: 400 }, // 縮排
+                        indent: { left: 400 }, 
                         spacing: { after: 50 }
                     })
                 );
@@ -124,11 +132,10 @@ export async function exportToWord(questions, title, type = 'teacher') {
                 );
             }
         } else {
-            // 學生卷：題目間留白 (可選)
+            // 學生卷：題目間留白
             docChildren.push(new Paragraph({ text: "" }));
         }
         
-        // 分隔線 (用空行代替)
         docChildren.push(new Paragraph({ text: "" }));
     }
 

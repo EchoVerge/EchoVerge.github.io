@@ -28,7 +28,12 @@ export function createStudentSection(studentData, questions, config) {
             let content = '';
             // 根據設定檔決定每一欄要顯示什麼
             switch (col.type) {
-                case 'id': content = q.id; break;
+                case 'id': 
+                    content = q.id; 
+                    if (q.score && parseFloat(q.score) > 0) {
+                         content += ` <span style="font-size:0.8em; color:#666;">(${q.score}分)</span>`;
+                    }
+                    break;
                 case 'text': content = q.text; break;
                 case 'expl': content = q.expl; break;
                 case 'blank': content = ''; break; // 空白欄
@@ -97,6 +102,7 @@ export function createTeacherKeySection(questions) {
             <div class="q-header">
                 <span class="q-id">${q.id}.</span>
                 <span class="q-ans-badge">答案：${q.ans || '無'}</span>
+                ${q.score && parseFloat(q.score) > 0 ? `<span style="font-size:0.9em; color:#666; margin-left:10px;">(${q.score}分)</span>` : ''}
             </div>
             
             ${q.img ? `<div class="q-img-container"><img src="${q.img}" class="q-img-display"></div>` : ''}
