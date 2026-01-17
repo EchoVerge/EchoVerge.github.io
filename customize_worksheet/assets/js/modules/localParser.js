@@ -1,3 +1,6 @@
+
+
+
 /**
  * assets/js/modules/localParser.js
  * V30.0: 視覺化除錯增強版 (Visual Debug Enhanced)
@@ -297,7 +300,8 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
 }
 
 function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
-    const DARKNESS_THRESHOLD = 50; 
+    // 門檻值：填塗比例超過 0.40 (40%) 視為有畫記
+    const RATIO_THRESHOLD = 0.40; 
     
     if (xAnchors.length < 2 || yAnchors.length < 10) return null;
 
@@ -313,28 +317,25 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
         for (let j = 0; j < 10; j++) {
             let y = validY[j];
             
-            // 掃描 6x6 區域
-            let bestX = x, bestY = y, maxDark = -1;
-            for(let dx=-2; dx<=2; dx+=2) {
-                for(let dy=-2; dy<=2; dy+=2) {
-                    let tx = x+dx, ty = y+dy;
-                    if(tx<0||ty<0) continue;
-                    let rect = new cv.Rect(tx-3, ty-3, 6, 6);
-                    let roi = grayImage.roi(rect);
-                    let dark = 255 - cv.mean(roi)[0];
-                    roi.delete();
-                    if(dark > maxDark) { maxDark = dark; bestX = tx; bestY = ty; }
-                }
-            }
+            // 設定檢查範圍 (Bubble Size)
+            // 掃描檔建議設稍微大一點 (例如 18px)，確保能包住墨水
+            // 然後靠內縮 (Padding) 來避開框線
+            let size = 18; 
+            
+            // 直接檢查座標點 (不再做微幅位移搜尋，因為內縮法容錯率高)
+            // 取得填塗比例
+            let ratio = getDarkRatio(grayImage, x, y, size, 5); // 5px 內縮 = 只看中間 8x8
 
-            let pt1 = new cv.Point(bestX - 4, bestY - 4);
-            let pt2 = new cv.Point(bestX + 4, bestY + 4);
+            let pt1 = new cv.Point(x - size/2, y - size/2);
+            let pt2 = new cv.Point(x + size/2, y + size/2);
 
-            if (maxDark > DARKNESS_THRESHOLD) {
+            if (ratio > RATIO_THRESHOLD) {
                 foundDigit = j;
                 markCount++;
                 // 填答: 紅色實心
                 cv.rectangle(debugMat, pt1, pt2, [255, 0, 0, 255], -1); 
+                // 顯示比例數值 (除錯用)
+                // cv.putText(debugMat, ratio.toFixed(2), new cv.Point(x, y), cv.FONT_HERSHEY_SIMPLEX, 0.3, [255,255,0,255], 1);
             } else {
                 // 未填: 灰色空心
                 cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 100], 1); 
@@ -344,6 +345,7 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
         if (markCount === 1 && foundDigit !== -1) {
             seatDigits.push(foundDigit);
         } else {
+            // 如果座號無法判讀，回傳 null 視為異常
             return null; 
         }
     }
@@ -354,7 +356,8 @@ function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
 function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
     const detected = [];
     const OPTIONS = ['A', 'B', 'C', 'D', 'E'];
-    const DARKNESS_THRESHOLD = 60; 
+    // 門檻值：答案區通常比較密集，建議 0.45 (45%)
+    const RATIO_THRESHOLD = 0.45; 
 
     const finalDetected = [];
     
@@ -363,6 +366,7 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
     let colGroups = [];
     let currentGroup = [];
     
+    // 將 X 軸座標分組 (每 5 個一組)
     for(let i=0; i<xAnchors.length; i++) {
         if(i > 0 && (xAnchors[i] - xAnchors[i-1] > 50)) {
             colGroups.push(currentGroup);
@@ -386,32 +390,23 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
             let selectedOptions = [];
 
             validX.forEach((x, optIdx) => {
-                let bestX = x, bestY = y, maxDark = -1;
-                
-                for(let dx=-3; dx<=3; dx+=3) {
-                    for(let dy=-3; dy<=3; dy+=3) {
-                        let tx = x + dx, ty = y + dy;
-                        if(tx<0 || ty<0 || tx+10 > grayImage.cols || ty+10 > grayImage.rows) continue;
-                        
-                        let rect = new cv.Rect(tx-5, ty-5, 10, 10);
-                        let roi = grayImage.roi(rect);
-                        let dark = 255 - cv.mean(roi)[0];
-                        roi.delete();
-                        
-                        if(dark > maxDark) {
-                            maxDark = dark;
-                            bestX = tx; bestY = ty;
-                        }
-                    }
-                }
+                // 設定選項框大小 18x18
+                let size = 18;
+                // 內縮 5px -> 實際只檢查中間 8x8 的區域
+                let ratio = getDarkRatio(grayImage, x, y, size, 5);
 
-                let pt1 = new cv.Point(bestX - 5, bestY - 5);
-                let pt2 = new cv.Point(bestX + 5, bestY + 5);
+                let pt1 = new cv.Point(x - size/2, y - size/2);
+                let pt2 = new cv.Point(x + size/2, y + size/2);
 
-                if (maxDark > DARKNESS_THRESHOLD) {
+                if (ratio > RATIO_THRESHOLD) {
                     selectedOptions.push(OPTIONS[optIdx]);
-                    // 填答: 綠色實心 (題目區)
+                    // 填答: 綠色實心
                     cv.rectangle(debugMat, pt1, pt2, [0, 255, 0, 255], -1); 
+                    // Debug: 顯示比例
+                    // cv.putText(debugMat, ratio.toFixed(2), pt1, cv.FONT_HERSHEY_SIMPLEX, 0.3, [0,0,255,255], 1);
+                } else {
+                    // 為了除錯方便，可以把沒塗黑的框框也畫出來(淡色)
+                    // cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 50], 1); 
                 }
             });
 
@@ -423,6 +418,65 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
     });
 
     return { detectedAnswers: finalDetected };
+}
+
+/**
+ * 計算指定區域內的「黑色像素比例」 (抗噪核心)
+ * @param {cv.Mat} grayImg - 灰階原圖
+ * @param {number} cx - 中心點 X
+ * @param {number} cy - 中心點 Y
+ * @param {number} size - 要切出的方框大小 (例如 18)
+ * @param {number} padding - 內縮像素 (例如 5，表示上下左右各扣掉 5px)
+ * @returns {number} 0.0 ~ 1.0 的黑色佔比
+ */
+function getDarkRatio(grayImg, cx, cy, size, padding) {
+    // 1. 邊界檢查
+    let x = Math.floor(cx - size / 2);
+    let y = Math.floor(cy - size / 2);
+    if (x < 0 || y < 0 || x + size > grayImg.cols || y + size > grayImg.rows) {
+        return 0;
+    }
+
+    // 2. 取出 ROI (感興趣區域)
+    let rect = new cv.Rect(x, y, size, size);
+    let roi = grayImg.roi(rect);
+
+    // 3. 內縮 (Padding) - 這是避開圓圈框線的關鍵！
+    // 如果 size=18, padding=5，那實際檢查區域就是 8x8
+    let innerRect = new cv.Rect(padding, padding, size - 2 * padding, size - 2 * padding);
+    
+    // 防呆：如果內縮太多導致沒東西，就退回原圖
+    if (innerRect.width <= 0 || innerRect.height <= 0) {
+        innerRect = new cv.Rect(0, 0, size, size);
+    }
+    
+    let innerRoi = roi.roi(innerRect);
+
+    // 4. 計算黑色像素 (手動掃描像素，效能好且不需建立新的 Mat)
+    let darkCount = 0;
+    const totalPixels = innerRoi.rows * innerRoi.cols;
+    
+    // 遍歷像素
+    for (let r = 0; r < innerRoi.rows; r++) {
+        for (let c = 0; c < innerRoi.cols; c++) {
+            // 取得像素亮度 (uchar)
+            let pixelValue = innerRoi.ucharPtr(r, c)[0];
+            
+            // 判斷是否為「黑」
+            // 掃描檔的墨水通常在 0~100 之間，紙張在 200~255
+            // 我們設 128 為分界線，低於 128 算黑點
+            if (pixelValue < 128) {
+                darkCount++;
+            }
+        }
+    }
+
+    // 5. 釋放記憶體 (OpenCV.js 必須手動釋放 ROI)
+    innerRoi.delete();
+    roi.delete();
+
+    // 6. 回傳比例
+    return darkCount / totalPixels;
 }
 
 function generateTheoreticalAnchorsX(width) {
