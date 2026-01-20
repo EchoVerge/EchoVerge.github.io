@@ -1,16 +1,12 @@
-
-
-
 /**
  * assets/js/modules/localParser.js
- * V30.0: 視覺化除錯增強版 (Visual Debug Enhanced)
- * * 修正: 擴大 ROI 搜尋範圍，改善偏移問題
- * * 新增: 強制繪製 Debug 框線 (藍色=搜尋區, 紅色=定位點, 綠色=答案)
- * * 架構: 延續 V29.0 Fusion 邏輯，保持雙模式掃描
+ * V31.0: 視覺化除錯增強版 + 動態相對閾值 (Dynamic Threshold)
+ * * 修正: 解決陰影導致的誤判問題 (Unmarked items identified as marked)
+ * * 邏輯: 從「絕對黑度判定」改為「相對環境黑度判定」
  */
 
 export async function analyzeAnswerSheetLocal(base64Images, qCount) {
-    console.log("🚀 啟動本地閱卷 (V30.0 Debug)...");
+    console.log("🚀 啟動本地閱卷 (V31.0 Dynamic Threshold)...");
     
     // 檢查 OpenCV 狀態
     if (typeof cv === 'undefined' || !cv.Mat) {
@@ -74,17 +70,17 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             // ==========================================
             // 放寬搜尋範圍 (ROI) 以容許偏移
             const seatROIX = { 
-                xStart: Math.floor(warped.cols * 0.10), // 0.11 -> 0.10
-                xEnd: Math.floor(warped.cols * 0.22),   // 0.20 -> 0.22
-                yStart: Math.floor(warped.rows * 0.06), // 0.065 -> 0.06
-                yEnd: Math.floor(warped.rows * 0.11)    // 0.10 -> 0.11
+                xStart: Math.floor(warped.cols * 0.10),
+                xEnd: Math.floor(warped.cols * 0.22),
+                yStart: Math.floor(warped.rows * 0.06),
+                yEnd: Math.floor(warped.rows * 0.11)
             };
             
             const seatROIY = {
-                xStart: Math.floor(warped.cols * 0.04), // 0.045 -> 0.04
-                xEnd: Math.floor(warped.cols * 0.10),   // 0.095 -> 0.10
-                yStart: Math.floor(warped.rows * 0.08), // 0.085 -> 0.08
-                yEnd: Math.floor(warped.rows * 0.26)    // 0.25 -> 0.26
+                xStart: Math.floor(warped.cols * 0.04),
+                xEnd: Math.floor(warped.cols * 0.10),
+                yStart: Math.floor(warped.rows * 0.08),
+                yEnd: Math.floor(warped.rows * 0.26)
             };
 
             let seatAnchorsX = scanTrack(warpedBinary, "horizontal", seatROIX, debugWarped, "small");
@@ -97,13 +93,13 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             // ==========================================
             // 放寬搜尋範圍
             const qTopROI = {
-                yStart: Math.floor(warped.rows * 0.22), // 0.24 -> 0.22
-                yEnd: Math.floor(warped.rows * 0.30)    // 0.28 -> 0.30
+                yStart: Math.floor(warped.rows * 0.22),
+                yEnd: Math.floor(warped.rows * 0.30)
             };
             
             const qLeftROI = {
-                xStart: Math.floor(warped.cols * 0.01), // 0.02 -> 0.01
-                xEnd: Math.floor(warped.cols * 0.08)    // 0.07 -> 0.08
+                xStart: Math.floor(warped.cols * 0.01),
+                xEnd: Math.floor(warped.cols * 0.08)
             };
 
             let xAnchors = scanTrack(warpedBinary, "horizontal", qTopROI, debugWarped, "normal");
@@ -112,7 +108,6 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             // [補償機制] 若定位點不足，使用理論值
             if (xAnchors.length < 5) {
                 console.warn("X軸定位點不足，啟用理論推算");
-                // 畫出警告文字
                 cv.putText(debugWarped, "Warning: Use Theoretical X", new cv.Point(50, 50), cv.FONT_HERSHEY_SIMPLEX, 1, [255, 0, 0, 255], 2);
                 xAnchors = generateTheoreticalAnchorsX(warped.cols);
             }
@@ -150,11 +145,11 @@ export async function analyzeAnswerSheetLocal(base64Images, qCount) {
             const finalSeat = seatResult || `Local_${i + 1}`; 
 
             results.push({
-                uuid: Date.now() + "_" + i, // 唯一 ID，供批次校對使用
+                uuid: Date.now() + "_" + i,
                 index: i,
                 seat: finalSeat,
                 answers: flatAnswers,
-                debugImage: debugImgData, // 關鍵：回傳有畫框的圖
+                debugImage: debugImgData,
                 error: (seatResult === null) ? "座號異常" : null
             });
 
@@ -199,7 +194,7 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
         roiRect = new cv.Rect(range.xStart, 0, range.xEnd - range.xStart, binaryImage.rows);
     }
 
-    // [Visual Debug] 畫出藍色搜尋範圍框 (保留此框讓您確認搜尋位置)
+    // [Visual Debug]
     if(debugMat) {
         let pt1 = new cv.Point(roiRect.x, roiRect.y);
         let pt2 = new cv.Point(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
@@ -210,10 +205,8 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
     let contours = new cv.MatVector();
     let hierarchy = new cv.Mat();
     
-    // 尋找輪廓
     cv.findContours(roi, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    // 設定過濾條件 (根據目標大小)
     let filter;
     if (targetSize === "small") {
         filter = { minA: 20, maxA: 450, minW: 4, maxW: 35, arMin: 0.4, arMax: 2.2 };
@@ -227,7 +220,6 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
         let area = cv.contourArea(cnt);
         let ar = rect.width / rect.height;
 
-        // 寬高比與面積過濾
         if (area > filter.minA && area < filter.maxA && 
             rect.width >= filter.minW && rect.width <= filter.maxW && 
             rect.height >= filter.minW && rect.height <= filter.maxW &&
@@ -236,7 +228,6 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
             let globalCenterX = roiRect.x + rect.x + rect.width / 2;
             let globalCenterY = roiRect.y + rect.y + rect.height / 2;
             
-            // 收集候選點
             candidates.push({ 
                 pos: direction === "horizontal" ? globalCenterX : globalCenterY, 
                 alignVal: direction === "horizontal" ? globalCenterY : globalCenterX 
@@ -247,17 +238,16 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
     contours.delete(); hierarchy.delete(); roi.delete();
 
     if (candidates.length > 0) {
-        // 2. 過濾偏離太遠的雜訊 (使用中位數過濾)
+        // 2. 過濾偏離太遠的雜訊
         const alignValues = candidates.map(c => c.alignVal).sort((a, b) => a - b);
         const median = alignValues[Math.floor(alignValues.length / 2)];
-        const TOLERANCE = 20; // 容許誤差
+        const TOLERANCE = 20;
 
         let rawAnchors = candidates.filter(c => Math.abs(c.alignVal - median) <= TOLERANCE)
                                    .map(c => c.pos)
                                    .sort((a, b) => a - b);
         
-        // 3. [關鍵修正] 合併過於接近的線條 (Clustering)
-        // 如果兩條線距離小於 15px，視為同一條並取平均值
+        // 3. 合併過於接近的線條
         const MERGE_DIST = 15;
         const mergedAnchors = [];
         
@@ -268,18 +258,15 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
                 if (rawAnchors[i] - rawAnchors[i-1] < MERGE_DIST) {
                     currentGroup.push(rawAnchors[i]);
                 } else {
-                    // 結算上一組
                     const avg = currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length;
                     mergedAnchors.push(avg);
-                    currentGroup = [rawAnchors[i]]; // 開啟新的一組
+                    currentGroup = [rawAnchors[i]]; 
                 }
             }
-            // 結算最後一組
             const avg = currentGroup.reduce((a, b) => a + b, 0) / currentGroup.length;
             mergedAnchors.push(avg);
         }
 
-        // [Visual Debug] 只畫出合併後、乾淨的綠色線條
         if(debugMat) {
             mergedAnchors.forEach(pos => {
                 let p1, p2;
@@ -299,67 +286,83 @@ function scanTrack(binaryImage, direction, range, debugMat, targetSize = "normal
     return [];
 }
 
+/**
+ * [修改] 座號識別：改用「最大值競爭」邏輯
+ * 強制找出每欄中最黑的那個，且必須顯著黑於第二名，避免陰影誤判
+ */
 function gradeSeatGrid(grayImage, xAnchors, yAnchors, debugMat) {
-    // 門檻值：填塗比例超過 0.40 (40%) 視為有畫記
-    const RATIO_THRESHOLD = 0.40; 
-    
     if (xAnchors.length < 2 || yAnchors.length < 10) return null;
 
     const validX = xAnchors.slice(0, 2);
     const validY = yAnchors.slice(0, 10);
     let seatDigits = [];
 
+    // 針對兩個座號欄位
     for (let i = 0; i < 2; i++) {
         let x = validX[i];
-        let foundDigit = -1;
-        let markCount = 0;
+        let candidates = [];
 
+        // 掃描 0-9
         for (let j = 0; j < 10; j++) {
             let y = validY[j];
-            
-            // 設定檢查範圍 (Bubble Size)
-            // 掃描檔建議設稍微大一點 (例如 18px)，確保能包住墨水
-            // 然後靠內縮 (Padding) 來避開框線
-            let size = 18; 
-            
-            // 直接檢查座標點 (不再做微幅位移搜尋，因為內縮法容錯率高)
-            // 取得填塗比例
-            let ratio = getDarkRatio(grayImage, x, y, size, 5); // 5px 內縮 = 只看中間 8x8
+            let size = 18;
+            let ratio = getDarkRatio(grayImage, x, y, size, 5);
+            candidates.push({ digit: j, ratio: ratio, pt: {x, y} });
+        }
 
-            let pt1 = new cv.Point(x - size/2, y - size/2);
-            let pt2 = new cv.Point(x + size/2, y + size/2);
+        // 排序：黑度由大到小
+        candidates.sort((a, b) => b.ratio - a.ratio);
+        
+        const best = candidates[0];
+        const second = candidates[1];
 
-            if (ratio > RATIO_THRESHOLD) {
-                foundDigit = j;
-                markCount++;
-                // 填答: 紅色實心
+        // 判定門檻：
+        // 1. 基礎門檻 0.35 (比絕對的 0.45 寬鬆一點，因為我們依賴相對差距)
+        // 2. 差距門檻 0.15 (第一名必須比第二名黑 15% 以上)
+        // 3. 強制通過門檻 0.60 (如果超級黑，就算第二名也黑，還是算它)
+        const MIN_THRESHOLD = 0.35;
+        const RELATIVE_GAP = 0.15;
+        const FORCE_PASS = 0.60;
+
+        // 繪製結果到 Debug 圖
+        candidates.forEach(c => {
+             let pt1 = new cv.Point(c.pt.x - 9, c.pt.y - 9);
+             let pt2 = new cv.Point(c.pt.x + 9, c.pt.y + 9);
+             if (c === best && (c.ratio > MIN_THRESHOLD)) {
+                 // 這是候選人，根據最終結果決定畫什麼色
+                 // (這裡先不畫，下面決定後再畫)
+             } else {
+                 // 其他落選者 -> 灰色淡框
+                 cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 100], 1);
+             }
+        });
+
+        // 決策
+        let isValid = false;
+        if (best.ratio > MIN_THRESHOLD) {
+            if ((best.ratio - second.ratio > RELATIVE_GAP) || (best.ratio > FORCE_PASS)) {
+                seatDigits.push(best.digit);
+                isValid = true;
+                // 畫出選取的紅色實心
+                let pt1 = new cv.Point(best.pt.x - 9, best.pt.y - 9);
+                let pt2 = new cv.Point(best.pt.x + 9, best.pt.y + 9);
                 cv.rectangle(debugMat, pt1, pt2, [255, 0, 0, 255], -1); 
-                // 顯示比例數值 (除錯用)
-                // cv.putText(debugMat, ratio.toFixed(2), new cv.Point(x, y), cv.FONT_HERSHEY_SIMPLEX, 0.3, [255,255,0,255], 1);
-            } else {
-                // 未填: 灰色空心
-                cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 100], 1); 
             }
         }
 
-        if (markCount === 1 && foundDigit !== -1) {
-            seatDigits.push(foundDigit);
-        } else {
-            // 如果座號無法判讀，回傳 null 視為異常
-            return null; 
-        }
+        if (!isValid) return null; // 該欄位無法辨識
     }
 
     return seatDigits.join(""); 
 }
 
+/**
+ * [修改] 題目識別：改用「動態相對門檻」邏輯
+ * 計算每一題的「背景噪音值」，只有顯著黑於背景的才算答案
+ */
 function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
-    const detected = [];
-    const OPTIONS = ['A', 'B', 'C', 'D', 'E'];
-    // 門檻值：答案區通常比較密集，建議 0.45 (45%)
-    const RATIO_THRESHOLD = 0.45; 
-
     const finalDetected = [];
+    const OPTIONS = ['A', 'B', 'C', 'D', 'E'];
     
     if (xAnchors.length < 5 || yAnchors.length < 5) return { detectedAnswers: [] };
 
@@ -387,25 +390,45 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
             if (qNum > qCount) continue;
 
             const y = yAnchors[j];
+            
+            // 1. 收集該題所有選項的黑度
+            let rowOptions = [];
+            validX.forEach((x, optIdx) => {
+                let size = 18;
+                let ratio = getDarkRatio(grayImage, x, y, size, 5);
+                rowOptions.push({
+                    opt: OPTIONS[optIdx],
+                    ratio: ratio,
+                    pt: {x, y}
+                });
+            });
+
+            // 2. 計算該題的「環境噪音基線」
+            // 取中位數 (Median) 作為基準。
+            // 如果整題都在陰影下，中位數會很高(例如0.5)，那我們就需要 >0.65 才算有劃記
+            // 如果整題很乾淨，中位數很低(例如0.05)，我們用基礎門檻(0.40)來把關
+            let sortedRatios = [...rowOptions].sort((a, b) => a.ratio - b.ratio);
+            let medianRatio = sortedRatios[2].ratio; // 取中間值
+
+            // 設定動態門檻
+            const BASE_THRESHOLD = 0.40; // 絕對最低要求
+            const GAP_THRESHOLD = 0.15;  // 相對差距要求
+            
+            // 最終門檻 = Max(絕對門檻, 環境噪音 + 差距)
+            const DYNAMIC_THRESHOLD = Math.max(BASE_THRESHOLD, medianRatio + GAP_THRESHOLD);
+
             let selectedOptions = [];
 
-            validX.forEach((x, optIdx) => {
-                // 設定選項框大小 18x18
-                let size = 18;
-                // 內縮 5px -> 實際只檢查中間 8x8 的區域
-                let ratio = getDarkRatio(grayImage, x, y, size, 5);
+            rowOptions.forEach(item => {
+                let pt1 = new cv.Point(item.pt.x - 9, item.pt.y - 9);
+                let pt2 = new cv.Point(item.pt.x + 9, item.pt.y + 9);
 
-                let pt1 = new cv.Point(x - size/2, y - size/2);
-                let pt2 = new cv.Point(x + size/2, y + size/2);
-
-                if (ratio > RATIO_THRESHOLD) {
-                    selectedOptions.push(OPTIONS[optIdx]);
+                if (item.ratio > DYNAMIC_THRESHOLD) {
+                    selectedOptions.push(item.opt);
                     // 填答: 綠色實心
                     cv.rectangle(debugMat, pt1, pt2, [0, 255, 0, 255], -1); 
-                    // Debug: 顯示比例
-                    // cv.putText(debugMat, ratio.toFixed(2), pt1, cv.FONT_HERSHEY_SIMPLEX, 0.3, [0,0,255,255], 1);
                 } else {
-                    // 為了除錯方便，可以把沒塗黑的框框也畫出來(淡色)
+                    // 未填 (或被視為陰影): 不做標記或畫淡色框
                     // cv.rectangle(debugMat, pt1, pt2, [200, 200, 200, 50], 1); 
                 }
             });
@@ -422,60 +445,39 @@ function gradeByGrid(grayImage, xAnchors, yAnchors, debugMat, qCount) {
 
 /**
  * 計算指定區域內的「黑色像素比例」 (抗噪核心)
- * @param {cv.Mat} grayImg - 灰階原圖
- * @param {number} cx - 中心點 X
- * @param {number} cy - 中心點 Y
- * @param {number} size - 要切出的方框大小 (例如 18)
- * @param {number} padding - 內縮像素 (例如 5，表示上下左右各扣掉 5px)
  * @returns {number} 0.0 ~ 1.0 的黑色佔比
  */
 function getDarkRatio(grayImg, cx, cy, size, padding) {
-    // 1. 邊界檢查
     let x = Math.floor(cx - size / 2);
     let y = Math.floor(cy - size / 2);
     if (x < 0 || y < 0 || x + size > grayImg.cols || y + size > grayImg.rows) {
         return 0;
     }
 
-    // 2. 取出 ROI (感興趣區域)
     let rect = new cv.Rect(x, y, size, size);
     let roi = grayImg.roi(rect);
-
-    // 3. 內縮 (Padding) - 這是避開圓圈框線的關鍵！
-    // 如果 size=18, padding=5，那實際檢查區域就是 8x8
     let innerRect = new cv.Rect(padding, padding, size - 2 * padding, size - 2 * padding);
     
-    // 防呆：如果內縮太多導致沒東西，就退回原圖
     if (innerRect.width <= 0 || innerRect.height <= 0) {
         innerRect = new cv.Rect(0, 0, size, size);
     }
     
     let innerRoi = roi.roi(innerRect);
-
-    // 4. 計算黑色像素 (手動掃描像素，效能好且不需建立新的 Mat)
     let darkCount = 0;
     const totalPixels = innerRoi.rows * innerRoi.cols;
     
-    // 遍歷像素
     for (let r = 0; r < innerRoi.rows; r++) {
         for (let c = 0; c < innerRoi.cols; c++) {
-            // 取得像素亮度 (uchar)
             let pixelValue = innerRoi.ucharPtr(r, c)[0];
-            
-            // 判斷是否為「黑」
             // 掃描檔的墨水通常在 0~100 之間，紙張在 200~255
-            // 我們設 128 為分界線，低於 128 算黑點
             if (pixelValue < 128) {
                 darkCount++;
             }
         }
     }
 
-    // 5. 釋放記憶體 (OpenCV.js 必須手動釋放 ROI)
     innerRoi.delete();
     roi.delete();
-
-    // 6. 回傳比例
     return darkCount / totalPixels;
 }
 

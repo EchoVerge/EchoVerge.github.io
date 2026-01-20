@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMR 視覺化除錯實驗室 (Debug Bench)</title>
+    <script src="https://docs.opencv.org/4.8.0/opencv.js" async onload="onOpenCvReady()"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        function onOpenCvReady() {
+            document.getElementById('status').innerText = "✅ OpenCV 載入完成，請上傳檔案";
+            document.getElementById('status').style.color = "green";
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        h1 { margin-bottom: 10px; }
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        .card h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .card canvas, .card img { width: 100%; height: auto; border: 1px solid #ccc; background: #eee; }
+        .status-bar { font-weight: bold; margin-bottom: 10px; color: #666; }
+        .json-result { background: #282c34; color: #abb2bf; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+
+    <h1>🔍 OMR 視覺化除錯實驗室</h1>
+    <div id="status" class="status-bar">⏳ 等待 OpenCV 載入...</div>
+
+    <div class="controls">
+        <label style="font-weight: bold;">上傳考卷 (支援 JPG/PNG/PDF):</label>
+        <br>
+        <input type="file" id="fileInput" accept="image/*, .pdf" style="margin-top: 10px;">
+        <button id="btnProcess" style="margin-left: 10px; padding: 5px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">開始分析</button>
+        
+        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+            * 此工具會模擬 V31 的邏輯，將中間過程視覺化呈現。<br>
+            * <b>全域二值化</b>：用於尋找定位點 (Block: 21, C: 5)<br>
+            * <b>校正後二值化</b>：用於判讀答案 (Block: 15, C: 3)
+        </div>
+    </div>
+
+    <div id="outputArea"></div>
+
+    <script type="module">
+        import { analyzeAnswerSheetLocal } from './assets/js/modules/localParser.js';
+        import { convertPdfToImages } from './assets/js/modules/fileExtractor.js';
+
+        const fileInput = document.getElementById('fileInput');
+        const btnProcess = document.getElementById('btnProcess');
+        const outputArea = document.getElementById('outputArea');
+
+        btnProcess.addEventListener('click', async () => {
+            if (fileInput.files.length === 0) {
+                alert("請先選擇檔案！");
+                return;
+            }
+            
+            outputArea.innerHTML = '<div style="text-align:center; padding:20px;">🚀 正在處理中...</div>';
+            
+            const file = fileInput.files[0];
+            let imagesBase64 = [];
+
+            try {
+                if (file.type === 'application/pdf') {
+                    imagesBase64 = await convertPdfToImages(file);
+                } else {
+                    const base64 = await readFileAsBase64(file);
+                    imagesBase64 = [base64.split(',')[1]]; // 去除 data:image prefix
+                }
+
+                // 清空區域
+                outputArea.innerHTML = '';
+
+                // 逐頁處理
+                for (let i = 0; i < imagesBase64.length; i++) {
+                    await processPage(imagesBase64[i], i);
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert("處理失敗: " + err.message);
+            }
+        });
+
+        async function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function processPage(base64, index) {
+            // 1. 執行正式的閱卷邏輯 (取得最終結果)
+            // 假設題目數為 50 (預設)
+            const results = await analyzeAnswerSheetLocal([base64], 50);
+            const finalResult = results[0];
+
+            // 2. [視覺化] 手動重跑一次 OpenCV 流程以顯示中間產物
+            // 因為 localParser 沒有匯出中間圖，我們在這裡模擬它的步驟
+            
+            const container = document.createElement('div');
+            container.innerHTML = `<h2 style="border-top:2px dashed #ccc; padding-top:20px; margin-top:30px;">📄 第 ${index + 1} 頁</h2>`;
+            const gallery = document.createElement('div');
+            gallery.className = 'gallery';
+            
+            // --- Step A: 原始圖 ---
+            const imgEl = new Image();
+            imgEl.src = "data:image/jpeg;base64," + base64;
+            await new Promise(r => imgEl.onload = r);
+            
+            // --- Step B: OpenCV 處理 ---
+            let src = cv.imread(imgEl);
+            
+            // Resize (Standardize)
+            let resized = new cv.Mat();
+            const STANDARD_WIDTH = 1000;
+            const scaleFactor = STANDARD_WIDTH / src.cols;
+            const newHeight = Math.round(src.rows * scaleFactor);
+            cv.resize(src, resized, new cv.Size(STANDARD_WIDTH, newHeight), 0, 0, cv.INTER_AREA);
+
+            // 1. 全域二值化 (Global Binary)
+            let gray = new cv.Mat();
+            cv.cvtColor(resized, gray, cv.COLOR_RGBA2GRAY, 0);
+            let binary = new cv.Mat();
+            // V31 設定: Block 21, C 5
+            cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 21, 5);
+
+            // 2. 透視校正 (Warp) - 嘗試找定位點
+            // 注意：這裡我們複製了 helper function 邏輯來做視覺化
+            let markers = findFiducialMarkers(binary);
+            let warped = new cv.Mat();
+            let warpedBinary = new cv.Mat();
+            let isWarpSuccess = false;
+
+            if (markers) {
+                warped = fourPointTransform(resized, markers);
+                isWarpSuccess = true;
+                
+                // 3. 校正後二值化 (Warped Binary)
+                // V31 設定: Block 15, C 3 (這個是用來找答案的關鍵影像)
+                let warpedGray = new cv.Mat();
+                cv.cvtColor(warped, warpedGray, cv.COLOR_RGBA2GRAY, 0);
+                cv.adaptiveThreshold(warpedGray, warpedBinary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 3);
+                warpedGray.delete();
+            } else {
+                // 如果找不到定位點，就顯示原圖
+                warped = resized.clone(); 
+                cv.cvtColor(warped, warpedBinary, cv.COLOR_RGBA2GRAY, 0); // 只是為了不報錯
+                cv.adaptiveThreshold(warpedBinary, warpedBinary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 3);
+            }
+
+            // --- 渲染到 DOM ---
+            
+            // Card 1: 全域二值化 (檢查定位點是否完整)
+            gallery.appendChild(createCanvasCard("1. 全域二值化 (找定位點)", binary));
+
+            // Card 2: 校正後影像 (檢查是否切正)
+            gallery.appendChild(createCanvasCard("2. 透視校正後 (Warped)", warped));
+
+            // Card 3: 校正後二值化 (檢查答案是否清晰) - 這是最重要的除錯圖！
+            gallery.appendChild(createCanvasCard("3. 校正後二值化 (找答案)", warpedBinary));
+
+            // Card 4: 最終分析結果 (來自 localParser)
+            const resCard = document.createElement('div');
+            resCard.className = 'card';
+            resCard.innerHTML = `<h3>4. 最終判讀結果 (Debug View)</h3>`;
+            const resImg = new Image();
+            if (finalResult.debugImage) {
+                resImg.src = finalResult.debugImage;
+            } else {
+                resImg.alt = "無除錯影像";
+            }
+            resCard.appendChild(resImg);
+            gallery.appendChild(resCard);
+
+            // JSON 結果
+            const jsonDiv = document.createElement('div');
+            jsonDiv.style.marginTop = "20px";
+            jsonDiv.innerHTML = `<h3>📊 識別數據 (JSON)</h3><div class="json-result">座號: ${finalResult.seat}\n答案: ${JSON.stringify(finalResult.answers)}</div>`;
+
+            container.appendChild(gallery);
+            container.appendChild(jsonDiv);
+            outputArea.appendChild(container);
+
+            // 清理記憶體
+            src.delete(); resized.delete(); gray.delete(); binary.delete();
+            warped.delete(); warpedBinary.delete();
+        }
+
+        function createCanvasCard(title, mat) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            const canvas = document.createElement('canvas');
+            cv.imshow(canvas, mat);
+            card.innerHTML = `<h3>${title}</h3>`;
+            card.appendChild(canvas);
+            return card;
+        }
+
+        // --- 複製自 localParser.js 的 Helper Functions (為了視覺化) ---
+        // 注意：這些函數在 localParser 內部沒有 export，所以這裡必須複製一份以進行前端視覺化
+        
+        function findFiducialMarkers(binaryImage) {
+            const contours = new cv.MatVector();
+            const hierarchy = new cv.Mat();
+            cv.findContours(binaryImage, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            const candidates = [];
+            const minArea = 150;
+            const maxArea = 3000; 
+
+            for (let i = 0; i < contours.size(); ++i) {
+                let cnt = contours.get(i);
+                let area = cv.contourArea(cnt);
+                if (area >= minArea && area <= maxArea) {
+                    let approx = new cv.Mat();
+                    cv.approxPolyDP(cnt, approx, 0.04 * cv.arcLength(cnt, true), true);
+                    if (approx.rows === 4 && cv.isContourConvex(approx)) {
+                        let rect = cv.boundingRect(approx);
+                        let ar = rect.width / parseFloat(rect.height);
+                        if (ar >= 0.7 && ar <= 1.3) {
+                            candidates.push({ x: rect.x + rect.width/2, y: rect.y + rect.height/2, contour: approx });
+                        } else { approx.delete(); }
+                    } else { approx.delete(); }
+                }
+                cnt.delete();
+            }
+            contours.delete(); hierarchy.delete();
+
+            if (candidates.length < 4) return null;
+
+            const w = binaryImage.cols;
+            const h = binaryImage.rows;
+            const corners = [{x:0,y:0}, {x:w,y:0}, {x:w,y:h}, {x:0,y:h}];
+            let best = [null,null,null,null];
+            let minDists = [Infinity,Infinity,Infinity,Infinity];
+
+            candidates.forEach(cand => {
+                for(let i=0; i<4; i++) {
+                    let d = Math.pow(cand.x - corners[i].x, 2) + Math.pow(cand.y - corners[i].y, 2);
+                    if (d < minDists[i]) { minDists[i] = d; best[i] = cand; }
+                }
+            });
+
+            if (best.some(m => m === null)) return null;
+            candidates.forEach(c => { if(c.contour) c.contour.delete(); });
+            return best;
+        }
+
+        function fourPointTransform(image, markers) {
+            const pts = markers.map(m => ({x: m.x, y: m.y}));
+            pts.sort((a,b) => a.x - b.x);
+            let lefts = pts.slice(0,2).sort((a,b)=>a.y-b.y);
+            let rights = pts.slice(2,4).sort((a,b)=>a.y-b.y);
+            const sorted = [lefts[0], rights[0], rights[1], lefts[1]]; 
+
+            const maxWidth = 1000;
+            const maxHeight = 1414;
+
+            let srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [sorted[0].x, sorted[0].y, sorted[1].x, sorted[1].y, sorted[2].x, sorted[2].y, sorted[3].x, sorted[3].y]);
+            let dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth, 0, maxWidth, maxHeight, 0, maxHeight]);
+            let M = cv.getPerspectiveTransform(srcTri, dstTri);
+            let warped = new cv.Mat();
+            cv.warpPerspective(image, warped, M, new cv.Size(maxWidth, maxHeight));
+            
+            srcTri.delete(); dstTri.delete(); M.delete();
+            return warped;
+        }
+    </script>
+</body>
+</html>

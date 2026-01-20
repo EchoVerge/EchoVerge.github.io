@@ -201,11 +201,21 @@ function generateSeatMatrix() {
                 <div style="font-size: 9px; font-weight: bold;">${label}</div>
             </div>
         `;
-        // 氣泡 (Row 3 ~ 12)
+        // 氣泡 (Row 3 ~ 12) - [V32] 修改此處
         for(let i=0; i<=9; i++) {
             html += `
                 <div style="height: ${ROW_HEIGHT}px; display: flex; align-items: center; justify-content: center; margin-bottom: 1px;">
-                    <div class="bubble" style="width: 10px; height: 10px; border: 1px solid #000; border-radius: 50%;"></div>
+                    <div class="bubble" style="
+                        width: 13px; 
+                        height: 13px; 
+                        border: 1px solid #d0d0d0; /* 淡色框 */
+                        border-radius: 50%;
+                        color: #d0d0d0;            /* 淡色字 */
+                        font-size: 8px;
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center;
+                    ">${i}</div>
                 </div>
             `;
         }
@@ -261,17 +271,34 @@ function generateColumnsHtml(startNo, endNo, perCol, colCount, markW, markH) {
 }
 
 function createQuestionCell(qNum) {
+    // [V32] 隱形大氣泡設計
+    // 1. 寬度加大為 19px
+    // 2. 顏色極淡 (#d0d0d0)，讓掃描器忽略框線
+    // 3. 文字置中於圓圈內
     const options = ['A', 'B', 'C', 'D', 'E'].map(opt => `
-        <div style="display: flex; flex-direction: column; align-items: center; width: 13px;">
-            <div style="font-size: 8px; color: #666; line-height: 1;">${opt}</div>
-            <div class="bubble" style="width: 13px; height: 13px; border: 1px solid #000; border-radius: 50%; margin-top: 1px;"></div>
+        <div style="display: flex; align-items: center; justify-content: center; width: 20px;">
+            <div class="bubble" style="
+                width: 19px; 
+                height: 19px; 
+                border: 1px solid #d0d0d0; /* 極淡框線 */
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                font-size: 10px; 
+                color: #d0d0d0; /* 極淡文字 */
+                font-weight: bold;
+                margin-top: 1px;
+            ">
+                ${opt}
+            </div>
         </div>
     `).join('');
 
     return `
         <div style="display: flex; align-items: center; border: 1px solid #000; padding: 1px 3px; border-radius: 3px; height: 26px; background: #fff;">
             <div style="width: 18px; font-weight: bold; font-size: 11px; border-right: 1px solid #ccc; margin-right: 2px; text-align: center;">${qNum}</div>
-            <div style="display: flex; justify-content: space-between; flex: 1; gap: 1px;">
+            <div style="display: flex; justify-content: space-between; flex: 1; gap: 2px;">
                 ${options}
             </div>
         </div>
