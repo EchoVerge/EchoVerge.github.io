@@ -21,7 +21,7 @@
  * - Updated: viewRenderer.js (學生卷增加配分顯示)
  */
 
-const CACHE_NAME = 'worksheet-assistant-v7.2.0';
+const CACHE_NAME = 'worksheet-assistant-v7.2.1';
 
 const ASSETS_TO_CACHE = [
     './',
