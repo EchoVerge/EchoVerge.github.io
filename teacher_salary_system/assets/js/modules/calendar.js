@@ -172,17 +172,19 @@ export async function renderCalendar() {
                 baseInfo = state.currentSemester.baseSchedule[`${dayOfWeek}-${p}`];
             }
 
-            let displayType = "", displayClass = "", displayTag = "", displayNote = "", isPreview = false;
+            let displayType = "", displayClass = "", displayTag = "", displayColor = "", displayNote = "", isPreview = false;
 
             if (record) {
                 displayType = record.type;
                 displayClass = record.className || "";
                 displayTag = record.tag || "";
+                displayColor = record.color || ""; // 讀取手動顏色
                 displayNote = record.note || "";
             } else if (baseInfo && baseInfo.type) {
                 displayType = baseInfo.type;
                 displayClass = baseInfo.className || "";
                 displayTag = baseInfo.tag || "";
+                displayColor = baseInfo.color || ""; // 讀取手動顏色
                 isPreview = true;
             }
 
@@ -192,13 +194,12 @@ export async function renderCalendar() {
             if (displayType || displayClass) {
                 isDraggable = true;
 
-                // 1. 取得支薪類別設定的顏色
                 let typeColor = "#6c757d";
                 let typeConfig = state.courseTypes.find(t => t.name === displayType);
                 if (typeConfig) typeColor = typeConfig.color;
 
-                // 2. 取得班級專屬顏色，並根據「標籤」產生色系變化
-                let baseClassColor = getClassColor(displayClass);
+                // 2. 決定班級底色：如果有手動選擇就用手動的，否則依賴自動 Hash 分配
+                let baseClassColor = displayColor ? displayColor : getClassColor(displayClass);
                 let classColor = getTagColorVariation(baseClassColor, displayTag);
 
                 let style = isPreview
@@ -207,7 +208,6 @@ export async function renderCalendar() {
 
                 let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; display: inline-block; line-height: 1.2;`;
 
-                // 組合標籤 HTML
                 let classDisplayHtml = `<span class="fw-bold">${displayClass || '未填班級'}</span>`;
                 if (displayTag) {
                     classDisplayHtml += `<div style="font-size:0.85rem; font-weight:bold; opacity:0.95; margin-top:2px;">${displayTag}</div>`;
@@ -229,7 +229,7 @@ export async function renderCalendar() {
                      draggable="${isDraggable}" 
                      data-date="${dateStr}"
                      data-period="${p}"
-                     onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayTag)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
+                     onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayTag)}', '${safe(displayColor)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
                     ${cellContent}
                 </div>`;
         }

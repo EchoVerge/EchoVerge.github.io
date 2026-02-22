@@ -8,7 +8,7 @@ export function initRecordModal() {
     editModal = new bootstrap.Modal(document.getElementById('editModal'));
 }
 
-export function openEditModal(date, period, currentType, currentClass, currentTag, currentNote, hasRecord, baseType) {
+export function openEditModal(date, period, currentType, currentClass, currentTag, currentColor, currentNote, hasRecord, baseType) {
     document.getElementById('modalDate').value = date;
     document.getElementById('modalPeriod').value = period;
     document.getElementById('modalBaseInfo').innerText = baseType || "空堂";
@@ -25,6 +25,7 @@ export function openEditModal(date, period, currentType, currentClass, currentTa
 
     document.getElementById('modalClass').value = currentClass;
     document.getElementById('modalTag').value = currentTag || "";
+    document.getElementById('modalColor').value = currentColor || "";
     document.getElementById('modalNote').value = currentNote;
 
     const btnDelete = document.getElementById('btnDelete');
@@ -43,6 +44,7 @@ export async function saveRecord() {
     const type = document.getElementById('modalType').value;
     const className = document.getElementById('modalClass').value;
     const tag = document.getElementById('modalTag').value;
+    const color = document.getElementById('modalColor').value;
     const note = document.getElementById('modalNote').value;
 
     // 關鍵修正：不依賴 state.currentSemester，而是直接根據日期找出對應的學期 ID
@@ -59,6 +61,7 @@ export async function saveRecord() {
         type: type,
         className: className,
         tag: tag,
+        color: color,
         note: note,
         semesterId: semesterId // 使用正確判斷出的學期 ID
     };

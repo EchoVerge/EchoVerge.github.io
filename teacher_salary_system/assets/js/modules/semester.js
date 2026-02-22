@@ -67,8 +67,8 @@ export async function editBaseSchedule(semId) {
             let style = "background-color: white;"; // 預設白底
 
             if (cellData && (cellData.type || cellData.className)) {
-                const baseClassColor = getClassColor(cellData.className);
-                const classColor = getTagColorVariation(baseClassColor, cellData.tag); // 加入這行
+                const baseClassColor = cellData.color ? cellData.color : getClassColor(cellData.className);
+                const classColor = getTagColorVariation(baseClassColor, cellData.tag);
 
                 let typeColor = "#6c757d";
                 const typeConfig = state.courseTypes.find(t => t.name === cellData.type);
@@ -122,11 +122,13 @@ export function openBaseSlotModal(day, period) {
         if (cellData) {
             select.value = cellData.type;
             document.getElementById('baseSlotClass').value = cellData.className || '';
-            document.getElementById('baseSlotTag').value = cellData.tag || ''; // 加入
+            document.getElementById('baseSlotTag').value = cellData.tag || '';
+            document.getElementById('baseSlotColor').value = cellData.color || '';
         } else {
             select.value = state.courseTypes[0]?.name || '';
             document.getElementById('baseSlotClass').value = '';
-            document.getElementById('baseSlotTag').value = ''; // 加入
+            document.getElementById('baseSlotTag').value = '';
+            document.getElementById('baseSlotColor').value = '';
         }
 
         baseSlotModal.show();
@@ -140,6 +142,7 @@ export async function saveBaseSlot() {
     const type = document.getElementById('baseSlotType').value;
     const className = document.getElementById('baseSlotClass').value;
     const tag = document.getElementById('baseSlotTag').value;
+    const color = document.getElementById('baseSlotColor').value;
 
     const semId = state.currentEditingSemId;
     const sem = await db.semesters.get(semId);
@@ -148,7 +151,7 @@ export async function saveBaseSlot() {
     if (!sem.baseSchedule) sem.baseSchedule = {};
 
     // 寫入資料
-    sem.baseSchedule[key] = { type, className, tag };
+    sem.baseSchedule[key] = { type, className, tag, color };
 
     await db.semesters.update(semId, { baseSchedule: sem.baseSchedule });
 

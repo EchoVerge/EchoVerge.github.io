@@ -128,13 +128,26 @@
                         <select class="form-select" id="modalType"></select>
                     </div>
                     <div class="row g-2 mb-3">
-                         <div class="col-md-6">
+                         <div class="col-md-5">
                             <label class="form-label">班級/地點</label>
                             <input type="text" class="form-control" id="modalClass" placeholder="ex: 101">
                         </div>
-                         <div class="col-md-6">
+                         <div class="col-md-4">
                             <label class="form-label">課程標籤</label>
                             <input type="text" class="form-control" id="modalTag" placeholder="ex: 國文">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">底色</label>
+                            <select class="form-select" id="modalColor">
+                                <option value="">自動</option>
+                                <option value="#dc3545">紅</option>
+                                <option value="#fd7e14">橘</option>
+                                <option value="#ffc107">黃</option>
+                                <option value="#198754">綠</option>
+                                <option value="#0d6efd">藍</option>
+                                <option value="#6f42c1">紫</option>
+                                <option value="#6c757d">灰</option>
+                            </select>
                         </div>
                     </div>
                     <div class="mb-3"><label class="form-label">備註</label><input type="text" class="form-control" id="modalNote"></div>
@@ -307,13 +320,26 @@
                         <select class="form-select" id="baseSlotType"></select>
                     </div>
                     <div class="row g-2 mb-3">
-                        <div class="col-6">
+                        <div class="col-5">
                             <label class="form-label">班級 / 地點</label>
                             <input type="text" class="form-control" id="baseSlotClass" placeholder="例如: 801">
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <label class="form-label">課程標籤</label>
                             <input type="text" class="form-control" id="baseSlotTag" placeholder="例如: 國文">
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label">底色</label>
+                            <select class="form-select" id="baseSlotColor">
+                                <option value="">自動</option>
+                                <option value="#dc3545">紅</option>
+                                <option value="#fd7e14">橘</option>
+                                <option value="#ffc107">黃</option>
+                                <option value="#198754">綠</option>
+                                <option value="#0d6efd">藍</option>
+                                <option value="#6f42c1">紫</option>
+                                <option value="#6c757d">灰</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -352,8 +378,20 @@
                         <div class="col-6"><label>類別</label><select id="batchType" class="form-select"></select></div>
                     </div>
                     <div class="row g-2 mb-3">
-                        <div class="col-6"><label>班級</label><input type="text" id="batchClass" class="form-control"></div>
-                        <div class="col-6"><label>課程標籤</label><input type="text" id="batchTag" class="form-control"></div>
+                        <div class="col-5"><label>班級</label><input type="text" id="batchClass" class="form-control"></div>
+                        <div class="col-4"><label>課程標籤</label><input type="text" id="batchTag" class="form-control"></div>
+                        <div class="col-3"><label>底色</label>
+                            <select class="form-select" id="batchColor">
+                                <option value="">自動</option>
+                                <option value="#dc3545">紅</option>
+                                <option value="#fd7e14">橘</option>
+                                <option value="#ffc107">黃</option>
+                                <option value="#198754">綠</option>
+                                <option value="#0d6efd">藍</option>
+                                <option value="#6f42c1">紫</option>
+                                <option value="#6c757d">灰</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="mb-3"><label>備註</label><input type="text" id="batchNote" class="form-control"></div>
                 </div>

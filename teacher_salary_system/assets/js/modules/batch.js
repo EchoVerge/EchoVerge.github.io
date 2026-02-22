@@ -30,6 +30,7 @@ export async function batchAddRecords() {
     const period = parseInt(document.getElementById('batchPeriod').value);
     const className = document.getElementById('batchClass').value;
     const tag = document.getElementById('batchTag').value;
+    const color = document.getElementById('batchColor').value;
     const note = document.getElementById('batchNote').value;
     const weekDays = Array.from(document.querySelectorAll('input[name="batchWeekDay"]:checked')).map(el => parseInt(el.value));
 
@@ -71,6 +72,7 @@ export async function batchAddRecords() {
                 type: type,
                 className: className,
                 tag: tag,
+                color: color,
                 note: note,
                 semesterId: state.currentSemester ? state.currentSemester.id : null
             });

@@ -96,9 +96,10 @@ function parseOnclickParams(attrStr) {
         type: parts[2],
         className: parts[3],
         tag: parts[4],
-        note: parts[5],
-        hasRecord: parts[6] === 'true',
-        baseType: parts[7]
+        color: parts[5],
+        note: parts[6],
+        hasRecord: parts[7] === 'true',
+        baseType: parts[8]
     };
 }
 
@@ -148,6 +149,7 @@ async function moveRecord(data, targetDate, targetPeriod) {
                 type: data.type,
                 className: data.className,
                 tag: data.tag,
+                color: data.color,
                 note: data.note,
                 semesterId: state.currentSemester ? state.currentSemester.id : null
             };
