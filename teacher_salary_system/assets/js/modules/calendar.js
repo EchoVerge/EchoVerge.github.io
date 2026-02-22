@@ -173,7 +173,6 @@ export async function renderCalendar() {
             }
 
             let displayType = "", displayClass = "", displayNote = "", isPreview = false;
-            let colorCode = "#6c757d";
 
             if (record) {
                 displayType = record.type;
@@ -185,21 +184,19 @@ export async function renderCalendar() {
                 isPreview = true;
             }
 
-            // 1. 取得支薪類別設定的顏色 (用於小標籤)
-            let typeColor = "#6c757d"; // 預設灰色
-            if (displayType) {
-                let typeConfig = state.courseTypes.find(t => t.name === displayType);
-                if (typeConfig) typeColor = typeConfig.color;
-            }
-
-            // 2. 取得班級專屬顏色 (用於格子內部填滿)
-            let classColor = getClassColor(displayClass);
-
             let cellContent = "";
             let isDraggable = false;
 
             if (displayType || displayClass) {
                 isDraggable = true;
+
+                // 1. 取得支薪類別設定的顏色 (用於小標籤)
+                let typeColor = "#6c757d";
+                let typeConfig = state.courseTypes.find(t => t.name === displayType);
+                if (typeConfig) typeColor = typeConfig.color;
+
+                // 2. 取得班級專屬顏色 (用於格子內部填滿)
+                let classColor = getClassColor(displayClass);
 
                 // 內部填滿班級顏色。如果是預覽(基本課表)，加上白色虛線框與稍微透明以作區別
                 let style = isPreview
@@ -207,7 +204,7 @@ export async function renderCalendar() {
                     : `background-color: ${classColor}; color: white;`;
 
                 // 標籤樣式：套用類別顏色、加上陰影避免與背景色太相近而看不清楚
-                let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; display: inline-block;`;
+                let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; display: inline-block; line-height: 1.2;`;
 
                 cellContent = `
                     <div class="class-block" style="${style}">
