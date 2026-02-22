@@ -185,23 +185,35 @@ export async function renderCalendar() {
                 isPreview = true;
             }
 
-            colorCode = getClassColor(displayClass);
+            // 1. 取得支薪類別設定的顏色 (用於小標籤)
+            let typeColor = "#6c757d"; // 預設灰色
+            if (displayType) {
+                let typeConfig = state.courseTypes.find(t => t.name === displayType);
+                if (typeConfig) typeColor = typeConfig.color;
+            }
+
+            // 2. 取得班級專屬顏色 (用於格子內部填滿)
+            let classColor = getClassColor(displayClass);
 
             let cellContent = "";
             let isDraggable = false;
 
             if (displayType || displayClass) {
                 isDraggable = true;
-                let style = isPreview
-                    ? `background-color: #e9ecef; color: black; border: 2px dashed ${colorCode};`
-                    : `background-color: ${colorCode}; color: white;`;
 
-                // 班級變為主體(粗體)，支薪類型變為 class-name-tag(小標籤)
+                // 內部填滿班級顏色。如果是預覽(基本課表)，加上白色虛線框與稍微透明以作區別
+                let style = isPreview
+                    ? `background-color: ${classColor}; color: white; border: 2px dashed rgba(255,255,255,0.8); opacity: 0.85;`
+                    : `background-color: ${classColor}; color: white;`;
+
+                // 標籤樣式：套用類別顏色、加上陰影避免與背景色太相近而看不清楚
+                let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; display: inline-block;`;
+
                 cellContent = `
                     <div class="class-block" style="${style}">
                         <span class="fw-bold">${displayClass || '未填班級'}</span>
-                        <div class="class-name-tag">${displayType}</div>
-                        ${displayNote ? `<small>(${displayNote})</small>` : ''}
+                        <div style="${badgeStyle}">${displayType}</div>
+                        ${displayNote ? `<small style="margin-top:3px; opacity:0.9;">(${displayNote})</small>` : ''}
                     </div>`;
             }
 

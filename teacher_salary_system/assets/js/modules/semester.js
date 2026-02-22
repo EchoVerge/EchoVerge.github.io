@@ -67,14 +67,23 @@ export async function editBaseSchedule(semId) {
             let style = "background-color: white;"; // 預設白底
 
             if (cellData && (cellData.type || cellData.className)) {
-                // 改為根據班級自動分配顏色
-                const color = getClassColor(cellData.className);
+                // 1. 取得班級專屬顏色 (用於格子內部填滿)
+                const classColor = getClassColor(cellData.className);
 
-                // 設定樣式
-                style = `background-color: ${color}; color: white; border: 1px solid rgba(0,0,0,0.1);`;
+                // 2. 取得支薪類別設定的顏色 (用於小標籤)
+                let typeColor = "#6c757d";
+                const typeConfig = state.courseTypes.find(t => t.name === cellData.type);
+                if (typeConfig) typeColor = typeConfig.color;
+
+                // 設定主區塊樣式 (背景填滿班級色)
+                style = `background-color: ${classColor}; color: white; border: 1px solid rgba(0,0,0,0.1);`;
+
+                // 標籤樣式：套用類別顏色並加上陰影
+                let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 1px 5px; font-size: 0.7em; margin-top: 5px; display: inline-block;`;
+
                 content = `
                     <div class="fw-bold small">${cellData.className || '未填班級'}</div>
-                    <div style="font-size:0.7em; opacity:0.9; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 0 4px; margin-top: 2px; display: inline-block;">${cellData.type}</div>
+                    <div style="${badgeStyle}">${cellData.type}</div>
                 `;
             }
 
