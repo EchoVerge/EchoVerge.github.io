@@ -58,9 +58,9 @@ export function initDragAndDrop() {
     grid.addEventListener('drop', async (e) => {
         e.preventDefault();
         const targetCell = e.target.closest('.period-cell');
-        
+
         // [關鍵修正] 在這裡先把資料存下來，避免被 dragend 清空
-        const dataToMove = draggedData; 
+        const dataToMove = draggedData;
 
         if (!targetCell || !dataToMove) return;
 
@@ -68,7 +68,7 @@ export function initDragAndDrop() {
 
         const targetAttr = targetCell.getAttribute('onclick');
         const targetParams = parseOnclickParams(targetAttr);
-        
+
         if (!targetParams) return;
 
         const sourceDate = dataToMove.date;
@@ -88,17 +88,17 @@ export function initDragAndDrop() {
 function parseOnclickParams(attrStr) {
     if (!attrStr) return null;
     const content = attrStr.substring(attrStr.indexOf('(') + 1, attrStr.lastIndexOf(')'));
-    // 簡易 CSV 解析，處理單引號
     const parts = content.split(',').map(s => s.trim().replace(/^'|'$/g, ''));
-    
+
     return {
         date: parts[0],
         period: parseInt(parts[1]),
         type: parts[2],
         className: parts[3],
-        note: parts[4],
-        hasRecord: parts[5] === 'true',
-        baseType: parts[6]
+        tag: parts[4],
+        note: parts[5],
+        hasRecord: parts[6] === 'true',
+        baseType: parts[7]
     };
 }
 
@@ -112,14 +112,14 @@ async function moveRecord(data, targetDate, targetPeriod) {
         const existingTarget = await db.records.where('[date+period]').equals([targetDate, targetPeriod]).first();
         if (existingTarget) {
             if (!confirm(`目標時段 (${targetDate} 第 ${targetPeriod} 節) 已有課程紀錄，確定要覆蓋嗎？`)) return;
-        } 
+        }
         // B. 檢查目標是否有「基本課表」 (若無紀錄才檢查)
         else if (state.currentSemester && state.currentSemester.baseSchedule) {
             const d = new Date(targetDate);
             const day = d.getDay(); // 0-6
             const key = `${day}-${targetPeriod}`;
             const baseClass = state.currentSemester.baseSchedule[key];
-            
+
             if (baseClass && baseClass.type) {
                 if (!confirm(`目標時段 (${targetDate} 第 ${targetPeriod} 節) 原本是「${baseClass.type}」，確定要覆蓋嗎？`)) return;
             }
@@ -147,6 +147,7 @@ async function moveRecord(data, targetDate, targetPeriod) {
                 period: targetPeriod,
                 type: data.type,
                 className: data.className,
+                tag: data.tag,
                 note: data.note,
                 semesterId: state.currentSemester ? state.currentSemester.id : null
             };

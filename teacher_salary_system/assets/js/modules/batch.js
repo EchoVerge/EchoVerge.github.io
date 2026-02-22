@@ -13,7 +13,7 @@ export function openBatchModal() {
     const today = new Date();
     document.getElementById('batchStartDate').value = formatDate(today);
     document.getElementById('batchEndDate').value = formatDate(today);
-    
+
     const select = document.getElementById('batchType');
     select.innerHTML = '';
     state.courseTypes.forEach(t => {
@@ -29,6 +29,7 @@ export async function batchAddRecords() {
     const type = document.getElementById('batchType').value;
     const period = parseInt(document.getElementById('batchPeriod').value);
     const className = document.getElementById('batchClass').value;
+    const tag = document.getElementById('batchTag').value;
     const note = document.getElementById('batchNote').value;
     const weekDays = Array.from(document.querySelectorAll('input[name="batchWeekDay"]:checked')).map(el => parseInt(el.value));
 
@@ -50,7 +51,7 @@ export async function batchAddRecords() {
         if (weekDays.includes(d.getDay())) {
             const dStr = formatDate(d);
             const dayOfWeek = d.getDay();
-            
+
             // 1. 檢查是否有「紀錄」衝突
             if (existingSet.has(`${dStr}-${period}`)) {
                 conflictInfo.push(`${dStr} (已有紀錄)`);
@@ -69,6 +70,7 @@ export async function batchAddRecords() {
                 period: period,
                 type: type,
                 className: className,
+                tag: tag,
                 note: note,
                 semesterId: state.currentSemester ? state.currentSemester.id : null
             });

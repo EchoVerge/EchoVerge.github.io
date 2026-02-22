@@ -128,9 +128,13 @@
                         <select class="form-select" id="modalType"></select>
                     </div>
                     <div class="row g-2 mb-3">
-                         <div class="col-md-12">
+                         <div class="col-md-6">
                             <label class="form-label">班級/地點</label>
                             <input type="text" class="form-control" id="modalClass" placeholder="ex: 101">
+                        </div>
+                         <div class="col-md-6">
+                            <label class="form-label">課程標籤</label>
+                            <input type="text" class="form-control" id="modalTag" placeholder="ex: 國文">
                         </div>
                     </div>
                     <div class="mb-3"><label class="form-label">備註</label><input type="text" class="form-control" id="modalNote"></div>
@@ -302,9 +306,15 @@
                         <label class="form-label">課程類別</label>
                         <select class="form-select" id="baseSlotType"></select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">班級 / 地點</label>
-                        <input type="text" class="form-control" id="baseSlotClass" placeholder="例如: 801">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">班級 / 地點</label>
+                            <input type="text" class="form-control" id="baseSlotClass" placeholder="例如: 801">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">課程標籤</label>
+                            <input type="text" class="form-control" id="baseSlotTag" placeholder="例如: 國文">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer justify-content-between">
@@ -341,7 +351,10 @@
                         <div class="col-6"><label>節次</label><input type="number" id="batchPeriod" class="form-control" placeholder="1-12"></div>
                         <div class="col-6"><label>類別</label><select id="batchType" class="form-select"></select></div>
                     </div>
-                    <div class="mb-3"><label>班級</label><input type="text" id="batchClass" class="form-control"></div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6"><label>班級</label><input type="text" id="batchClass" class="form-control"></div>
+                        <div class="col-6"><label>課程標籤</label><input type="text" id="batchTag" class="form-control"></div>
+                    </div>
                     <div class="mb-3"><label>備註</label><input type="text" id="batchNote" class="form-control"></div>
                 </div>
                 <div class="modal-footer">

@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { db } from './db.js';
-import { formatDate, getWeekNumber, getClassColor } from './utils.js';
-import { getPeriodTimes } from './settings.js'; // 修正：確保引用了此函式
+import { formatDate, getWeekNumber, getClassColor, getTagColorVariation } from './utils.js';
+import { getPeriodTimes } from './settings.js';
 
 // 輔助函式：將 "HH:mm" 轉為分鐘數 (例如 "08:10" -> 490)
 function timeToMinutes(timeStr) {
@@ -172,15 +172,17 @@ export async function renderCalendar() {
                 baseInfo = state.currentSemester.baseSchedule[`${dayOfWeek}-${p}`];
             }
 
-            let displayType = "", displayClass = "", displayNote = "", isPreview = false;
+            let displayType = "", displayClass = "", displayTag = "", displayNote = "", isPreview = false;
 
             if (record) {
                 displayType = record.type;
                 displayClass = record.className || "";
+                displayTag = record.tag || "";
                 displayNote = record.note || "";
             } else if (baseInfo && baseInfo.type) {
                 displayType = baseInfo.type;
                 displayClass = baseInfo.className || "";
+                displayTag = baseInfo.tag || "";
                 isPreview = true;
             }
 
@@ -190,25 +192,30 @@ export async function renderCalendar() {
             if (displayType || displayClass) {
                 isDraggable = true;
 
-                // 1. 取得支薪類別設定的顏色 (用於小標籤)
+                // 1. 取得支薪類別設定的顏色
                 let typeColor = "#6c757d";
                 let typeConfig = state.courseTypes.find(t => t.name === displayType);
                 if (typeConfig) typeColor = typeConfig.color;
 
-                // 2. 取得班級專屬顏色 (用於格子內部填滿)
-                let classColor = getClassColor(displayClass);
+                // 2. 取得班級專屬顏色，並根據「標籤」產生色系變化
+                let baseClassColor = getClassColor(displayClass);
+                let classColor = getTagColorVariation(baseClassColor, displayTag);
 
-                // 內部填滿班級顏色。如果是預覽(基本課表)，加上白色虛線框與稍微透明以作區別
                 let style = isPreview
                     ? `background-color: ${classColor}; color: white; border: 2px dashed rgba(255,255,255,0.8); opacity: 0.85;`
                     : `background-color: ${classColor}; color: white;`;
 
-                // 標籤樣式：套用類別顏色、加上陰影避免與背景色太相近而看不清楚
                 let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin-top: 4px; display: inline-block; line-height: 1.2;`;
+
+                // 組合標籤 HTML
+                let classDisplayHtml = `<span class="fw-bold">${displayClass || '未填班級'}</span>`;
+                if (displayTag) {
+                    classDisplayHtml += `<div style="font-size:0.85rem; font-weight:bold; opacity:0.95; margin-top:2px;">${displayTag}</div>`;
+                }
 
                 cellContent = `
                     <div class="class-block" style="${style}">
-                        <span class="fw-bold">${displayClass || '未填班級'}</span>
+                        ${classDisplayHtml}
                         <div style="${badgeStyle}">${displayType}</div>
                         ${displayNote ? `<small style="margin-top:3px; opacity:0.9;">(${displayNote})</small>` : ''}
                     </div>`;
@@ -217,13 +224,12 @@ export async function renderCalendar() {
             const safe = (s) => s ? s.replace(/'/g, "&apos;") : "";
             const baseTypeSafe = baseInfo ? safe(baseInfo.type) : "";
 
-            // 加入 data-date 與 data-period 供標註使用
             grid.innerHTML += `
                 <div class="period-cell" 
                      draggable="${isDraggable}" 
                      data-date="${dateStr}"
                      data-period="${p}"
-                     onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
+                     onclick="openEditModal('${dateStr}', ${p}, '${safe(displayType)}', '${safe(displayClass)}', '${safe(displayTag)}', '${safe(displayNote)}', ${!!record}, '${baseTypeSafe}')">
                     ${cellContent}
                 </div>`;
         }

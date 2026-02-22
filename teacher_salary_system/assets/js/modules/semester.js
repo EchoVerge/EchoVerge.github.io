@@ -1,7 +1,7 @@
 import { state } from './state.js';
 import { db } from './db.js';
 import { renderCalendar } from './calendar.js';
-import { getClassColor } from './utils.js';
+import { getClassColor, getTagColorVariation } from './utils.js';
 
 let semModal;
 let baseSlotModal; // 新增：單格編輯視窗實例
@@ -67,22 +67,22 @@ export async function editBaseSchedule(semId) {
             let style = "background-color: white;"; // 預設白底
 
             if (cellData && (cellData.type || cellData.className)) {
-                // 1. 取得班級專屬顏色 (用於格子內部填滿)
-                const classColor = getClassColor(cellData.className);
+                const baseClassColor = getClassColor(cellData.className);
+                const classColor = getTagColorVariation(baseClassColor, cellData.tag); // 加入這行
 
-                // 2. 取得支薪類別設定的顏色 (用於小標籤)
                 let typeColor = "#6c757d";
                 const typeConfig = state.courseTypes.find(t => t.name === cellData.type);
                 if (typeConfig) typeColor = typeConfig.color;
 
-                // 設定主區塊樣式 (背景填滿班級色)
                 style = `background-color: ${classColor}; color: white; border: 1px solid rgba(0,0,0,0.1);`;
-
-                // 標籤樣式：套用類別顏色並加上陰影
                 let badgeStyle = `background-color: ${typeColor}; box-shadow: 0 2px 5px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.8); border-radius: 4px; padding: 1px 5px; font-size: 0.7em; margin-top: 5px; display: inline-block;`;
+
+                // 顯示標籤文字
+                let tagHtml = cellData.tag ? `<div style="font-size:0.75rem; opacity:0.9; margin-top:2px;">${cellData.tag}</div>` : '';
 
                 content = `
                     <div class="fw-bold small">${cellData.className || '未填班級'}</div>
+                    ${tagHtml}
                     <div style="${badgeStyle}">${cellData.type}</div>
                 `;
             }
@@ -122,10 +122,11 @@ export function openBaseSlotModal(day, period) {
         if (cellData) {
             select.value = cellData.type;
             document.getElementById('baseSlotClass').value = cellData.className || '';
+            document.getElementById('baseSlotTag').value = cellData.tag || ''; // 加入
         } else {
-            // 預設選第一個類別，清空班級
             select.value = state.courseTypes[0]?.name || '';
             document.getElementById('baseSlotClass').value = '';
+            document.getElementById('baseSlotTag').value = ''; // 加入
         }
 
         baseSlotModal.show();
@@ -138,6 +139,7 @@ export async function saveBaseSlot() {
     const period = document.getElementById('baseSlotPeriod').value;
     const type = document.getElementById('baseSlotType').value;
     const className = document.getElementById('baseSlotClass').value;
+    const tag = document.getElementById('baseSlotTag').value;
 
     const semId = state.currentEditingSemId;
     const sem = await db.semesters.get(semId);
@@ -146,7 +148,7 @@ export async function saveBaseSlot() {
     if (!sem.baseSchedule) sem.baseSchedule = {};
 
     // 寫入資料
-    sem.baseSchedule[key] = { type, className };
+    sem.baseSchedule[key] = { type, className, tag };
 
     await db.semesters.update(semId, { baseSchedule: sem.baseSchedule });
 
