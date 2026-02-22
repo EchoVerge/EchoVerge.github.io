@@ -31,7 +31,15 @@ export function getWeekKey(d) {
 }
 
 // 根據班級名稱的字串計算出固定的顏色
-const classColors = ['#0d6efd', '#198754', '#dc3545', '#d63384', '#6f42c1', '#fd7e14', '#20c997', '#0dcaf0', '#6610f2', '#e83e8c'];
+const classColors = [
+    '#dc3545', // 紅色系 (Red)
+    '#fd7e14', // 橘色系 (Orange)
+    '#ffc107', // 黃色系 (Yellow)
+    '#198754', // 綠色系 (Green)
+    '#0d6efd', // 藍色系 (Blue)
+    '#6f42c1', // 紫色系 (Purple)
+    '#6c757d'  // 灰色系 (Gray)
+];
 
 export function getClassColor(className) {
     if (!className) return "#6c757d"; // 空白班級預設為灰色
