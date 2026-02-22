@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { db } from './db.js';
-import { formatDate, getWeekNumber } from './utils.js';
+import { formatDate, getWeekNumber, getClassColor } from './utils.js';
 import { getPeriodTimes } from './settings.js'; // 修正：確保引用了此函式
 
 // 輔助函式：將 "HH:mm" 轉為分鐘數 (例如 "08:10" -> 490)
@@ -19,14 +19,14 @@ export async function determineSemester(date) {
 }
 
 // 導覽功能
-export function jumpToToday() { 
-    state.currentDate = new Date(); 
-    renderCalendar(); 
+export function jumpToToday() {
+    state.currentDate = new Date();
+    renderCalendar();
 }
 
-export function changeWeek(d) { 
-    state.currentDate.setDate(state.currentDate.getDate() + d); 
-    renderCalendar(); 
+export function changeWeek(d) {
+    state.currentDate.setDate(state.currentDate.getDate() + d);
+    renderCalendar();
 }
 
 export function jumpToSpecificDate(dateStr) {
@@ -38,7 +38,7 @@ export function jumpToSpecificDate(dateStr) {
 export function renderSidebar(centerDate) {
     const list = document.getElementById('sidebarList');
     if (!list) return;
-    
+
     list.innerHTML = '';
     let lastMonthLabel = '';
 
@@ -58,8 +58,8 @@ export function renderSidebar(centerDate) {
         let endDate = new Date(tempDate);
         endDate.setDate(endDate.getDate() + 6);
 
-        let displayStr = `${tempDate.getMonth()+1}/${tempDate.getDate()} - ${endDate.getMonth()+1}/${endDate.getDate()}`;
-        let dateValue = formatDate(tempDate); 
+        let displayStr = `${tempDate.getMonth() + 1}/${tempDate.getDate()} - ${endDate.getMonth() + 1}/${endDate.getDate()}`;
+        let dateValue = formatDate(tempDate);
         let isActive = (i === 0) ? 'active' : '';
 
         list.innerHTML += `
@@ -73,8 +73,8 @@ export function renderSidebar(centerDate) {
 export async function checkActivePeriod() {
     const times = await getPeriodTimes();
     const now = new Date();
-    const currentDayStr = formatDate(now); 
-    
+    const currentDayStr = formatDate(now);
+
     // 取得當前總分鐘數 (例如 08:10 = 490)
     const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -88,11 +88,11 @@ export async function checkActivePeriod() {
         if (t && t.start && t.end) {
             const startMin = timeToMinutes(t.start);
             const endMin = timeToMinutes(t.end);
-            
+
             // 找到對應的格子
             const selector = `.period-cell[data-date="${currentDayStr}"][data-period="${p}"]`;
             const cell = document.querySelector(selector);
-            
+
             if (cell) {
                 // A. 判斷是否「正在進行」 (Current)
                 if (currentTotalMinutes >= startMin && currentTotalMinutes <= endMin) {
@@ -112,42 +112,42 @@ export async function checkActivePeriod() {
 export async function renderCalendar() {
     const grid = document.getElementById('calendar');
     if (!grid) return;
-    
+
     grid.innerHTML = '<div class="col-12 text-center py-5">載入資料中...</div>';
 
     const startOfWeek = new Date(state.currentDate);
     startOfWeek.setDate(state.currentDate.getDate() - state.currentDate.getDay());
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
-    
+
     const rangeLabel = document.getElementById('currentWeekRange');
-    if(rangeLabel) rangeLabel.innerText = `${formatDate(startOfWeek)} ~ ${formatDate(endOfWeek)}`;
-    
+    if (rangeLabel) rangeLabel.innerText = `${formatDate(startOfWeek)} ~ ${formatDate(endOfWeek)}`;
+
     renderSidebar(state.currentDate);
 
-    let checkDate = new Date(startOfWeek); checkDate.setDate(checkDate.getDate()+3);
+    let checkDate = new Date(startOfWeek); checkDate.setDate(checkDate.getDate() + 3);
     state.currentSemester = await determineSemester(checkDate);
 
     const semLabel = document.getElementById('currentSemesterLabel');
     const alertBox = document.getElementById('semesterAlert');
-    
+
     if (semLabel) {
-        if(state.currentSemester) {
+        if (state.currentSemester) {
             semLabel.innerText = state.currentSemester.name;
-            if(alertBox) alertBox.style.display = 'none';
+            if (alertBox) alertBox.style.display = 'none';
         } else {
             semLabel.innerText = "無學期設定";
-            if(alertBox) alertBox.style.display = 'block';
+            if (alertBox) alertBox.style.display = 'block';
         }
     }
 
     grid.innerHTML = '';
     const weekDays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
     let headerHtml = `<div class="header-cell">節次</div>`;
-    for(let i=0; i<7; i++) {
+    for (let i = 0; i < 7; i++) {
         let d = new Date(startOfWeek); d.setDate(d.getDate() + i);
-        let isWeekend = (i===0 || i===6) ? 'weekend' : '';
-        headerHtml += `<div class="header-cell ${isWeekend}">${weekDays[i]}<br><small class="fw-normal">${d.getMonth()+1}/${d.getDate()}</small></div>`;
+        let isWeekend = (i === 0 || i === 6) ? 'weekend' : '';
+        headerHtml += `<div class="header-cell ${isWeekend}">${weekDays[i]}<br><small class="fw-normal">${d.getMonth() + 1}/${d.getDate()}</small></div>`;
     }
     grid.innerHTML += headerHtml;
 
@@ -159,11 +159,11 @@ export async function renderCalendar() {
 
     for (let p = 1; p <= 12; p++) {
         grid.innerHTML += `<div class="header-cell d-flex align-items-center justify-content-center bg-light">${p}</div>`;
-        
+
         for (let col = 0; col < 7; col++) {
             let cellDate = new Date(startOfWeek); cellDate.setDate(cellDate.getDate() + col);
             let dateStr = formatDate(cellDate);
-            let dayOfWeek = cellDate.getDay(); 
+            let dayOfWeek = cellDate.getDay();
 
             let record = recordMap[`${dateStr}-${p}`];
             let baseInfo = null;
@@ -173,42 +173,41 @@ export async function renderCalendar() {
             }
 
             let displayType = "", displayClass = "", displayNote = "", isPreview = false;
-            let colorCode = "#6c757d"; 
+            let colorCode = "#6c757d";
 
             if (record) {
                 displayType = record.type;
                 displayClass = record.className || "";
                 displayNote = record.note || "";
-                let typeConfig = state.courseTypes.find(t => t.name === displayType);
-                if(typeConfig) colorCode = typeConfig.color;
             } else if (baseInfo && baseInfo.type) {
                 displayType = baseInfo.type;
                 displayClass = baseInfo.className || "";
                 isPreview = true;
-                let typeConfig = state.courseTypes.find(t => t.name === displayType);
-                if(typeConfig) colorCode = typeConfig.color;
             }
+
+            colorCode = getClassColor(displayClass);
 
             let cellContent = "";
             let isDraggable = false;
 
-            if (displayType) {
+            if (displayType || displayClass) {
                 isDraggable = true;
-                let style = isPreview 
-                    ? `background-color: #e9ecef; color: black; border: 2px dashed ${colorCode};` 
+                let style = isPreview
+                    ? `background-color: #e9ecef; color: black; border: 2px dashed ${colorCode};`
                     : `background-color: ${colorCode}; color: white;`;
-                
+
+                // 班級變為主體(粗體)，支薪類型變為 class-name-tag(小標籤)
                 cellContent = `
                     <div class="class-block" style="${style}">
-                        <span class="fw-bold">${displayType}</span>
-                        ${displayClass ? `<div class="class-name-tag">${displayClass}</div>` : ''}
+                        <span class="fw-bold">${displayClass || '未填班級'}</span>
+                        <div class="class-name-tag">${displayType}</div>
                         ${displayNote ? `<small>(${displayNote})</small>` : ''}
                     </div>`;
             }
 
             const safe = (s) => s ? s.replace(/'/g, "&apos;") : "";
             const baseTypeSafe = baseInfo ? safe(baseInfo.type) : "";
-            
+
             // 加入 data-date 與 data-period 供標註使用
             grid.innerHTML += `
                 <div class="period-cell" 
@@ -220,7 +219,7 @@ export async function renderCalendar() {
                 </div>`;
         }
     }
-    
+
     // 渲染完畢後，立即檢查一次目前時間
     checkActivePeriod();
 }

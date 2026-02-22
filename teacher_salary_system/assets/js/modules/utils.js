@@ -29,3 +29,16 @@ export function getWeekKey(d) {
     target.setDate(target.getDate() - target.getDay());
     return formatDate(target);
 }
+
+// 根據班級名稱的字串計算出固定的顏色
+const classColors = ['#0d6efd', '#198754', '#dc3545', '#d63384', '#6f42c1', '#fd7e14', '#20c997', '#0dcaf0', '#6610f2', '#e83e8c'];
+
+export function getClassColor(className) {
+    if (!className) return "#6c757d"; // 空白班級預設為灰色
+    let hash = 0;
+    for (let i = 0; i < className.length; i++) {
+        hash = className.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // 根據字串 hash 值從色卡中挑選一個顏色
+    return classColors[Math.abs(hash) % classColors.length];
+}
